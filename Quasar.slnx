@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Quasar.Server/Quasar.Server.csproj" />
+    <Project Path="src/Quasar.Simulation/Quasar.Simulation.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Quasar.Simulation.Tests/Quasar.Simulation.Tests.csproj" />
+  </Folder>
+</Solution>
