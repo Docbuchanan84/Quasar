@@ -43,6 +43,13 @@ See [development log](DEVLOG.md) for actual checks and remaining device validati
   verified at elapsed zero, paused, ship idle, four objects, one initialization
   event. No reset endpoint/button or save system was added.
 
+## Time-control expansion — 8 November 2026
+
+The authorized time-control expansion adds 5 seconds, 30 seconds, 5 days, and
+15 days to the existing selector. It preserves the System Lab's exact tick clock,
+analytic travel, arrival interruption, and Once/Continuous Play/Stop contract.
+This focused extension does not select a permanent scheduler or save format.
+
 ## Next task
 
 Implement a small versioned save/load feature with atomic writes, recoverable

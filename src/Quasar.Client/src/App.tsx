@@ -6,9 +6,13 @@ const SystemMap = lazy(() => import('./SystemMap'))
 const SpaceMap = lazy(() => import('./SpaceMap'))
 const durations = [
   [1, '1 second'],
+  [5, '5 seconds'],
+  [30, '30 seconds'],
   [60, '1 minute'],
   [3600, '1 hour'],
   [86400, '1 day'],
+  [432000, '5 days'],
+  [1296000, '15 days'],
   [2592000, '30 days'],
 ] as const
 

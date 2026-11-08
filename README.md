@@ -20,7 +20,8 @@ React supplies selection, inspection, orders, time controls, and event history.
 
 1. Select Pathfinder on the map or in the object list.
 2. Choose **Travel to Iris** or **Travel to Nereid**.
-3. Select an advance interval: 1 second, 1 minute, 1 hour, 1 day, or 30 days.
+3. Select an advance interval: 1, 5, or 30 seconds; 1 minute; 1 hour; or
+   1, 5, 15, or 30 days.
 4. Choose **Once** or **Continuous**, then press **Play**.
 5. Inspect movement, switch maps, or press **Stop**. Arrival interrupts processing
    at its exact simulated timestamp and records an event.

@@ -20,7 +20,7 @@ public sealed class LabSession(TimeProvider timeProvider)
     private string mode = "once";
     private string? controller;
     private DateTimeOffset leaseUntil;
-    public static readonly int[] Durations = [1, 60, 3600, 86400, 2592000];
+    public static readonly int[] Durations = [1, 5, 30, 60, 3600, 86400, 432000, 1296000, 2592000];
 
     public SessionSnapshot Snapshot()
     {

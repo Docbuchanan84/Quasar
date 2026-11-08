@@ -40,5 +40,23 @@ do {
 } while ($after.running -and [DateTimeOffset]::UtcNow -lt $deadline)
 Assert-Lab (-not $after.running) 'Once did not stop.'
 Assert-Lab ($after.world.elapsedTicks -eq $initial.world.elapsedTicks + 60 * 10000000) 'Once advanced the wrong duration.'
+# Exercise every supported interval through the real runner, including transitions back to legacy settings.
+foreach ($seconds in @(1, 5, 30, 60, 3600, 86400, 432000, 1296000, 2592000, 30, 5, 60)) {
+    $before = Invoke-RestMethod "$BaseUrl/api/lab"
+    Assert-Lab ($before.world.ship.status -eq 'Idle') 'Use an idle test instance for exact full-interval checks.'
+    $configuration = New-LabCommand 'configure'
+    $configuration.durationSeconds = $seconds
+    $configuration.mode = 'once'
+    Assert-Lab ((Send-Lab $configuration).StatusCode -eq 200) "Configuration rejected: $seconds seconds."
+    Assert-Lab ((Send-Lab (New-LabCommand 'play')).StatusCode -eq 200) 'Play rejected.'
+    $deadline = [DateTimeOffset]::UtcNow.AddSeconds(5)
+    do {
+        Start-Sleep -Milliseconds 100
+        $after = Invoke-RestMethod "$BaseUrl/api/lab"
+    } while ($after.running -and [DateTimeOffset]::UtcNow -lt $deadline)
+    Assert-Lab (-not $after.running) "Once did not stop: $seconds seconds."
+    Assert-Lab ($after.durationSeconds -eq $seconds) 'Selected interval changed.'
+    Assert-Lab ($after.world.elapsedTicks -eq $before.world.elapsedTicks + [long]$seconds * 10000000) "Wrong advance: $seconds seconds."
+}
 Assert-Lab ((Invoke-WebRequest "$BaseUrl/api/lab").Headers['Cache-Control'] -eq 'no-store') 'Snapshot caching enabled.'
-Write-Host 'PASS: HTTP snapshot, command, validation, stale revision, origin/JSON boundary, no-store, unknown API, and one-shot host runner.'
+Write-Host 'PASS: HTTP snapshot, command, validation, stale revision, origin/JSON boundary, no-store, unknown API, and all nine intervals through the one-shot host runner.'

@@ -149,3 +149,38 @@ the owner's shared Google Doc remains the design discussion record.
   phone. This confirms recovery of the reported blank/download experience.
 - Still open: persistence and durable unattended supervision. Keep the host
   window open in the meantime; this is not a Windows service or reboot recovery.
+
+## 2026-11-08 — Expanded simulation time controls
+
+- Added 5 seconds, 30 seconds, 5 days, and 15 days in ascending order to the
+  existing native selector and server duration validation. Retained all five
+  earlier intervals, the one-hour default, and numeric seconds in the API.
+- Inspection confirmed that the authoritative C# clock already uses checked
+  integer ticks, analytic movement from departure state, and exact arrival
+  interruption. These paths need no change or per-second/frame processing.
+  Arrival still stops early and discards unused time; Play starts a fresh interval.
+- Extended simulation/session coverage to 51 passing cases, including all nine
+  intervals, 1,800 repeated advances with interval changes, matching movement and
+  event history, short/long arrival boundaries, Once/Continuous, Stop/Play resume,
+  paused wall-clock time, lease expiry, and invalid duration atomicity.
+- `scripts/Verify.ps1` passed: locked restore, Release build (zero warnings/errors),
+  all 51 xUnit cases, .NET formatting, frontend lint, renderer loading/bundling,
+  TypeScript and production build. Existing large lazy 3D chunk warning remains.
+- `scripts/Test-SystemLabApi.ps1` passed against an isolated loopback 5090 host;
+  it now checks every interval and transitions through the real HTTP runner.
+- Playwright/Chromium checks passed for selector values/labels/order, exact Once
+  advances for all nine intervals, all four new Continuous/Stop/resume flows,
+  exact arrival interruption, and desktop/402/320 px layouts. Screenshots were
+  visually reviewed at 320 px; no page errors, console errors, or warnings.
+  Browser artifacts remain ignored. This is not a new physical-iPhone check.
+- Live Google Game Design Record read verified its title and time/System Lab
+  sections on 8 November 2026. Its existing arrival/Stop/analytic semantics agree
+  with this extension. Edit tooling is exposed; no write was attempted because
+  this task does not explicitly request a shared-document update.
+- No dependencies, simulation schemas, or save formats changed; the lab still
+  has no persistent save/load. The running private host and its in-memory play
+  state were preserved. Only the isolated verification host was started/stopped.
+- Publication uses a focused branch stacked on the unmerged Task 002 PR #2;
+  no merge, force-push, deployment, or private-source publication is performed.
+- No implementation blocker or new architecture choice. Next: recoverable
+  versioned save/load under a separately scoped task.

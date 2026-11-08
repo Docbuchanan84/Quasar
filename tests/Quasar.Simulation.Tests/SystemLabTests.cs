@@ -37,9 +37,13 @@ public sealed class SystemLabTests(ITestOutputHelper output)
 
     [Theory]
     [InlineData(1)]
+    [InlineData(5)]
+    [InlineData(30)]
     [InlineData(60)]
     [InlineData(3600)]
     [InlineData(86400)]
+    [InlineData(432000)]
+    [InlineData(1296000)]
     [InlineData(2592000)]
     public void IdleClockAdvancesExactly(int seconds)
     {
@@ -64,13 +68,17 @@ public sealed class SystemLabTests(ITestOutputHelper output)
         Assert.InRange(new Position3(900_000, -200_000, 350_000).DistanceTo(p), expectedDistance - .000001, expectedDistance + .000001);
     }
 
-    [Fact]
-    public void ThirtyDayAdvanceAndMinuteAdvancesStopAtSameExactArrival()
+    [Theory]
+    [InlineData(86400)]
+    [InlineData(432000)]
+    [InlineData(1296000)]
+    [InlineData(2592000)]
+    public void LongAdvanceAndMinuteAdvancesStopAtSameExactArrival(int seconds)
     {
         var large = new SystemLab(); var small = new SystemLab();
         large.OrderTravel("planet-nereid"); small.OrderTravel("planet-nereid");
         var arrival = large.Snapshot().Ship.ArrivalTicks;
-        Assert.True(large.Advance(TimeSpan.FromDays(30)));
+        while (!large.Advance(TimeSpan.FromSeconds(seconds))) { }
         while (!small.Advance(TimeSpan.FromMinutes(1))) { }
         Assert.Equal(arrival, large.ElapsedTicks);
         Assert.Equal(large.ElapsedTicks, small.ElapsedTicks);
@@ -79,6 +87,58 @@ public sealed class SystemLabTests(ITestOutputHelper output)
         Assert.Equal(large.Snapshot().Objects.Single(o => o.Id == "planet-nereid").Position, Ship(large.Snapshot()).Position);
         large.Advance(TimeSpan.FromDays(30));
         Assert.Single(large.Snapshot().Events, e => e.Kind == "arrival");
+    }
+
+    [Theory]
+    [InlineData(5)]
+    [InlineData(30)]
+    public void ShortIntervalStopsAtArrivalInsideItsDeadline(int seconds)
+    {
+        var lab = new SystemLab(); lab.OrderTravel("planet-iris");
+        var arrival = lab.Snapshot().Ship.ArrivalTicks!.Value;
+        Assert.False(lab.Advance(TimeSpan.FromTicks(arrival - seconds * TimeSpan.TicksPerSecond + 1)));
+        Assert.True(lab.Advance(TimeSpan.FromSeconds(seconds)));
+        Assert.Equal(arrival, lab.ElapsedTicks);
+        Assert.Equal(arrival, Assert.Single(lab.Snapshot().Events, e => e.Kind == "arrival").AtTicks);
+    }
+
+    [Fact]
+    public void SwitchingShortIntervalsPreservesExactMovementAndHistory()
+    {
+        var mixed = new SystemLab(); var single = new SystemLab();
+        mixed.OrderTravel("planet-iris"); single.OrderTravel("planet-iris");
+        int[] seconds = [1, 5, 30, 60, 3600, 30, 5, 1];
+        foreach (var duration in seconds) Assert.False(mixed.Advance(TimeSpan.FromSeconds(duration)));
+        Assert.False(single.Advance(TimeSpan.FromSeconds(seconds.Sum())));
+        Assert.Equal(single.ElapsedTicks, mixed.ElapsedTicks);
+        Assert.Equal(single.Snapshot().Objects, mixed.Snapshot().Objects);
+        Assert.Equal(single.Snapshot().Ship, mixed.Snapshot().Ship);
+        Assert.Equal(single.Snapshot().Events, mixed.Snapshot().Events);
+    }
+
+    [Fact]
+    public void RepeatedIntervalChangesHaveNoClockDrift()
+    {
+        var session = new LabSession(new TestClock());
+        int[] seconds = [1, 5, 30, 60, 3600, 86400, 432000, 1296000, 2592000];
+        long expectedTicks = 0;
+        for (var cycle = 0; cycle < 100; cycle++)
+        {
+            // Exercise increasing and decreasing intervals, including all legacy settings.
+            foreach (var duration in seconds.Concat(seconds.Reverse()))
+            {
+                Send(session, "configure", duration, "once");
+                Assert.Equal(expectedTicks, session.Snapshot().World.ElapsedTicks);
+                Send(session, "play"); session.Tick();
+                expectedTicks += duration * TimeSpan.TicksPerSecond;
+                var state = session.Snapshot();
+                Assert.Equal(expectedTicks, state.World.ElapsedTicks);
+                Assert.False(state.Running);
+                Assert.Equal(duration, state.DurationSeconds);
+            }
+        }
+        Assert.Single(session.Snapshot().World.Events);
+        Assert.Equal(new SystemLab().Snapshot().Objects, session.Snapshot().World.Objects);
     }
 
     [Fact]
@@ -145,23 +205,74 @@ public sealed class SystemLabTests(ITestOutputHelper output)
         Assert.Equal(ticks, session.Snapshot().World.ElapsedTicks);
     }
 
-    [Fact]
-    public void ContinuousArrivalInterruptDiscardsRemainder()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    [InlineData(30)]
+    [InlineData(60)]
+    [InlineData(3600)]
+    [InlineData(86400)]
+    [InlineData(432000)]
+    [InlineData(1296000)]
+    [InlineData(2592000)]
+    public void EveryIntervalSupportsOnceContinuousStopAndResume(int seconds)
+    {
+        var clock = new TestClock(); var session = new LabSession(clock);
+        Send(session, "configure", seconds, "once"); Send(session, "play"); session.Tick();
+        Assert.False(session.Snapshot().Running);
+        Assert.Equal(seconds * TimeSpan.TicksPerSecond, session.Snapshot().World.ElapsedTicks);
+
+        Send(session, "configure", seconds, "continuous"); Send(session, "play");
+        session.Tick(); session.Tick();
+        var running = session.Snapshot();
+        Assert.True(running.Running);
+        Assert.Equal(3L * seconds * TimeSpan.TicksPerSecond, running.World.ElapsedTicks);
+        Assert.Throws<InvalidOperationException>(() => Send(session, "configure", 60, "once"));
+        Assert.Equal(running.Revision, session.Snapshot().Revision);
+
+        Send(session, "stop");
+        clock.Now = clock.Now.AddDays(1); session.Tick();
+        Assert.Equal(running.World.ElapsedTicks, session.Snapshot().World.ElapsedTicks);
+        Assert.Equal(seconds, session.Snapshot().DurationSeconds);
+        Assert.Equal("continuous", session.Snapshot().Mode);
+
+        Send(session, "play"); session.Tick();
+        Assert.True(session.Snapshot().Running);
+        Assert.Equal(4L * seconds * TimeSpan.TicksPerSecond, session.Snapshot().World.ElapsedTicks);
+    }
+
+    [Theory]
+    [InlineData(432000, "once")]
+    [InlineData(432000, "continuous")]
+    [InlineData(1296000, "once")]
+    [InlineData(1296000, "continuous")]
+    [InlineData(2592000, "continuous")]
+    public void ArrivalInterruptDiscardsRemainderAndResumeUsesFullInterval(int seconds, string mode)
     {
         var session = new LabSession(new TestClock());
         Send(session, "travel", destination: "planet-iris");
         var arrival = session.Snapshot().World.Ship.ArrivalTicks;
-        Send(session, "configure", 2592000, "continuous"); Send(session, "play"); session.Tick();
+        Send(session, "configure", seconds, mode); Send(session, "play"); session.Tick();
         Assert.False(session.Snapshot().Running);
         Assert.Equal(arrival, session.Snapshot().World.ElapsedTicks);
         Assert.Contains("Arrival", session.Snapshot().StopReason);
+        session.Tick();
+        Assert.Equal(arrival, session.Snapshot().World.ElapsedTicks);
+        Send(session, "play"); session.Tick();
+        Assert.Equal(arrival + seconds * TimeSpan.TicksPerSecond, session.Snapshot().World.ElapsedTicks);
+        Assert.Single(session.Snapshot().World.Events, e => e.Kind == "arrival");
     }
 
-    [Fact]
-    public void LeaseExpiresAndOnlyItsOwnerCanRenewIt()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    [InlineData(30)]
+    [InlineData(432000)]
+    [InlineData(1296000)]
+    public void LeaseExpiresAndOnlyItsOwnerCanRenewIt(int seconds)
     {
         var clock = new TestClock(); var session = new LabSession(clock);
-        Send(session, "configure", 1, "continuous");
+        Send(session, "configure", seconds, "continuous");
         var play = Send(session, "play");
         clock.Now = clock.Now.AddSeconds(4);
         session.RenewLease(play.InstanceId, Guid.NewGuid().ToString());
@@ -186,6 +297,8 @@ public sealed class SystemLabTests(ITestOutputHelper output)
 
     [Theory]
     [InlineData("configure", -1, "once")]
+    [InlineData("configure", 0, "once")]
+    [InlineData("configure", 6, "once")]
     [InlineData("configure", 3600, "bad")]
     [InlineData("unknown", 3600, "once")]
     public void InvalidSessionCommandsAreAtomic(string operation, int duration, string mode)
