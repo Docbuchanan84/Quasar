@@ -33,10 +33,14 @@ per-user authentication remains a future design question.
 
 ## Current process lifetime
 
-**The host currently runs in a managed foreground terminal.** Keep that session,
-the PC, and its network available. Tailscale's Serve configuration persists, but
-it cannot keep a stopped application running. A reboot, closed host terminal, or
-terminated Codex runtime can stop this preview. Unattended startup is not enabled.
+**The host now runs in a separate visible PowerShell window.** Keep that window,
+the PC, and its network available. The earlier temporary agent-managed command
+session repeatedly failed to keep the host running between turns. Recovery on
+2026-11-08 launched the existing Start-HostedApp.ps1 in its own visible console;
+the host's parent is that PowerShell process, not an active tool command.
+Tailscale's Serve configuration persists but cannot keep a stopped application
+running. Closing the host window or rebooting still stops the preview.
+Unattended startup is not enabled.
 
 Automatic approval review rejected detached background launch attempts with
 "blocked by policy". A trial scheduled task also failed to locate its working
@@ -63,7 +67,9 @@ Set-Location 'C:\path\to\Quasar'
 .\scripts\Start-HostedApp.ps1
 ```
 
-The last command remains running; keep its terminal open. Ctrl+C stops it.
+Run the start command in a separate visible PowerShell terminal on the PC, not
+only a temporary agent execution session. It remains running; keep that window
+open. Ctrl+C stops it. The app has no unattended restart after a reboot.
 To restart the existing publication without rebuilding, use just Stop then Start.
 Stop targets only Quasar assemblies published under its own host directory.
 It does not alter Tailscale or other projects.
@@ -133,7 +139,8 @@ offers Reload display.
 The app's continuous runner is active only after Play. It processes at most four
 selected intervals per second and stops on arrival or controller lease expiry
 (five seconds). A browser reload creates a new controller ID and does not silently
-resume the previous run. Hosting remains the existing foreground process model.
+resume the previous run. Hosting remains foreground; see the current process
+lifetime section for the separate visible terminal used after recovery.
 
 ## Requested reset and later acceptance (2026-11-08)
 
@@ -165,3 +172,21 @@ A host that has already exited has lost this lab's in-memory state. Starting it
 creates a fresh fixture; it is not saved-game recovery. A remaining blank page
 may require a browser refresh after the endpoint recovers. Durable process
 supervision and recoverable save/load remain separate follow-up work.
+
+### Download prompt after an empty page
+
+The owner's subsequent phone screenshot offered `document.txt` instead of the
+game. At inspection, the host was absent again and Serve returned an empty 502
+for both `/` and `/index.html`, with no Content-Type. This was an unavailable
+origin, not an observed attachment header on a healthy game response. The phone's
+download behavior is consistent with that response, but its exact browser
+handling was not independently reproduced.
+
+Started the existing release in a separate visible PowerShell window, leaving
+Serve routes, published files, and startup configuration unchanged. Verified
+private HTTPS returned 200 and `text/html` without Content-Disposition; referenced
+JavaScript/CSS returned 200 with their correct MIME types. The page and 2D map
+rendered with no browser warnings/errors. After recovery, dismiss a stale
+download prompt and navigate afresh (an unused query string can avoid reusing
+the failed navigation). Do not save the download as a required game file.
+The owner then confirmed "Game loads now" on the phone using the fresh navigation.

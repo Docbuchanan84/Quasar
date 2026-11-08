@@ -102,7 +102,9 @@ portrait 2D screenshots. Exact iOS/browser versions, physical-phone 3D/full
 lifecycle coverage, cellular-only access, and measured GPU capacity remain open.
 See [mobile evidence](MOBILE_AND_REMOTE_ACCESS.md).
 Private hosting currently requires a foreground host process; unattended startup
-is not enabled. Original workstation audit documents remain recoverable in the
+is not enabled. Use a separate visible PowerShell window for Start-HostedApp.ps1;
+temporary agent command sessions did not keep the host available between turns.
+See HOSTING.md for the stopped-host/empty-502 recovery. Original audit documents remain recoverable in the
 owner's private local context. Generated files should not be committed; `.gitignore`
 does not itself prevent a file-sync service from syncing build directories.
 

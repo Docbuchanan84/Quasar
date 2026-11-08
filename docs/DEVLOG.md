@@ -126,3 +126,26 @@ the owner's shared Google Doc remains the design discussion record.
   process. No permanent unattended supervisor was installed. Startup reliability
   now warrants an operational follow-up before relying on continuous access;
   recoverable save/load remains the next game-development task.
+
+## 2026-11-08 — Repeat outage / phone download prompt
+
+- The owner still saw an empty page and supplied a phone screenshot offering
+  `document.txt`. Inspection again found no host process; Serve returned empty
+  502 responses for `/` and `/index.html`, with no Content-Type. Healthy HTML was
+  not being served. The exact phone browser download handling remains unproven.
+- The previous agent-managed foreground start had not remained available. Launched
+  the existing Start-HostedApp.ps1 in its own separate visible PowerShell console
+  through the approved GUI launch, and verified the host is its child process.
+  The console remains open for the owner to see/control. No hidden service,
+  scheduled task, auto-start, release rebuild, or Tailscale change was introduced.
+- Verified private HTTPS page status 200, Content-Type text/html, no attachment
+  header, referenced JS/CSS status 200 and correct MIME types, health ready,
+  and browser map/controls with zero warnings/errors. Another fresh navigation
+  was supplied to bypass the old failed phone navigation/download prompt.
+- Updated hosting/setup guidance to require a separate visible terminal instead
+  of relying on a temporary agent command. The already-stopped in-memory world
+  could not be recovered; a fresh fixture starts with the host.
+- The owner opened the fresh navigation and confirmed "Game loads now" on the
+  phone. This confirms recovery of the reported blank/download experience.
+- Still open: persistence and durable unattended supervision. Keep the host
+  window open in the meantime; this is not a Windows service or reboot recovery.
