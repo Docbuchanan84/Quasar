@@ -7,6 +7,9 @@ save format or renderer was added. The lab currently exposes one ship and two
 planet destinations; fleet orders and arbitrary map-coordinate waypoints await
 corresponding authoritative host contracts.
 
+Prerequisite branches were consolidated in owner-authorized PR #7 before this
+course branch was published against main. See [integration](AGENT_INTEGRATION.md).
+
 ## Player workflow
 
 1. Select Pathfinder, then **Plot Course** while time processing is stopped.
@@ -81,7 +84,8 @@ ship motion, advances time or sends a command from its camera/render loop.
 - Babylon reconciles object meshes on snapshot changes, caches unchanged label
   projections, and reads viewport layout before writing label styles. Camera
   operations remain local. Existing lazy loading, hidden-tab pause and disposal
-  behavior remain.
+  behavior remain. App-local Pixi disposal explicitly preserves global pools so
+  late StrictMode initialization cleanup cannot invalidate an active replacement.
 
 ## Verification and boundaries
 
@@ -93,8 +97,8 @@ ship motion, advances time or sends a command from its camera/render loop.
   stale/cross-instance/evicted/reused-token rejection, invalid/running inputs and
   mapless large-jump arrival. The old interval regression now expects the
   authoritative gravitational coast rather than a stationary unordered ship.
-- Playwright CLI: 22 course-workflow checks on real canvases, plus all 37 existing
-  desktop/native Chromium touch navigation checks. Course checks cover map/list/
+- Playwright CLI: 22 course-workflow checks on real canvases, plus 38 navigation checks (37 existing and a lifecycle regression), covering
+  desktop/native Chromium touch behavior. Course checks cover map/list/
   selector destinations, adjustment/validation, no camera-induced planning or
   physical movement, shared XYZ, distinct simultaneous preview/committed layers,
   cancellation, explicit confirmation and exact arrival after a 30-day request.

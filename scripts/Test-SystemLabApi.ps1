@@ -43,7 +43,9 @@ Assert-Lab ($after.world.elapsedTicks -eq $initial.world.elapsedTicks + 60 * 100
 # Exercise every supported interval through the real runner, including transitions back to legacy settings.
 foreach ($seconds in @(1, 5, 30, 60, 3600, 86400, 432000, 1296000, 2592000, 30, 5, 60)) {
     $before = Invoke-RestMethod "$BaseUrl/api/lab"
-    Assert-Lab ($before.world.ship.status -eq 'Idle') 'Use an idle test instance for exact full-interval checks.'
+    Assert-Lab ($null -eq $before.world.trajectory) 'Use a test instance without a committed course for exact full-interval checks.'
+    $expectedTicks = $before.world.elapsedTicks + [long]$seconds * 10000000
+    $predicted = Invoke-RestMethod "$BaseUrl/api/lab/spacecraft/state?atTicks=$expectedTicks"
     $configuration = New-LabCommand 'configure'
     $configuration.durationSeconds = $seconds
     $configuration.mode = 'once'
@@ -57,6 +59,10 @@ foreach ($seconds in @(1, 5, 30, 60, 3600, 86400, 432000, 1296000, 2592000, 30, 
     Assert-Lab (-not $after.running) "Once did not stop: $seconds seconds."
     Assert-Lab ($after.durationSeconds -eq $seconds) 'Selected interval changed.'
     Assert-Lab ($after.world.elapsedTicks -eq $before.world.elapsedTicks + [long]$seconds * 10000000) "Wrong advance: $seconds seconds."
+    $ship = $after.world.objects | Where-Object kind -eq 'spacecraft'
+    foreach ($axis in @('x', 'y', 'z')) {
+        Assert-Lab ([Math]::Abs($ship.position.$axis - $predicted.state.positionKm.$axis) -le 0.000001) "Advance disagrees with authoritative position query: $axis."
+    }
 }
 Assert-Lab ((Invoke-WebRequest "$BaseUrl/api/lab").Headers['Cache-Control'] -eq 'no-store') 'Snapshot caching enabled.'
 Write-Host 'PASS: HTTP snapshot, command, validation, stale revision, origin/JSON boundary, no-store, unknown API, and all nine intervals through the one-shot host runner.'

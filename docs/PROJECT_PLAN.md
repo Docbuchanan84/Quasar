@@ -14,6 +14,13 @@ fleet/waypoint UI awaits host support. No implementation blocker remains.
 physical iPhone 17 Pro and record OS/browser versions. Historical next-task
 recommendations below remain candidates; none are implicitly authorized here.
 
+## Owner-requested prerequisite consolidation (8 November 2026)
+
+Agents 1 (time), 2 (celestial positions), 3 (spacecraft movement) and 5 (navigation)
+are combined as described in [AGENT_INTEGRATION.md](AGENT_INTEGRATION.md), retaining
+their approved scope and limitations. Agent 4 course plotting follows on this
+baseline; it must preserve the same simulation and map contracts.
+
 ## Agent 3 — spacecraft trajectories (8 November 2026)
 
 The explicit Agent 3 task supersedes the historical next-task recommendation for

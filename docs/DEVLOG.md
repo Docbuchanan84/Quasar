@@ -23,7 +23,7 @@
   checks and production build. The existing large lazy Babylon chunk warning
   remains. New tests cover preview isolation, exact commit, token lifetime and
   mapless long-jump arrival. Updated the older interval test for gravitational coast.
-- Playwright CLI passed 22 course checks and 37 existing desktop/native Chromium
+- Playwright CLI passed 22 course checks and 38 desktop/native Chromium
   touch navigation checks on isolated `:5094` / Vite `:5174`. Synthetic 1,000-object
   rendering/zoom/reset passed with zero planning calls or page exceptions. Desktop
   and 393 × 852 panel screenshots were visually reviewed; no horizontal overflow.
@@ -31,12 +31,34 @@
 - Live **Quasar — Game Design Record** read verified on 8 November 2026; no shared
   document edit was requested/performed and write access was not tested. Updated
   README, decisions, plan, map/service contracts and [COURSE_PLOTTING.md](COURSE_PLOTTING.md).
-- Publication uses a focused stacked PR; no merge/force-push, private deployment,
-  live-world reset, runtime dependency, system reconfiguration or private-source
-  publication. Original OneDrive checkout remains on its navigation branch.
+- Owner subsequently authorized consolidation of Agents 1–5. Prerequisites are
+  merged through integration PR #7 before this course branch is pushed against
+  main. No force-push, private deployment, live-world reset, runtime dependency,
+  system reconfiguration or private-source publication. Original OneDrive checkout
+  remains on its navigation branch.
+- Repeated browser remount/resize testing caught Pixi boolean-true cleanup releasing
+  global batch pools still used by a replacement asynchronous initialization.
+  Explicit app-local destruction preserves shared pools; a repeated StrictMode
+  remount/resize regression now passes alongside all existing gesture checks.
 - Next: owner physical iPhone 17 Pro validation of plotting/confirmation and both
   maps, with browser/OS versions. No new product/architecture decision is pending
   for the implemented scope; fuel/fleet/waypoint support remains future work.
+
+## 2026-11-08 — prerequisite integration for Agents 1–5
+
+- Owner explicitly requested coherent merging of all five recent agent tasks,
+  with latitude to adjust conflicts. Consolidated the System Lab baseline,
+  Agent 2 celestial service, Agent 3 spacecraft movement, Agent 1 time expansion
+  and Agent 5 navigation before publishing Agent 4 course plotting separately.
+- Preserved shared XYZ transforms/reference geometry, authoritative trajectory
+  samples and gravitational movement, all nine time intervals, gesture-safe
+  selection and the corrected Z-up 3D camera/focus controls. Retained both sets
+  of frontend verification scripts when resolving package/script conflicts.
+- Updated the interval regression and HTTP smoke script: an unordered ship now
+  coasts under gravity. Exact clock checks compare positions with the existing
+  authoritative future query instead of expecting stationary/Idle state.
+- Verification and branch/PR publication recorded in AGENT_INTEGRATION.md.
+  No runtime dependency or new product decision. Hosted game unchanged.
 
 ## 2026-11-08 — Agent 3 spacecraft trajectories and movement
 
