@@ -18,6 +18,10 @@ Do not publish owner-only documents to make a source link work.
 
 ## Verified connection history
 
+The 8 November 2026 release documentation update added a current implementation
+section in the live record using a guarded native Google Docs edit. Readback
+confirmed the new heading structure, release links, and retained design baseline.
+
 During the initial setup, the existing authenticated Google Drive plugin fetched
 the record and native Google Docs structure/revision. Requested edits were made
 with revision guards and verified by exact content readback. Read and edit access

@@ -72,7 +72,8 @@ publish the live document link or full private snapshots to make access easier.
 The private host serves built React assets, `/api/health`, and the authoritative
 System Lab snapshot/command API from one ASP.NET origin. Use
 `scripts/Publish-HostedApp.ps1`, `scripts/Stop-HostedApp.ps1`, and
-`scripts/Start-HostedApp.ps1` for updates; keep the host terminal open. Published
+`scripts/Start-HostedApp.ps1` for updates. The current launcher runs in a separate
+PowerShell process. For manual starts, keep the host terminal open. Published
 files live under `%LOCALAPPDATA%\Quasar\host`, outside the OneDrive checkout.
 Do not run the development backend on port 5080 while the published host uses it.
 
@@ -105,8 +106,8 @@ root can be supplied using `QUASAR_DOTNET_ROOT`. Do not edit the system PATH.
 - Run checks appropriate to the change. After source/configuration changes,
   `scripts/Verify.ps1` is the standard full check, including the renderer package
   loading and browser-bundling check. It does not establish GPU performance.
-- Task 001 has no permanent tests. A "no test available" result is not a passing
-  behavior-test suite. Add focused tests alongside real simulation behavior.
+- The System Lab has simulation and session tests. Add focused regression tests
+  when changing simulation behavior.
 - Keep `package-lock.json` and `packages.lock.json` files under version control.
   When deliberately changing packages, update locks using `npm install` or
   `dotnet restore --force-evaluate`, then rerun locked verification.

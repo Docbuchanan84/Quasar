@@ -12,8 +12,10 @@ adjustments for consistency. This prerequisite consolidation contains:
 | Agent 5 | `a8190fe` | Gesture-safe map navigation, Z-up camera and focus |
 
 Agent 2 precedes Agent 3; Agent 1 is independent, and Agent 5 builds on its controls.
-Those branches are consolidated before Agent 4's course preview UI is published.
-Source branch histories/worktrees remain recoverable. No force-push is needed.
+[PR #7](https://github.com/Docbuchanan84/Quasar/pull/7) merged the consolidation
+as `fa16262`. The earlier PRs were closed as superseded. Agent 4 followed in
+[PR #8](https://github.com/Docbuchanan84/Quasar/pull/8), merged as `a3a052f` and
+deployed to the private preview.
 
 Merge resolutions keep one authoritative C# world, the existing host command gate,
 shared map scale and reference geometry, Agent 3 display samples, Agent 5 camera/
@@ -27,7 +29,5 @@ plus isolated celestial/trajectory HTTP checks and the all-interval HTTP smoke
 script. The existing lazy Babylon bundle-size warning remains. Individual source
 branches' recorded performance/device evidence retains its original limitations.
 
-No shared Google Doc write, private-host deployment/reset, new runtime package,
-fuel model, save format or general scheduler is part of this consolidation.
-The requested Agent 4 preview/confirmation integration is the next focused PR;
-its verification must run against this combined baseline.
+[Course plotting](COURSE_PLOTTING.md) records verification on the combined
+baseline. The shared Game Design Record now includes the combined release.

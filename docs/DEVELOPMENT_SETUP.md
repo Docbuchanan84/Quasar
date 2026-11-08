@@ -71,12 +71,13 @@ baseline. Added exact renderer dependencies are `@babylonjs/core` 9.35.0 and
 
 `Verify.ps1` restores locked NuGet packages, builds .NET in Release, invokes the
 test runner, checks .NET formatting, then runs frontend lint, the renderer
-package/browser-bundle check, TypeScript compilation, and Vite build.
+package/browser-bundle check, nine Node navigation and two coordinate checks,
+TypeScript compilation, and Vite build.
 
 The renderer check uses Babylon NullEngine and a Pixi display object and builds
 a separate in-memory browser bundle. It does not establish browser GPU support,
-visual correctness, or performance. The simulation test project is currently
-empty: "No test is available" is expected and is not a behavior-test-suite pass.
+visual correctness, or performance. The course release ran 99 xUnit cases for
+simulation, course planning, and host sessions.
 
 ## Editor and maintenance
 
@@ -101,9 +102,8 @@ The owner confirmed the System Lab's initial phone experience and supplied
 portrait 2D screenshots. Exact iOS/browser versions, physical-phone 3D/full
 lifecycle coverage, cellular-only access, and measured GPU capacity remain open.
 See [mobile evidence](MOBILE_AND_REMOTE_ACCESS.md).
-Private hosting currently requires a foreground host process; unattended startup
-is not enabled. Use a separate visible PowerShell window for Start-HostedApp.ps1;
-temporary agent command sessions did not keep the host available between turns.
+The deployed host uses a separate PowerShell process. Unattended startup is open.
+For manual recovery, use Start-HostedApp.ps1 in a terminal that stays open.
 See HOSTING.md for the stopped-host/empty-502 recovery. Original audit documents remain recoverable in the
 owner's private local context. Generated files should not be committed; `.gitignore`
 does not itself prevent a file-sync service from syncing build directories.

@@ -118,8 +118,9 @@ The timestamp string preserves all 64 bits in JavaScript. Missing/malformed or
 out-of-range timestamps return 400; unknown bodies return 404. Responses retain
 no-store. Queries use the current fixed-body lab catalogue without UI updates or
 time advancement. Spacecraft IDs are outside this service. `/api/lab` snapshots
-also get celestial positions/velocities from the service; spacecraft velocity is
-null because spacecraft propagation is outside this interface/task.
+get celestial positions and velocities from this service. Since Agent 3, the
+same snapshots also include spacecraft velocity from movement execution. Use
+the spacecraft state endpoint for Pathfinder forecasts.
 
 Both maps consume the same snapshot positions. `mapCoordinates.ts` scales km by
 1/1,000,000 for Babylon's right-handed XYZ and Pixi's XY with inverted screen Y.
@@ -129,7 +130,7 @@ presentation remains a future task.
 
 ## Verification and limits
 
-`scripts/Verify.ps1` runs 48 simulation/session cases (27 new celestial cases),
+The original Agent 2 verification ran 48 simulation/session cases (27 new celestial cases),
 format, lint, renderer loading/bundling, two coordinate/guide tests, and the
 TypeScript/Vite build. Tests cover independent circular/apsis expectations,
 period, orientation/epoch, analytical velocity/energy, difficult eccentricities,
@@ -184,5 +185,4 @@ status is historical; later implementation entries/code describe current status.
 Read access was verified; write tools were present but write access was not
 tested and the shared record was not modified.
 
-Next recommended task: recoverable versioned save/load including celestial
-definitions/epochs. Its format still requires a concrete task.
+The project plan tracks the proposed save/load work, including celestial definitions and epochs.

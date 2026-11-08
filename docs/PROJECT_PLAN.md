@@ -1,112 +1,44 @@
 # Quasar implementation plan
 
-## Agent 4 — course plotting (8 November 2026)
+## Current milestone
 
-Implemented the explicitly requested preview/recalculate/cancel/confirm workflow,
-with shared 2D/3D samples and revision-bound exact-plan confirmation. Integrated
-Agent 2/3 branches with the current navigation/time-control work. All simulation,
-session, coordinate, navigation and browser checks are documented in
-[COURSE_PLOTTING.md](COURSE_PLOTTING.md). No new runtime package or physical model.
-The one-ship lab supports planet targets and flight-duration adjustment; generic
-fleet/waypoint UI awaits host support. No implementation blocker remains.
+The private System Lab is playable at release `a3a052f`, deployed on 8 November
+2026. [PR #7](https://github.com/Docbuchanan84/Quasar/pull/7) consolidated the
+initial lab with time controls, celestial queries, spacecraft movement, and map
+navigation. [PR #8](https://github.com/Docbuchanan84/Quasar/pull/8) added reviewed
+course planning and shared map overlays.
 
-**Immediate next task:** validate this workflow and both maps on the owner's
-physical iPhone 17 Pro and record OS/browser versions. Historical next-task
-recommendations below remain candidates; none are implicitly authorized here.
+| Delivered | Scope |
+| --- | --- |
+| System Lab | Helios, two fixed planets, Pathfinder, inspectable XYZ, shared 2D/3D selection, and event history |
+| Clock | Nine intervals, Once/Continuous, Stop, exact event interruption, and browser lease |
+| Celestial mechanics | Analytical hierarchical position and velocity queries and sphere-of-influence data |
+| Spacecraft movement | Lambert transfers, analytical coasting, impulses, and headless event execution |
+| Navigation | Gesture-safe selection, pan/orbit/zoom, Reset View, and 3D Focus Selected |
+| Course plotting | Planet and duration selection, shared path and markers, revision-bound preview and commit, and delta-v display |
 
-## Owner-requested prerequisite consolidation (8 November 2026)
+The [System Lab guide](SYSTEM_LAB.md), [integration record](AGENT_INTEGRATION.md),
+and [development log](DEVLOG.md) document contracts, source branches, and test
+evidence. The original lab's physical-phone portrait 2D acceptance remains
+recorded in [mobile validation](MOBILE_AND_REMOTE_ACCESS.md).
 
-Agents 1 (time), 2 (celestial positions), 3 (spacecraft movement) and 5 (navigation)
-are combined as described in [AGENT_INTEGRATION.md](AGENT_INTEGRATION.md), retaining
-their approved scope and limitations. Agent 4 course plotting follows on this
-baseline; it must preserve the same simulation and map contracts.
+## Next validation
 
-## Agent 3 — spacecraft trajectories (8 November 2026)
+Exercise the current course workflow, arrival, and both maps on the owner's
+iPhone 17 Pro and record iOS/browser versions. Cover gestures, landscape,
+background/reconnect, and cellular-only access separately.
 
-The explicit Agent 3 task supersedes the historical next-task recommendation for
-this branch. Implemented on Agent 2: pure Lambert planning, analytical gravity
-coasts, explicit SOI-patched itineraries, delta-v, headless execution/events,
-cancellation/replanning and shared map samples. Fuel remains unavailable without
-propulsion/mass data. See [SPACECRAFT_TRAJECTORIES.md](SPACECRAFT_TRAJECTORIES.md).
-No save format, permanent scheduler, automatic SOI route search or dependency was
-selected. Recommended next task: define a concrete spacecraft propulsion/mass
-model before implementing fuel expenditure or finite thrust.
+## Open implementation and design work
 
-## Current objective
+- Recoverable versioned save/load with atomic writes, stable IDs, history, and
+  stopped-on-load behavior is a proposed development slice. Format, migration,
+  retention, and storage choices remain open.
+- Propulsion and mass modelling, finite thrust, fuel expenditure, fleets, collision,
+  docking, and player-facing moving-target/waypoint selection remain open. The
+  headless trajectory planner already supports moving-target interception.
+- Permanent scheduling, variable fidelity, look-ahead, cross-platform determinism,
+  terrain, and sustained large-world and phone performance require further work.
+- Private hosting uses manual startup after reboot. Unattended startup remains open.
 
-**Task 002 status: implemented, deployed, automated checks passed, and initial
-phone experience accepted by the owner on 8 November 2026.** Remaining device
-qualification is tracked below; it does not erase the successful actual-phone
-2D check. No Task 003 implementation is authorized by this status update.
-
-Task 002 is the **System Lab** vertical slice requested by the owner on 8 November
-2026. It supersedes the earlier clock-only Task 002 and incorporates the previous
-003–005 connection/universe milestones plus the approved initial map stack.
-The original initialization milestone is complete; the historical sequence remains
-in Git history rather than serving as the active task specification.
-
-## Task 002 acceptance
-
-- Headless C# fixture: one star, two planets, one ship; stable identities and XYZ kilometres.
-- Explicit deterministic elapsed time, efficient long advances, Once/Continuous Play,
-  Stop, and arrival interruption. No permanent scheduling framework.
-- Serialized ASP.NET commands and immutable snapshots; revision/instance checks,
-  same-origin JSON commands, lease expiry, and no browser authority over game time.
-- React inspector/orders/history with shared selection across PixiJS and Babylon.js.
-- Touch camera controls, responsive layouts, lazy renderer lifecycle, representative
-  planetary surface inset, and clearly labeled provisional mechanics.
-- Simulation/session tests, HTTP smoke checks, desktop/mobile browser checks, existing
-  full verification, private deployment, shared record update, focused branch and PR.
-
-See [System Lab implementation](SYSTEM_LAB.md) for contracts and operational details.
-See [development log](DEVLOG.md) for actual checks and remaining device validation.
-
-## Acceptance evidence and handoff
-
-- Implementation commit: `32d45a8`; [Task 002 PR #2](https://github.com/Docbuchanan84/Quasar/pull/2).
-- [Implementation CI passed](https://github.com/Docbuchanan84/Quasar/actions/runs/42517246183),
-  alongside 21 local simulation/session tests and HTTP/browser checks.
-- The owner reported that the lab "looks so good already and works just how I
-  want" and supplied actual phone screenshots of stopped/processing Continuous
-  controls, the selected ship, and changing depth in the 2D tactical map.
-- [Mobile validation](MOBILE_AND_REMOTE_ACCESS.md) separates visible evidence,
-  the owner's broader acceptance, automated coverage, and checks still outstanding.
-- A requested post-test reset was performed by restarting only Quasar and was
-  verified at elapsed zero, paused, ship idle, four objects, one initialization
-  event. No reset endpoint/button or save system was added.
-
-## Time-control expansion — 8 November 2026
-
-The authorized time-control expansion adds 5 seconds, 30 seconds, 5 days, and
-15 days to the existing selector. It preserves the System Lab's exact tick clock,
-analytic travel, arrival interruption, and Once/Continuous Play/Stop contract.
-This focused extension does not select a permanent scheduler or save format.
-
-## Next task
-
-The owner requested a focused map-navigation improvement after the time-control
-expansion: remove redundant direction controls, protect selection from drags, and
-fix 3D orbit/pan/zoom/pivot behavior with the existing renderers. Implemented scope
-and test evidence are in [MAP_NAVIGATION.md](MAP_NAVIGATION.md). Physical iPhone
-validation of the changed controls is the immediate follow-up; this does not
-authorize a new simulation feature or select a new architecture.
-
-Implement a small versioned save/load feature with atomic writes, recoverable
-backups, stable identities, history, and stopped-on-load behavior. Select its exact
-format and migration policy in that task; no database has been selected.
-
-## Still open
-
-- N-body/escaping trajectories, moving-target navigation, propulsion, physical
-  size/time scales, collision and docking. Analytical bound celestial orbits are
-  implemented; the visible travel lab still uses fixed-body definitions.
-- Permanent scheduling, variable fidelity, look-ahead, and cross-platform determinism.
-- Save schema, history retention, large-world performance budgets, and terrain data.
-- Physical-phone 3D, full gesture/order/arrival/lifecycle checks, landscape,
-  exact iOS/browser versions, cellular-only access, and measured rendering budgets.
-- Unattended host startup. Basic actual-phone 2D use and initial acceptance are confirmed.
-
-Keep the C# library independent of web/rendering/storage packages. Preserve the
-approved React/TypeScript/Vite, Babylon.js, PixiJS, ASP.NET, and .NET 10 foundation.
-PostgreSQL, WebSockets, additional map libraries, and universal entity frameworks
-remain deferred/candidates, not prerequisites for expanding this lab.
+The [decision record](DECISIONS.md) tracks approvals and candidates. The shared
+Google Game Design Record carries project direction and discussion.

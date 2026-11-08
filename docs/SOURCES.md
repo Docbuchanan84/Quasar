@@ -6,6 +6,8 @@
 - `docs/DECISIONS.md`: approved choices, proposals, and open technical questions.
 - `docs/PROJECT_PLAN.md`: incremental milestones.
 - `docs/DEVLOG.md`: dated development results and validation.
+- `docs/SYSTEM_LAB.md` and `docs/COURSE_PLOTTING.md`: current gameplay and API contracts.
+- `docs/AGENT_INTEGRATION.md`: source branches and merged release history.
 - Code, tests, pull requests, and CI: implemented behavior and its verification.
 - `docs/MOBILE_AND_REMOTE_ACCESS.md`: owner feedback, screenshot observations,
   device validation coverage, and remaining checks for the implemented prototype.
@@ -28,6 +30,9 @@ Google Drive/Docs connector to verify a live read. If access is unavailable, say
 which public or dated local material was used and ask the owner for the necessary
 context. Building and running this repository does not require Google access.
 Do not create competing knowledge vaults or automatic two-way synchronization.
+
+The live record's **Current implementation and release** section reflects the
+merged, deployed course release. The original Task 002 notes remain historical.
 
 ## Task 002 owner evidence (2026-11-08)
 

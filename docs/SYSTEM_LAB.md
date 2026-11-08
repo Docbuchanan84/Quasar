@@ -1,142 +1,95 @@
-# System Lab implementation — Task 002
+# System Lab
 
-**Agent 3 update (8 November 2026):** straight-line travel below is historical.
-Current movement uses gravitational Lambert transfers, impulsive departure/arrival
-and analytical coasts. Cancellation retains momentum; both maps draw shared
-trajectory samples. See [SPACECRAFT_TRAJECTORIES.md](SPACECRAFT_TRAJECTORIES.md)
-for current behavior and limits. Planets remain fixed fixture bodies.
+The playable private release includes the original Task 002 lab and the later
+clock, celestial, movement, navigation, and course plotting work. Release
+`a3a052f` was deployed on 8 November 2026. For operating instructions, see the
+[README](../README.md) and [course plotting guide](COURSE_PLOTTING.md).
 
-## Authority and state
+## Simulation and presentation
 
-`Quasar.Simulation/SystemLab.cs` contains the reusable predefined fixture, immutable
-value records, travel rule, and explicit elapsed-time advance. It has no host,
-browser, storage, timer, or rendering dependency. Fixture IDs are fixed strings;
-the server supplies a different instance ID after each restart.
+The headless C# fixture contains Helios, fixed planets Iris and Nereid, and
+Pathfinder. Objects have stable IDs, positions in double-precision kilometres,
+and velocities in kilometres per second. The system-local frame is right-handed.
+Pixi shows XY and labels Z. Babylon shows XYZ with a Z-up camera. Both scale
+coordinates by 1/1,000,000 and draw illustrative reference circles and enlarged
+symbols. React shares selection, inspection, orders, and event history across
+views. Rendering and camera controls operate on snapshots.
 
-Coordinates are double-precision kilometres in a right-handed system-local frame.
-Pixi projects X right/Y up and shows Z in labels; Babylon uses the same XYZ frame
-and an explicit right-handed scene. Rendering scales kilometres by 1/1,000,000.
-Reference circles pass through each stationary planet in an inclined plane; their
-XY projection agrees across views. They are illustrative, not simulated orbits.
-Symbols and labels have display sizes independent of physical body size.
+Pathfinder starts coasting under Helios gravity. The planner solves a Lambert
+transfer from the current state to a selected fixture planet. A committed plan
+applies impulsive departure and arrival changes with analytical coasting in
+between. Arrival interrupts at the exact event tick, records an event, and
+discards the unused advance time. Cancelling a committed course retains position
+and velocity and starts an unforced coast. The reusable
+[celestial service](CELESTIAL_MECHANICS.md) and
+[trajectory engine](SPACECRAFT_TRAJECTORIES.md) also support moving targets and
+explicit gravity patches. The player workflow exposes single-well transfers to
+the fixed planets.
 
-Time uses nonnegative checked .NET ticks (100 ns) up to TimeSpan.MaxValue. The UI
-shows elapsed days/hours/minutes/seconds, not a universal calendar. JSON numbers
-are display approximations at very large tick values; C# retains the integer clock.
-Same-build equivalent advance sequences produce identical fixture coordinates;
-distance assertions use a 0.000001 km tolerance. No cross-platform replay promise.
+Select Pathfinder, choose **Plot Course**, select a planet, and review or adjust
+the flight duration. **Issue Order** commits the exact reviewed plan while the
+host instance and revision match. Previewing and cancelling a preview preserve
+the simulation and any existing course. Both views draw the same sampled preview
+or committed path. Departure and arrival markers use the planned positions.
+Fuel estimates remain unavailable until propulsion and mass data exist.
 
-Travel derives position from the stored departure position/time and the absolute
-clock. Duration is rounded upward to the next tick. Arrival snaps to the destination
-and stops at that tick, recording one event and discarding any requested remainder.
-Retargeting begins from the current canonical position. Orders to non-planets,
-the active destination, and an already-occupied destination are rejected atomically.
+## Clock and execution
 
-## HTTP and execution
+Elapsed time uses nonnegative checked .NET ticks of 100 ns. The UI shows elapsed
+days, hours, minutes, and seconds. Snapshot clock values are JSON numbers.
+Trajectory sample timestamps and exact query timestamps are decimal strings
+where specified in the API.
 
-The [celestial mechanics extension](CELESTIAL_MECHANICS.md) routes celestial
-snapshots through the simulation-owned query service and adds
-`GET /api/lab/celestial/{bodyId}/state?atTicks=<signed Int64>` without changing
-clock/revision/history. Fixed-body lab definitions preserve the travel demo.
-Shared client coordinate/reference-guide helpers preserve both projections.
-Original Task 002 validation below remains historical; extension checks and
-model limits are in the linked contract.
+The nine supported intervals are 1, 5, 30, 60, 3,600, 86,400, 432,000,
+1,296,000, and 2,592,000 seconds. Once processes one interval. Continuous uses
+one interval per 250 ms host tick until Stop, an interrupt, clock overflow, or
+expiry of the initiating browser's five-second lease. The visible client polls
+every 500 ms and renews its run lease every second. A refreshed browser gets a
+new controller ID. Another connected browser can inspect or Stop the shared run.
 
-- `GET /api/health`: readiness and `stage: system-lab`.
-- `GET /api/lab`: instance/revision, run state/reason, interval/mode, world objects,
-  ship status/ETA/distance, and chronological timestamped events. No-store.
-- `POST /api/lab/commands`: JSON `{instanceId, revision, clientId, operation}`.
-  Operations: `configure` (durationSeconds, mode), `play`, `stop`, `travel`
-  (destinationId). Durations in seconds:
-  1/5/30/60/3600/86400/432000/1296000/2592000; modes: once/continuous.
-- `POST /api/lab/lease`: JSON `{instanceId, clientId}`; renews only the current
-  controller's active run. No world/revision mutation.
+A restart creates a fresh instance at elapsed zero with Pathfinder coasting.
+Refresh preserves the world. Orders, clock, and event history are held in memory.
+Use the [hosting instructions](HOSTING.md) for an explicitly requested restart.
+**Reset View** changes the camera only.
 
-The session lock serializes snapshots, commands, and runner ticks. An instance or
-revision mismatch returns 409; invalid commands return 400. Stop alone accepts an
-older revision in the same instance so ticks cannot defeat it. Revisions ahead
-of the server and other instances remain invalid. Commands require JSON and an
-Origin authority matching the request Host; no CORS, public access, or new login
-service was introduced. Origin checking complements the existing private network
-boundary; it is not per-user authentication.
+## HTTP contract
 
-A 250 ms host timer processes one analytically evaluated interval per tick while
-running. Once stops after one interval. Continuous repeats until Stop, arrival,
-clock overflow, or the controller's five-second lease expires. It is accelerated
-interval processing, not one simulated second per real second. The browser polls
-at 500 ms while visible and renews a run lease every second. Polling and rendering
-never move the simulation. Unknown command outcomes are refreshed and never replayed.
-
-A reload retains world state but creates a new browser ID; an existing run stops
-when its previous lease expires. Another browser can inspect or Stop. This is a
-single shared lab, not separate per-browser games. No save/load or reset endpoint.
-All history is retained for the process lifetime; data volume/retention awaits a
-future persistence task. Long-idle and hidden renderer work is suppressed; only
-one lazily loaded renderer is mounted at a time.
-
-## Verification and limits
-
-**Implementation and initial owner acceptance: 8 November 2026.**
-The working vertical slice is deployed; it is no longer an empty skeleton.
-
-| Area | Evidence/result |
+| Request | Purpose |
 | --- | --- |
-| Headless simulation and session | 21 xUnit cases passed: fixture/IDs/XYZ, clock boundaries, movement, retargeting, exact arrival, equivalent increments, invalid commands, snapshot isolation, execution/lease/concurrency |
-| Full repository check | `scripts/Verify.ps1` passed build, tests, format, frontend lint/type/build, and renderer loading/bundling |
-| HTTP boundary | `scripts/Test-SystemLabApi.ps1` passed on isolated loopback and deployed private HTTPS |
-| Desktop/browser workflow | Real Pixi/Babylon rendering, selection, shared inspector XYZ, orders, movement/arrival, time controls, refresh, offline/reconnect, camera controls, view disposal, failed-map recovery |
-| Responsive layout | Automated desktop, 402/320 px portrait and landscape checks; supplied actual-phone portrait 2D screenshots |
-| Initial phone experience | Owner confirmed the look/interaction works as intended; screenshots show selected ship, movement/depth changes and stopped/processing Continuous states |
-| Performance experiment | 100,000 idle 30-day advances measured at 6.366 ms locally in Release; not a scale guarantee |
-| Publication | Implementation `32d45a8`, PR #2, passing implementation CI; private deployment and unchanged Tailscale routes verified |
+| `GET /api/health` | Readiness and the `system-lab` stage |
+| `GET /api/lab` | Instance/revision, run controls, objects and velocities, ship status, events, and any committed trajectory |
+| `GET /api/lab/course-preview?destinationId=…&flightSeconds=…` | Solve a stopped-world course and return a revision-bound preview ID, sampled path, summary, and warnings |
+| `GET /api/lab/trajectory-preview?destinationId=…&flightSeconds=…` | Compatibility query for an advisory trajectory without a confirmation ID |
+| `GET /api/lab/celestial/{bodyId}/state?atTicks=…` | Read celestial state at a signed Int64 timestamp |
+| `GET /api/lab/spacecraft/state?atTicks=…` | Read Pathfinder's current or predicted future state |
+| `POST /api/lab/commands` | Apply a revision-checked command |
+| `POST /api/lab/lease` | Renew the active controller lease using `instanceId` and `clientId` |
 
-The public [mobile validation record](MOBILE_AND_REMOTE_ACCESS.md) describes the
-screenshots without exposing private browser/address content. Neither the screenshots
-nor owner acceptance proves every gesture, 3D GPU capability, or sustained performance.
+Commands take JSON `{instanceId, revision, clientId, operation}` plus operation
+arguments. The current UI uses `configure` with `durationSeconds` and `mode`
+(`once` or `continuous`), `play`, `stop`, `commit-course` with `previewId`,
+and `cancel-travel`. The compatible direct `travel` operation accepts
+`destinationId` and optional `flightSeconds`, defaulting to 21,600. The UI
+requires course review before issuing an order.
 
-Run `scripts/Verify.ps1` for xUnit simulation/session tests and full repository
-checks. Run `scripts/Test-SystemLabApi.ps1` only against an isolated stopped lab
-(default loopback 5090); it mutates that lab's clock to test the real HTTP runner.
-Browser smoke checks and screenshots live in ignored `output/playwright/`.
+The host retains up to 32 solved preview plans. A successful command or clock
+tick invalidates them. The session gate serializes reads and writes. The server
+returns 409 for stale instances, stale revisions, or expired course previews, and
+400 for invalid command arguments. Stop accepts an older revision for the same
+instance. POST requests require JSON and an Origin authority matching the Host.
+API responses use `Cache-Control: no-store`. On uncertain command outcomes,
+the browser refreshes state without automatically replaying the command.
 
-Basic actual-phone portrait 2D use is now confirmed. Still record iOS/browser
-versions and explicitly test physical-phone 3D, full gestures/order/arrival flow,
-landscape, background/lock, cellular-only access/reconnect, and graphics/battery
-behavior. Desktop emulation and the supplied still images do not complete these checks.
+## Verification and open work
 
-Vite reports a large Babylon scene chunk (~1.09 MB uncompressed, ~265 KB gzip).
-It is loaded only on selecting 3D. This is a known initial download cost, not
-measured iPhone capacity. No elaborate art, external fonts/images, new runtime
-packages, database, WebSocket transport, or permanent event scheduler is used.
+The merged release passed 99 xUnit and 11 Node cases, 22 Chromium course checks,
+38 navigation/lifecycle checks, and isolated HTTP suites. Run
+`scripts/Verify.ps1` for the repository suite. Run `scripts/Test-SystemLabApi.ps1`
+against an isolated stopped lab because the script advances time. Live deployment
+verification covered private HTTPS, the new client, and the course preview
+endpoint. See [course plotting](COURSE_PLOTTING.md) for browser test reproduction.
 
-## Owner operating guide and reset
-
-Select Pathfinder on a map or in the object list, inspect its XYZ/status, and choose
-a planet travel order. Choose an interval and Once/Continuous, then Play. Once
-processes one interval; Continuous repeats it until Stop, arrival, lease expiry,
-or the clock limit. Stop before changing controls or issuing/replacing an order.
-After an arrival interrupt, review the event and issue another order or press Play
-to continue with a fresh selected interval; unused advance time is not carried over.
-
-Views share selection and state; camera/view/reference settings are presentation.
-Inspectors and history can collapse on a phone. The planetary inset is illustrative.
-State is shared between connected browsers, not a separate world per tab/device.
-
-For an explicitly requested reset, use the existing Stop/Start hosted scripts
-without republishing; a restart restores the fixture. The owner requested this
-after deployment, and the reset was verified at elapsed zero, paused, ship idle,
-four objects, and one initialization event. A page refresh does not reset the lab.
-There is no in-app reset command, save/load, undo, or automatic recovery of play
-progress. Do not restart a live session merely to refresh documentation.
-
-## Completion boundaries and next task
-
-The owner accepted the initial System Lab experience. This does not promote
-stationary bodies, fixed 25 km/s travel, analytic point motion, runner cadence,
-lease policy, illustrative orbit guides, or surface imagery into permanent game
-rules. Gravity, acceleration, collision/docking, orbital dynamics, persistent
-saves, terrain, and additional game domains remain outside Task 002.
-
-The single recommended next development task is versioned save/load with atomic
-writes and recoverable backups. It needs its own concrete implementation scope;
-no database, format, migration policy, or permanent scheduler is selected here.
+Initial physical-phone portrait 2D play is confirmed. The current course workflow,
+physical-phone 3D, lifecycle behavior, and measured performance remain open.
+Persistent saves, finite thrust and propellant use, collision and docking, fleets,
+and wider simulation domains are future work. See the [project plan](PROJECT_PLAN.md).

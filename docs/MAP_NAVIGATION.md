@@ -76,15 +76,16 @@ zoom limits remain. These are presentation bounds, not physical size constraints
   .NET formatting, frontend lint, renderer loading/bundling, nine new Node/Babylon
   navigation tests, TypeScript and production build. No runtime dependency/lock
   changes. The existing large lazy Babylon chunk warning remains.
-- `src/Quasar.Client/scripts/check-map-browser.js`: 37 passing Playwright CLI
+- `src/Quasar.Client/scripts/check-map-browser.js`: 38 passing Playwright CLI
   checks of real Pixi/Babylon canvases in desktop Chromium and a 393 × 852 viewport
-  with native CDP touch streams. This also issues an order and advances a disposable
+  with native CDP touch streams, including a remount/resize regression. This also
+  issues an order and advances a disposable
   host to verify the course overlay and focused ship tracking. Screenshots remain
   in ignored `output/playwright/` and were visually reviewed.
 - Production-bundle smoke check: both maps loaded from the isolated host; 3D
   focus/reset worked at phone width without page errors.
-- The browser script requires Vite on loopback 5173 and an **isolated** backend on
-  loopback 5092. It routes only that test browser's API requests to the isolated
+- The browser script requires Vite on loopback 5174 and an **isolated** backend on
+  loopback 5094. It routes only that test browser's API requests to the isolated
   host. Start from a fresh lab; never direct it at a live game. From the repo root:
   `npx --yes --package @playwright/cli playwright-cli -s=quasar-nav open about:blank`,
   then `npx --yes --package @playwright/cli playwright-cli -s=quasar-nav run-code --filename src/Quasar.Client/scripts/check-map-browser.js`.

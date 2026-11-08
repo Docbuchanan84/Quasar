@@ -1,8 +1,8 @@
 # Course plotting and map integration
 
-Implemented for the owner's Agent 4 request on 8 November 2026. This branch
-integrates Agent 2's celestial service, Agent 3's trajectories and the newer map
-navigation/time-control work. No runtime dependency, physics solver, fleet model,
+Implemented for the owner's Agent 4 request on 8 November 2026. The deployed
+course release integrates celestial queries, spacecraft trajectories, navigation,
+and time controls. No runtime dependency, physics solver, fleet model,
 save format or renderer was added. The lab currently exposes one ship and two
 planet destinations; fleet orders and arbitrary map-coordinate waypoints await
 corresponding authoritative host contracts.
@@ -110,8 +110,21 @@ ship motion, advances time or sends a command from its camera/render loop.
   628 ms and two-button interaction 326 ms. These include automation overhead;
   they are neither sustained frame rates nor capacity/physical-phone claims.
 
-Reproduce browser checks with disposable ASP.NET `:5094` and Vite `:5174`; the
-scripts intercept API calls to preserve other/live hosts:
+From the repository root, start the disposable backend and frontend in separate
+terminals after running Setup.ps1:
+
+```powershell
+. .\scripts\Use-DevEnvironment.ps1
+dotnet run --project src/Quasar.Server --no-launch-profile -- --urls http://127.0.0.1:5094
+```
+
+```powershell
+Set-Location src/Quasar.Client
+npm.cmd run dev -- --port 5174
+```
+
+The Playwright scripts route API calls to the disposable host. The default Vite
+proxy still points to 5080, so exercise this setup through the scripts:
 
 ```powershell
 npx --yes --package @playwright/cli playwright-cli -s=quasar-course open about:blank
@@ -121,15 +134,16 @@ npx --yes --package @playwright/cli playwright-cli -s=quasar-course run-code --f
 ```
 
 The course script expects a fresh stopped lab; restart only that disposable host
-before repeating it. No private host deployment/reset was performed. Physical
+before repeating it. PR #8 merged as `a3a052f` and was deployed through the private
+preview. HTTPS served the course client and returned a 65-point Iris preview.
+Physical
 iPhone 17 Pro/Safari testing, sustained large-world budgets and moving-target UI
 fixtures remain open. Generic moving-target trajectory correctness is covered by
 Agent 3's simulation tests; the visible lab planets remain intentionally fixed.
 
-The live **Quasar — Game Design Record** was read on 8 November 2026 (title,
-headings and confirmed/candidate/open distinctions verified). No external document
-write was requested or performed; write access was not tested. This file is the
-public implementation handoff, not a replacement shared design record.
+The live **Quasar — Game Design Record** includes the current release, player
+workflow, verification, and open design work. The 8 November 2026 update was
+written with a revision guard and verified by readback.
 
 Next: validate preview, cancellation, confirmation and both maps on the owner's
 physical iPhone 17 Pro and record browser/OS versions.
