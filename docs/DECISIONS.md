@@ -243,3 +243,16 @@ save format, or every future UI detail. Further features still need a concrete t
 The screenshots do not establish physical-phone 3D support, exact iOS/browser
 versions, every gesture, landscape/lifecycle/cellular behavior, or measured scale.
 See MOBILE_AND_REMOTE_ACCESS.md for explicit evidence and remaining checks.
+
+## Approved — simplify map navigation (2026-11-08)
+
+**Status: Approved by the owner's explicit navigation task; implemented.** Remove
+direction/rotate-step buttons with gesture equivalents, preserve Reset View and
+essential recovery, protect map selection, and improve 3D navigation using the
+installed Pixi/Babylon input infrastructure. Add useful selected-object focus.
+
+Implementation uses Z-up orbit orientation, distance-scaled screen-plane panning,
+bounded proportional/natural zoom, reduced orbit inertia, tap/drag intent tracking,
+and explicit focus without recentering on ordinary selection. Details and checks
+are in MAP_NAVIGATION.md. No rendering stack, simulation, storage or scheduler
+decision changed. Actual-phone validation of these changed controls remains open.

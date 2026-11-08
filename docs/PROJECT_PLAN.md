@@ -1,5 +1,12 @@
 # Quasar implementation plan
 
+## Owner-requested prerequisite consolidation (8 November 2026)
+
+Agents 1 (time), 2 (celestial positions), 3 (spacecraft movement) and 5 (navigation)
+are combined as described in [AGENT_INTEGRATION.md](AGENT_INTEGRATION.md), retaining
+their approved scope and limitations. Agent 4 course plotting follows on this
+baseline; it must preserve the same simulation and map contracts.
+
 ## Agent 3 — spacecraft trajectories (8 November 2026)
 
 The explicit Agent 3 task supersedes the historical next-task recommendation for
@@ -54,14 +61,21 @@ See [development log](DEVLOG.md) for actual checks and remaining device validati
   verified at elapsed zero, paused, ship idle, four objects, one initialization
   event. No reset endpoint/button or save system was added.
 
+## Time-control expansion — 8 November 2026
+
+The authorized time-control expansion adds 5 seconds, 30 seconds, 5 days, and
+15 days to the existing selector. It preserves the System Lab's exact tick clock,
+analytic travel, arrival interruption, and Once/Continuous Play/Stop contract.
+This focused extension does not select a permanent scheduler or save format.
+
 ## Next task
 
-The separately requested **Agent 2 celestial mechanics/position service** is
-implemented and locally verified: analytical elliptic hierarchy queries, velocity,
-period/SOI, bounded caching and shared map transforms. The fixed-body travel lab
-remains. See [contract and limits](CELESTIAL_MECHANICS.md). This explicit owner
-request extends the historical Task 002 baseline without selecting a permanent
-scheduler, save format or spacecraft navigation model.
+The owner requested a focused map-navigation improvement after the time-control
+expansion: remove redundant direction controls, protect selection from drags, and
+fix 3D orbit/pan/zoom/pivot behavior with the existing renderers. Implemented scope
+and test evidence are in [MAP_NAVIGATION.md](MAP_NAVIGATION.md). Physical iPhone
+validation of the changed controls is the immediate follow-up; this does not
+authorize a new simulation feature or select a new architecture.
 
 Implement a small versioned save/load feature with atomic writes, recoverable
 backups, stable identities, history, and stopped-on-load behavior. Select its exact

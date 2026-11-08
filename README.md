@@ -26,7 +26,8 @@ React supplies selection, inspection, orders, time controls, and event history.
 
 1. Select Pathfinder on the map or in the object list.
 2. Choose **Travel to Iris** or **Travel to Nereid**.
-3. Select an advance interval: 1 second, 1 minute, 1 hour, 1 day, or 30 days.
+3. Select an advance interval: 1, 5, or 30 seconds; 1 minute; 1 hour; or
+   1, 5, 15, or 30 days.
 4. Choose **Once** or **Continuous**, then press **Play**.
 5. Inspect movement, switch maps, or press **Stop**. Arrival interrupts processing
    at its exact simulated timestamp and records an event.
@@ -37,8 +38,10 @@ works from another connected browser too. Stop processing before changing contro
 or issuing/replacing orders. Each advance uses the full selected duration; an
 arrival discards the unused remainder and waits for another Play command.
 
-Map gestures: 2D drag/pinch for pan/zoom; 3D drag/pinch/two-finger pan. Explicit
-camera buttons and object-list selection are available without gestures. The
+Map gestures: 2D drag/swipe to pan and wheel/pinch to zoom; 3D drag to orbit,
+right/middle/Ctrl-drag or two fingers to pan, wheel/pinch to zoom. Reset View,
+compact zoom buttons and 3D Focus Selected remain; redundant direction buttons
+are removed. See [navigation controls and checks](docs/MAP_NAVIGATION.md). The
 planet inspector includes an illustrative terrain/grid inset, not simulated geography.
 
 **Provisional:** constant-speed straight-line travel at 25 km/s; stationary bodies;

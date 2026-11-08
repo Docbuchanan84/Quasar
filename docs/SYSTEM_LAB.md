@@ -47,7 +47,8 @@ model limits are in the linked contract.
   ship status/ETA/distance, and chronological timestamped events. No-store.
 - `POST /api/lab/commands`: JSON `{instanceId, revision, clientId, operation}`.
   Operations: `configure` (durationSeconds, mode), `play`, `stop`, `travel`
-  (destinationId). Durations: 1/60/3600/86400/2592000; modes: once/continuous.
+  (destinationId). Durations in seconds:
+  1/5/30/60/3600/86400/432000/1296000/2592000; modes: once/continuous.
 - `POST /api/lab/lease`: JSON `{instanceId, clientId}`; renews only the current
   controller's active run. No world/revision mutation.
 

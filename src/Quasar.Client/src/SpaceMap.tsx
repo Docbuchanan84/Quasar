@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { Engine } from '@babylonjs/core/Engines/engine'
 import { Scene } from '@babylonjs/core/scene'
-import { ArcRotateCamera } from '@babylonjs/core/Cameras/arcRotateCamera'
 import { Vector3, Color3, Color4, Matrix } from '@babylonjs/core/Maths/math'
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder'
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
-import { PointerEventTypes } from '@babylonjs/core/Events/pointerEvents'
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'
 import '@babylonjs/core/Culling/ray'
+import { MapGesture } from './mapGestures'
+import {
+  createSpaceCamera,
+  frameCamera,
+  scaleCameraPan,
+  stopCamera,
+} from './spaceCamera'
 import { objectColor, type MapProps } from './lab'
 import { referenceCircle, toMapPosition } from './mapCoordinates'
 
@@ -25,7 +30,7 @@ export default function SpaceMap(props: MapProps) {
     element.appendChild(canvas)
     canvas.setAttribute(
       'aria-label',
-      'Three-dimensional system map. Drag to rotate, pinch to zoom, two fingers to pan.',
+      'Three-dimensional system map. Drag to orbit; right, middle, or Ctrl-drag to pan. Touch: one finger orbits, two pan; pinch or wheel zooms.',
     )
     let cleanup = () => {}
     try {
@@ -37,20 +42,48 @@ export default function SpaceMap(props: MapProps) {
       const scene = new Scene(engine)
       scene.useRightHandedSystem = true
       scene.clearColor = new Color4(0.035, 0.075, 0.11, 1)
-      const camera = new ArcRotateCamera(
-        'system-camera',
-        -Math.PI / 2,
-        Math.PI / 3,
-        8,
-        Vector3.Zero(),
-        scene,
-      )
-      camera.attachControl(canvas, true)
-      camera.lowerRadiusLimit = 1
-      camera.upperRadiusLimit = 30
-      camera.wheelPrecision = 30
-      camera.panningSensibility = 150
-      camera.minZ = 0.01
+      const gesture = new MapGesture()
+      const camera = createSpaceCamera(scene, gesture)
+      let focusedId: string | null = null
+      const down = (e: PointerEvent) => {
+        if (e.button > 2) return
+        gesture.down(e.pointerId, e.clientX, e.clientY)
+        if (gesture.multiTouch || e.button !== 0 || e.ctrlKey) focusedId = null
+        // Switching to two fingers must not retain one-finger orbit momentum.
+        stopCamera(camera)
+      }
+      const move = (e: PointerEvent) => {
+        gesture.move(e.pointerId, e.clientX, e.clientY)
+        scaleCameraPan(camera, element.clientHeight)
+      }
+      const up = (e: PointerEvent) => {
+        if (gesture.up(e.pointerId, e.clientX, e.clientY) && e.button === 0) {
+          const rect = canvas.getBoundingClientRect()
+          const pick = scene.pick(e.clientX - rect.left, e.clientY - rect.top)
+          const id = pick?.pickedMesh?.metadata?.objectId
+          if (id) current.current.onSelect(id)
+        }
+        if (gesture.multiTouch) stopCamera(camera)
+      }
+      const cancel = (e: Event) => {
+        if (
+          e.type === 'lostpointercapture' &&
+          !gesture.pointers.has((e as PointerEvent).pointerId)
+        )
+          return
+        gesture.cancel()
+        stopCamera(camera)
+      }
+      const contextMenu = (e: Event) => e.preventDefault()
+      // Capture tracks intent before Babylon consumes input; Babylon still moves the camera.
+      canvas.addEventListener('pointerdown', down, true)
+      canvas.addEventListener('pointermove', move, true)
+      canvas.addEventListener('pointerup', up, true)
+      canvas.addEventListener('pointercancel', cancel, true)
+      canvas.addEventListener('lostpointercapture', cancel)
+      canvas.addEventListener('contextmenu', contextMenu)
+      window.addEventListener('blur', cancel)
+      camera.attachControl(canvas, false)
       const meshes = new Map<string, Mesh>(),
         labels = new Map<string, HTMLSpanElement>()
       const point = (p: { x: number; y: number; z: number }) => {
@@ -124,37 +157,39 @@ export default function SpaceMap(props: MapProps) {
       }
       let route: Mesh | null = null,
         lastRoute = ''
-      scene.onPointerObservable.add((info) => {
-        if (info.type === PointerEventTypes.POINTERTAP) {
-          const id = info.pickInfo?.pickedMesh?.metadata?.objectId
-          if (id) current.current.onSelect(id)
-        }
-      })
       controls.current = (action) => {
         if (action === 'reset') {
-          camera.setTarget(Vector3.Zero())
-          camera.alpha = -Math.PI / 2
-          camera.beta = Math.PI / 3
-          camera.radius = 8
-        } else if (action === 'in' || action === 'out')
-          camera.radius = Math.max(
-            1,
-            Math.min(30, camera.radius * (action === 'in' ? 0.8 : 1.25)),
+          focusedId = null
+          frameCamera(camera, Vector3.Zero(), true)
+        } else if (action === 'focus') {
+          const selected = current.current.objects.find(
+            (o) => o.id === current.current.selectedId,
           )
-        else if (action === 'rotate') camera.alpha += Math.PI / 8
-        else
-          camera.target.addInPlace(
-            new Vector3(
-              action === 'left' ? -0.3 : action === 'right' ? 0.3 : 0,
-              action === 'up' ? 0.3 : action === 'down' ? -0.3 : 0,
-              0,
+          if (selected) {
+            focusedId = selected.id
+            frameCamera(camera, point(selected.position))
+          }
+        } else if (action === 'in' || action === 'out') {
+          stopCamera(camera)
+          camera.radius = Math.max(
+            camera.lowerRadiusLimit!,
+            Math.min(
+              camera.upperRadiusLimit!,
+              camera.radius * (action === 'in' ? 0.8 : 1.25),
             ),
           )
+        }
       }
       const render = () => {
         if (document.hidden) return
         const { objects, selectedId, trajectory, references } =
           current.current
+        if (focusedId !== selectedId) focusedId = null
+        const focused = objects.find((o) => o.id === focusedId)
+        // Follow a moving focused object without changing orbit angles or zoom.
+        // Pan/two-finger navigation releases follow; selection never moves the view.
+        if (focused) camera.target.copyFrom(point(focused.position))
+        scaleCameraPan(camera, element.clientHeight)
         for (const object of objects) {
           const mesh = meshes.get(object.id)!
           mesh.position.copyFrom(point(object.position))
@@ -213,8 +248,10 @@ export default function SpaceMap(props: MapProps) {
         }
       }
       const visibility = () => {
-        if (document.hidden) engine.stopRenderLoop(render)
-        else engine.runRenderLoop(render)
+        if (document.hidden) {
+          cancel(new Event('visibilitychange'))
+          engine.stopRenderLoop(render)
+        } else engine.runRenderLoop(render)
       }
       const resize = new ResizeObserver(() => engine.resize())
       resize.observe(element)
@@ -226,6 +263,13 @@ export default function SpaceMap(props: MapProps) {
       document.addEventListener('visibilitychange', visibility)
       engine.runRenderLoop(render)
       cleanup = () => {
+        canvas.removeEventListener('pointerdown', down, true)
+        canvas.removeEventListener('pointermove', move, true)
+        canvas.removeEventListener('pointerup', up, true)
+        canvas.removeEventListener('pointercancel', cancel, true)
+        canvas.removeEventListener('lostpointercapture', cancel)
+        canvas.removeEventListener('contextmenu', contextMenu)
+        window.removeEventListener('blur', cancel)
         resize.disconnect()
         document.removeEventListener('visibilitychange', visibility)
         canvas.removeEventListener('webglcontextlost', lost)
@@ -255,20 +299,32 @@ export default function SpaceMap(props: MapProps) {
           {error}
         </p>
       )}
+      <p className="map-gestures">
+        Drag to orbit · right/middle/Ctrl-drag or two fingers to pan ·
+        wheel/pinch to zoom
+      </p>
       <div className="camera-controls" aria-label="3D camera controls">
         {[
           ['in', '+'],
           ['out', '−'],
-          ['rotate', '↻'],
-          ['left', '←'],
-          ['right', '→'],
-          ['up', '↑'],
-          ['down', '↓'],
-          ['reset', 'Fit'],
+          ['focus', 'Focus Selected'],
+          ['reset', 'Reset View'],
         ].map(([action, label]) => (
           <button
             key={action}
-            aria-label={`Map ${action}`}
+            aria-label={
+              action === 'reset'
+                ? 'Reset View'
+                : action === 'focus'
+                  ? 'Focus Selected Object'
+                  : action === 'in'
+                    ? 'Zoom in'
+                    : 'Zoom out'
+            }
+            disabled={
+              action === 'focus' &&
+              !props.objects.some((o) => o.id === props.selectedId)
+            }
             onClick={() => controls.current(action)}
           >
             {label}

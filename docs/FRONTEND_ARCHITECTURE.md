@@ -50,8 +50,11 @@ server snapshots. See [System Lab contracts](SYSTEM_LAB.md).
   renderer, listeners, and related objects; one renderer is mounted at a time.
 - Pixi redraws only changed state/camera/viewport data and avoids hidden work.
   Babylon stops its render loop while hidden and disposes the scene/engine on exit.
-- Both support explicit camera buttons and object-list selection. Pixi handles
-  drag/pinch and nearest-symbol selection; Babylon uses an orbit camera and mesh picking.
+- Both retain zoom/Reset View buttons and object-list selection. Directional
+  buttons have gesture equivalents and are removed. Pixi handles drag/pinch and
+  nearest-symbol selection; Babylon uses a Z-up orbit camera and mesh picking,
+  with explicit selected-object focus. Both guard taps against accidental drags.
+  See [navigation](MAP_NAVIGATION.md) for mappings, camera limits and validation.
 - Babylon labels are projected into screen-space DOM text so they remain readable
   without a separate GUI package or per-label texture.
 - Context-loss messages offer switching/reloading. A map error boundary contains
