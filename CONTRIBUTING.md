@@ -37,6 +37,13 @@ simulation behavior rather than treating an empty runner as a test-suite pass.
 The initial repository bootstrap may be committed directly to `main`; subsequent
 work should use branches and pull requests. Avoid mixing unrelated changes.
 
+`main` requires an up-to-date passing `verify` check and a pull request, including
+for the owner. No additional approving reviewer is required for the solo-owner
+workflow. Resolve review discussions before merging. Squash merge is enabled;
+force-push and branch deletion are blocked. Merged task branches are cleaned up
+automatically. These settings are recoverable repository policy, not a reason
+to bypass checks or merge changes outside the authorized task.
+
 ## Design discussions
 
 Public implementation decisions and progress live in repository documents and
