@@ -1,5 +1,70 @@
 # Development log
 
+## 2026-11-08 — Agent 3 spacecraft trajectories and movement
+
+- Inspected the checkout and Agent 2 working tree as well as their commits; both
+  were clean before task changes. No fleet/engine/mass/fuel model exists. Created
+  `codex/spacecraft-trajectories` in an isolated worktree from Agent 2's `2f79207`;
+  navigation/time-control branches and the owner's running hosted world are untouched.
+- Added separate pure Lambert planning, universal-variable gravitational coasts,
+  immutable committed execution plans, event-ordered advancement, cancellation
+  retaining momentum, explicit parent/child SOI-patched legs, delta-v budgets and
+  future fuel-estimation adapter. No frame integration or new runtime dependency.
+- Integrated read-only preview/state APIs and same-origin revision-checked
+  travel/cancel commands. The lab begins on a gravitational coast and uses
+  six-hour impulsive transfers. Both maps draw server samples from the same conics.
+  Corrected course status messaging. Fixed planets and abstract rendezvous remain
+  lab limitations, explicitly documented in SPACECRAFT_TRAJECTORIES.md.
+- Verified `scripts/Verify.ps1`: 64 xUnit cases pass, zero build warnings/errors,
+  .NET format, frontend lint, renderer loading/browser bundling, two coordinate
+  tests and production TypeScript/Vite build. Existing lazy 3D chunk-size advisory
+  remains; it is not a measured GPU result.
+- Isolated port-5093 HTTP tests passed: Agent 2 celestial contract, all 65 trajectory
+  samples equal authoritative position/velocity queries, preview leaves revision/
+  world/history unchanged, cancel/replan, invalid inputs, origin denial, exact
+  tick strings and arrival interruption with no maps open.
+- Chromium smoke checks rendered curved routes in Pixi 2D and Babylon 3D,
+  advanced one hour and cancelled without changing position/speed at cancellation;
+  desktop and 393x852 layouts inspected, zero browser console errors. Screenshots
+  remain ignored under output/playwright. This is not actual iPhone validation.
+  Disposable browser/host were closed; the live host was not redeployed.
+- Preliminary Release measurement, 1,000 ships sharing one plan: cold solve
+  8.925 ms, 1,000 position queries 1.085 ms, first no-event advance 2.065 ms,
+  simultaneous arrivals 1.030 ms. Not a capacity guarantee; JIT/shared route limit it.
+- Live Google design record read verified (title and headings) on 8 November.
+  Edit tool available, write execution untested; no external design-record edit.
+  Physics is task-scoped, not approval of n-body, finite-thrust or automatic route
+  search. Fuel remains unavailable. Next: define propulsion/mass data before
+  fuel spending/finite thrust. Review this branch against Agent 2's branch.
+
+## 2026-11-08 — Agent 2 celestial mechanics and position service
+
+- Added immutable celestial definitions/state vectors, pure elliptic Keplerian
+  propagation and simulation-owned hierarchical queries. Explicit km, km/s,
+  radians, GM and signed ticks; analytical velocity, derived periods and
+  approximate Laplace SOI. No runtime packages, per-second motion loop or UI
+  authority. Catalogue replacement invalidates descendants/derived metadata.
+- Integrated lab snapshots and a read-only arbitrary-time HTTP query. Kept fixed
+  lab planets/travel behavior; moving-target orders/course plotting remain outside
+  scope. Both maps share scaling/projection/reference geometry.
+- Used an isolated worktree from `8c1a722` to preserve simultaneous unrelated
+  time-control/map work. Branch `codex/celestial-mechanics`; no hosted session
+  restarted or republished.
+- Verification: 48 xUnit cases passed, including 27 new celestial cases; full
+  `scripts/Verify.ps1` build/format/lint/renderers, two coordinate tests and
+  frontend build passed. New celestial and existing System Lab HTTP smoke passed
+  on isolated loopback 5091. A first coordinate assertion exposed ordinary
+  multiplication/division rounding and was corrected to use a tolerance.
+- Measured 10,001 bodies across 20 uncached extreme-time bulk queries at
+  133.035 ms total in a warmed Release run here; tested a 10,000-level hierarchy
+  without recursion. Synthetic headless results, not phone/rendering capacity.
+- Read live Game Design Record on 8 November 2026 (revision prefix `AHj4eMQHPFgN`).
+  Early pre-production prose is historical relative to its Task 002 update.
+  Write tools present; write access untested and external record unchanged.
+- DECISIONS distinguishes requested scope from reversible choices;
+  [CELESTIAL_MECHANICS.md](CELESTIAL_MECHANICS.md) documents interfaces and limits.
+- Next task: recoverable versioned save/load including celestial elements/epochs.
+
 Keep concise entries for completed work. Include the date, result, validation,
 decisions/pending questions, and one next step. Commit the entry with the related
 change so Git history and notes remain connected. This is an implementation log;

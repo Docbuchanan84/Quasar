@@ -1,5 +1,11 @@
 # System Lab implementation — Task 002
 
+**Agent 3 update (8 November 2026):** straight-line travel below is historical.
+Current movement uses gravitational Lambert transfers, impulsive departure/arrival
+and analytical coasts. Cancellation retains momentum; both maps draw shared
+trajectory samples. See [SPACECRAFT_TRAJECTORIES.md](SPACECRAFT_TRAJECTORIES.md)
+for current behavior and limits. Planets remain fixed fixture bodies.
+
 ## Authority and state
 
 `Quasar.Simulation/SystemLab.cs` contains the reusable predefined fixture, immutable
@@ -27,6 +33,14 @@ Retargeting begins from the current canonical position. Orders to non-planets,
 the active destination, and an already-occupied destination are rejected atomically.
 
 ## HTTP and execution
+
+The [celestial mechanics extension](CELESTIAL_MECHANICS.md) routes celestial
+snapshots through the simulation-owned query service and adds
+`GET /api/lab/celestial/{bodyId}/state?atTicks=<signed Int64>` without changing
+clock/revision/history. Fixed-body lab definitions preserve the travel demo.
+Shared client coordinate/reference-guide helpers preserve both projections.
+Original Task 002 validation below remains historical; extension checks and
+model limits are in the linked contract.
 
 - `GET /api/health`: readiness and `stage: system-lab`.
 - `GET /api/lab`: instance/revision, run state/reason, interval/mode, world objects,

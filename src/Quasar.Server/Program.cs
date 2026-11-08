@@ -43,6 +43,35 @@ app.MapGet("/api/health", (HttpContext context) =>
 });
 
 app.MapGet("/api/lab", (LabSession session) => session.Snapshot());
+app.MapGet("/api/lab/trajectory-preview", (string destinationId, int? flightSeconds, LabSession session) =>
+{
+    try { return Results.Ok(session.PreviewTravel(destinationId, flightSeconds ?? 21600)); }
+    catch (InvalidOperationException error) { return Results.Conflict(new { error = error.Message }); }
+    catch (Exception error) when (error is ArgumentException or OverflowException)
+    { return Results.BadRequest(new { error = error.Message }); }
+});
+app.MapGet("/api/lab/spacecraft/state", (long atTicks, LabSession session) =>
+{
+    try { return Results.Ok(new { atTicks = atTicks.ToString(System.Globalization.CultureInfo.InvariantCulture), state = session.ShipStateAt(atTicks) }); }
+    catch (InvalidOperationException error) { return Results.Conflict(new { error = error.Message }); }
+    catch (ArgumentException error) { return Results.BadRequest(new { error = error.Message }); }
+});
+app.MapGet("/api/lab/celestial/{bodyId}/state", (string bodyId, long atTicks, LabSession session) =>
+{
+    try
+    {
+        var state = session.CelestialStateAt(bodyId, atTicks);
+        // Strings preserve exact ticks for clients whose JSON numbers cannot represent Int64.
+        return Results.Ok(new
+        {
+            bodyId,
+            atTicks = atTicks.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            state.PositionKm,
+            state.VelocityKmPerSecond
+        });
+    }
+    catch (KeyNotFoundException) { return Results.NotFound(new { error = "Unknown celestial body." }); }
+});
 app.MapPost("/api/lab/commands", (LabCommand command, LabSession session) =>
 {
     try { return Results.Ok(session.Execute(command)); }

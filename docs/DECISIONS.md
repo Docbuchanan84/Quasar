@@ -1,5 +1,33 @@
 # Quasar decision record
 
+## Approved — Agent 3 spacecraft movement scope (2026-11-08)
+
+**Status: Approved by the owner's explicit Agent 3 request; implemented in this
+task branch.** Separate C# planning, execution and presentation; use Agent 2
+ephemerides, physical gravitational transfers, delta-v, deterministic queries,
+cancellation/replanning and event-aware headless advancement. Conditional fuel
+spending remains unavailable because propulsion/mass data do not exist.
+
+Task-scoped implementation: zero-revolution impulsive Lambert transfers,
+universal Kepler coasts, explicit parent/child SOI patches with costed corrections,
+immutable previews and a bounded event queue. This does not approve finite thrust,
+n-body physics, docking/capture, automatic route search, a permanent universal
+scheduler or measured capacity. See SPACECRAFT_TRAJECTORIES.md. Further propulsion
+and automatic routing work remain **Proposed** and require a concrete task.
+
+## Approved — celestial mechanics task scope (2026-11-08)
+
+The owner explicitly requested analytical Keplerian celestial mechanics,
+simulation-authoritative arbitrary-time position/velocity queries, hierarchical
+orbital systems, explicit units, cache invalidation and shared 2D/3D data. No
+spacecraft orders/course plotting are authorized by that request.
+
+**Implementation status: implemented and locally verified.** Reversible choices:
+immutable catalogue replacement, one-timestamp bounded cache, elliptic two-body
+propagation, GM-derived periods and approximate Laplace SOI. Fixed lab definitions
+preserve existing travel behavior. This does not approve permanent trajectory,
+scheduler, persistence or N-body architecture. See [contract](CELESTIAL_MECHANICS.md).
+
 Date: 2026-11-08. This record distinguishes user requirements, reversible setup
 choices made for Task 001, and proposals that have not received user approval.
 

@@ -1,5 +1,11 @@
 # Quasar
 
+**Agent 3 update:** authoritative gravitational transfers replace the historical
+constant-speed lab movement below. Planning, headless execution and map samples
+have separate interfaces. See [spacecraft trajectories](docs/SPACECRAFT_TRAJECTORIES.md)
+for delta-v, SOI patches, APIs, checks and limits. Buttons select six-hour impulsive
+transfers; fuel/finite thrust remain unavailable.
+
 [![Verify](https://github.com/Docbuchanan84/Quasar/actions/workflows/verify.yml/badge.svg)](https://github.com/Docbuchanan84/Quasar/actions/workflows/verify.yml) · MIT
 
 Quasar is an original, simulation-first 4X/grand strategy project inspired by Aurora C#.
@@ -44,6 +50,12 @@ procedural generation, persistent saves, or permanent scheduling architecture.
 State survives refresh but resets on host restart. No extra runtime packages were added.
 
 ## Run and verify
+
+The [celestial position service](docs/CELESTIAL_MECHANICS.md) supports analytical
+Keplerian position/velocity queries for hierarchical bodies at arbitrary simulation
+timestamps, derived periods and approximate spheres of influence. Both maps use
+shared presentation transforms over simulation snapshots. The accepted lab keeps
+its fixed planets and travel demo; moving-target navigation is outside this task.
 
 Use PowerShell 7:
 

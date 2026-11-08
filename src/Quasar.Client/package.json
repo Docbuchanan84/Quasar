@@ -15,6 +15,7 @@
     "lint": "oxlint",
     "check:renderers": "node scripts/check-renderers.mjs",
     "test:maps": "node --test scripts/test-map-navigation.mjs",
+    "test:coordinates": "node --test scripts/map-coordinates.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

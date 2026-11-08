@@ -31,7 +31,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
         Assert.Throws<OverflowException>(() => lab.Advance(TimeSpan.FromTicks(1)));
         Assert.Equal(long.MaxValue, lab.ElapsedTicks);
         Assert.Throws<OverflowException>(() => lab.OrderTravel("planet-iris"));
-        Assert.Equal("Idle", lab.Snapshot().Ship.Status);
+        Assert.Equal("Coasting", lab.Snapshot().Ship.Status);
         Assert.Single(lab.Snapshot().Events);
     }
 
@@ -63,9 +63,10 @@ public sealed class SystemLabTests(ITestOutputHelper output)
         Assert.Equal(large.Snapshot().Objects, small.Snapshot().Objects);
         Assert.Equal(large.ElapsedTicks, small.ElapsedTicks);
         var p = Ship(large.Snapshot()).Position;
-        Assert.True(p.X > 900_000 && p.Y > -200_000 && p.Z < 350_000);
-        var expectedDistance = 25 * 3600;
-        Assert.InRange(new Position3(900_000, -200_000, 350_000).DistanceTo(p), expectedDistance - .000001, expectedDistance + .000001);
+        Assert.NotEqual(new Position3(900_000, -200_000, 350_000), p);
+        var plan = large.PreviewTravel("planet-nereid");
+        Assert.Equal(p, plan.InitialState.PositionKm);
+        Assert.True(large.Snapshot().Trajectory!.RequiredDeltaVKmPerSecond > 0);
     }
 
     [Theory]
@@ -153,7 +154,8 @@ public sealed class SystemLabTests(ITestOutputHelper output)
         Assert.False(lab.Advance(TimeSpan.FromTicks(arrival - lab.ElapsedTicks - 1)));
         Assert.True(lab.Advance(TimeSpan.FromTicks(1)));
         Assert.Equal(arrival, lab.ElapsedTicks);
-        Assert.Contains("Nereid", lab.Snapshot().Events.Single(e => e.Kind == "arrival").Message);
+        Assert.Equal("Arrived", lab.Snapshot().Ship.Status);
+        Assert.Single(lab.Snapshot().Events, e => e.Kind == "arrival");
     }
 
     [Fact]

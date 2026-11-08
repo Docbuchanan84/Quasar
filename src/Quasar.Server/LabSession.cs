@@ -3,7 +3,7 @@ using Quasar.Simulation;
 namespace Quasar.Server;
 
 public sealed record LabCommand(string InstanceId, long Revision, string ClientId, string Operation,
-    int? DurationSeconds = null, string? Mode = null, string? DestinationId = null);
+    int? DurationSeconds = null, string? Mode = null, string? DestinationId = null, int? FlightSeconds = null);
 public sealed record SessionSnapshot(string InstanceId, long Revision, bool Running, string StopReason,
     int DurationSeconds, string Mode, LabSnapshot World);
 
@@ -25,6 +25,19 @@ public sealed class LabSession(TimeProvider timeProvider)
     public SessionSnapshot Snapshot()
     {
         lock (gate) return Read();
+    }
+
+    // The immutable celestial catalogue needs no session lock and cannot advance the world.
+    public CelestialState CelestialStateAt(string bodyId, long atTicks) => world.CelestialPositions.GetState(bodyId, atTicks);
+
+    public TrajectoryDisplay PreviewTravel(string destinationId, int flightSeconds)
+    {
+        lock (gate) return SystemLab.Present(world.PreviewTravel(destinationId, flightSeconds));
+    }
+
+    public CelestialState ShipStateAt(long atTicks)
+    {
+        lock (gate) return world.ShipStateAt(atTicks);
     }
 
     public SessionSnapshot Execute(LabCommand command)
@@ -58,7 +71,13 @@ public sealed class LabSession(TimeProvider timeProvider)
                     break;
                 case "travel":
                     if (running) throw new InvalidOperationException("Stop before issuing an order.");
-                    world.OrderTravel(command.DestinationId ?? "");
+                    world.OrderTravel(command.DestinationId ?? "", command.FlightSeconds ?? 21600);
+                    stopReason = "Course committed — ready to advance";
+                    break;
+                case "cancel-travel":
+                    if (running) throw new InvalidOperationException("Stop before cancelling a course.");
+                    world.CancelTravel();
+                    stopReason = "Course cancelled — coasting";
                     break;
                 default: throw new ArgumentException("Unknown command.");
             }
