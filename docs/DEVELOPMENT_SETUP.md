@@ -103,3 +103,12 @@ Private hosting currently requires a foreground host process; unattended startup
 is not enabled. Original workstation audit documents remain recoverable in the
 owner's private local context. Generated files should not be committed; `.gitignore`
 does not itself prevent a file-sync service from syncing build directories.
+
+## Task 002 setup notes (2026-11-08)
+
+No system SDK/PATH, Docker, Tailscale, or runtime dependency changes. The existing
+xUnit project also references the server for session tests; locked restore was
+refreshed accordingly. Vite's lazy Babylon chunk exceeds its 500 kB warning level
+(~1.09 MB raw/~255 kB gzip); builds pass. Actual phone GPU/performance checks and
+unattended startup remain unresolved. Use a separate loopback port such as 5090
+for isolated API tests while the published host occupies 5080.

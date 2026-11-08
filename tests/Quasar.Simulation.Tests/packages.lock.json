@@ -93,6 +93,12 @@
           "xunit.extensibility.core": "[2.9.3]"
         }
       },
+      "quasar.server": {
+        "type": "Project",
+        "dependencies": {
+          "Quasar.Simulation": "[1.0.0, )"
+        }
+      },
       "quasar.simulation": {
         "type": "Project"
       }

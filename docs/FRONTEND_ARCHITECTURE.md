@@ -90,3 +90,13 @@ Wi-Fi/cellular checks. Desktop viewport emulation alone is insufficient.
 References: [Babylon ES modules](https://doc.babylonjs.com/setup/frameworkPackages/es6Support),
 [Babylon/React integration](https://doc.babylonjs.com/communityExtensions/Babylon.js%2BExternalLibraries/BabylonJS_and_ReactJS),
 [Pixi setup](https://pixijs.com/8.x/guides/getting-started/quick-start).
+
+## Task 002 renderer validation (2026-11-08)
+
+System Lab now mounts one lazy renderer at a time, sharing canonical snapshots and
+selection through React. Pixi's XY projection exposes Z; Babylon uses XYZ in a
+right-handed scene. Both support selection and explicit camera buttons as well
+as gestures. Inactive engines/listeners are disposed, hidden loops stop, and Pixi
+avoids redrawing unchanged state. Representative surface imagery is CSS-generated
+and clearly illustrative. See SYSTEM_LAB.md for transforms and known download cost.
+Renderer checks and desktop emulation do not establish iPhone GPU capacity.

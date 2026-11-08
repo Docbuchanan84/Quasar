@@ -1,4 +1,4 @@
-# Private Quasar skeleton hosting
+# Private Quasar hosting
 
 **Approved and deployed: 2026-11-08.**
 
@@ -12,11 +12,10 @@ have not been recorded.
 ## What runs
 
 Tailscale Serve on private HTTPS port **9443** proxies to
-`http://127.0.0.1:5080`. ASP.NET serves the built React client and the read-only
-`GET /api/health` endpoint under one origin. The page displays connection status,
-checks the real backend, and supports manual refresh and browser online/offline
-and foreground-resume checks. There is no simulation clock, gameplay, or map
-feature yet.
+`http://127.0.0.1:5080`. ASP.NET serves the built React System Lab, health,
+and authoritative snapshot/command API under one origin. The lab includes 2D/3D
+maps, spacecraft orders, time controls, inspection, and event history. See
+[System Lab contracts](SYSTEM_LAB.md). State is in-memory: a restart resets it.
 
 Existing Serve routes were compared before/after and preserved:
 
@@ -27,8 +26,9 @@ Existing Serve routes were compared before/after and preserved:
 | 9443 — Quasar | `http://127.0.0.1:5080` |
 
 Access is tailnet-only. No public Funnel, router forwarding, or separate app
-login was added. This initial app exposes only its static preview and health
-endpoint; authorization for future game commands still requires design.
+login was added. Game commands require same-origin JSON requests and instance/
+revision validation. This is one shared private lab, not individual user games;
+per-user authentication remains a future design question.
 
 ## Current process lifetime
 
@@ -82,7 +82,7 @@ Invoke-RestMethod 'https://quasar.example.invalid:9443/api/health'
 tailscale serve status
 ```
 
-Expect `application: Quasar`, `status: ready`, `stage: skeleton`. The page and
+Expect `application: Quasar`, `status: ready`, `stage: system-lab`. The page and
 health response use `Cache-Control: no-store`. Built JS/CSS/favicon assets return
 200; unknown API paths return 404 rather than the HTML page.
 
@@ -96,7 +96,7 @@ tailscale serve --https=9443 off
 
 Do not run `tailscale serve reset`; that would affect the other services.
 
-## Validation completed
+## Historical skeleton validation (before Task 002)
 
 - Same-origin page, built JS/CSS, and backend health returned 200 over private
   HTTPS with normal certificate verification. Original Serve routes were unchanged.
@@ -110,5 +110,24 @@ Do not run `tailscale serve reset`; that would affect the other services.
 - Build, formatting, frontend lint/type/build, and headless renderer checks passed.
   The existing simulation test project still has no behavior tests.
 
-Still unverified: cellular-only access, exact iOS/browser version, phone lock/resume
-behavior, reboot recovery, unattended hosting, and future renderer GPU performance.
+Still unverified: cellular-only access, exact iOS/browser version, physical phone
+gameplay/renderer/lifecycle behavior, reboot recovery, and unattended hosting.
+
+## Task 002 deployment and recovery
+
+Release publication preserves previous release directories. The pre-Task-002
+deployment metadata was copied to `deployment-before-task002.json` in the host
+directory, alongside a before-change Serve configuration. No Serve configuration
+change is needed to update gameplay.
+
+If rollback is needed, stop only Quasar, preserve the current deployment metadata,
+restore the earlier metadata to `deployment.json`, then run Start-HostedApp.ps1.
+Old releases are retained; verify health after restart. All in-memory lab progress
+is lost on either update or rollback. Existing browser pages should reload after
+deployment; a failed lazy map load leaves the controls/inspector available and
+offers Reload display.
+
+The app's continuous runner is active only after Play. It processes at most four
+selected intervals per second and stops on arrival or controller lease expiry
+(five seconds). A browser reload creates a new controller ID and does not silently
+resume the previous run. Hosting remains the existing foreground process model.

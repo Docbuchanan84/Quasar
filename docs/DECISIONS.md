@@ -174,3 +174,19 @@ For each consequential decision, record date, status (proposed / approved /
 superseded), user approval or other evidence, context, choice, and consequences.
 Do not infer design approval from a scaffold or promote exploratory notes into
 requirements. Update this record when an actual choice is made.
+
+## Approved — Task 002 System Lab scope (2026-11-08)
+
+The owner requested the playable System Lab and instructed implementation of its
+reviewed plan. This replaces the earlier clock-only Task 002 scope. Confirmed
+controls: choose an interval, choose Once or Continuous, press Play; stop manually
+or at an event requiring attention. Arrival supplies the first interrupt. The
+owner selected in-memory state and a small representative surface inset.
+
+Implementation choices for this lab: fixed fixture IDs/XYZ kilometres, stationary
+planets, constant-speed straight-line travel, checked elapsed ticks, one serialized
+in-process writer, HTTP snapshots/commands, and a short browser control lease.
+These are provisional mechanics, not permanent physics/scheduler/save decisions.
+See SYSTEM_LAB.md. Other proposals above are historical unless superseded here;
+databases, push transport, universal entity frameworks, and unattended startup
+remain open/deferred. Save/load is the recommended next task, not implemented.

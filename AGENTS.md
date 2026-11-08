@@ -68,8 +68,8 @@ publish the live document link or full private snapshots to make access easier.
 
 ## Hosted preview commands
 
-The private skeleton serves built React assets and read-only `/api/health` from
-one ASP.NET origin. It contains no game simulation or map features. Use
+The private host serves built React assets, `/api/health`, and the authoritative
+System Lab snapshot/command API from one ASP.NET origin. Use
 `scripts/Publish-HostedApp.ps1`, `scripts/Stop-HostedApp.ps1`, and
 `scripts/Start-HostedApp.ps1` for updates; keep the host terminal open. Published
 files live under `%LOCALAPPDATA%\Quasar\host`, outside the OneDrive checkout.
@@ -126,3 +126,13 @@ root can be supplied using `QUASAR_DOTNET_ROOT`. Do not edit the system PATH.
 - Never claim specific performance or scale capabilities without measurement. In particular, the time architecture (seconds to long jumps, simultaneous domains, look-ahead and variable fidelity) requires experiments before selecting a definitive implementation.
 - Avoid destructive operations, force pushes, silent Git commits/publishing, broad installs, and edits to shared documents outside the explicit task scope. Protect credentials and use official authenticated connection flows.
 - End significant work with: changed files, what was verified (including commands/results), decisions made vs still pending, blockers, and the single recommended next task. Do not claim checks passed if they were not run.
+
+## Task 002 implementation update (2026-11-08)
+
+The owner authorized and implemented the System Lab vertical slice. Treat the
+Task 001 descriptions above as historical. Current behavior and contracts are
+in `docs/SYSTEM_LAB.md`; current scope/next task are in `docs/PROJECT_PLAN.md`.
+Simulation/session behavior tests now exist. The host exposes authoritative game
+commands as well as health; maintain its same-origin JSON validation and private
+network access. No permanent scheduler, save format, or new runtime dependency
+was selected by implementing the provisional lab mechanics.

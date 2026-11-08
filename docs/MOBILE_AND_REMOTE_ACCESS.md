@@ -113,3 +113,13 @@ References: [Tailscale Serve](https://tailscale.com/docs/reference/tailscale-cli
 [Tailscale on iOS](https://tailscale.com/docs/install/ios),
 [Page visibility](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API),
 [Viewport/zoom](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/meta/name/viewport).
+
+## Task 002 validation status (2026-11-08)
+
+Desktop browser automation exercised both actual renderers, order/advance/arrival,
+Once/Continuous/Stop, shared inspector coordinates, refresh retention, offline lease
+expiry/reconnect, and 402 CSS px layouts without horizontal overflow. Surface inset
+and collapsible inspection/history are present. Physical iPhone 17 Pro checks for
+this new gameplay/rendering build remain pending; the previous skeleton confirmation
+does not validate these new features. Record iOS/browser version, touch gestures,
+portrait/landscape, lock/background/resume, cellular access, heat/battery observations.
