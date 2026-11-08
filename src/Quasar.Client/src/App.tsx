@@ -238,6 +238,7 @@ function App() {
                 >
                   <MapView
                     objects={world.objects}
+                    trajectory={world.trajectory}
                     selectedId={selectedId}
                     destinationId={world.ship.destinationId}
                     references={references}
@@ -316,7 +317,7 @@ function App() {
                     <div className="ship-state">
                       <strong>{world.ship.status}</strong>
                       <p>
-                        Speed: {world.ship.speedKmPerSecond} km/s · provisional
+                        Speed: {world.ship.speedKmPerSecond.toFixed(3)} km/s
                       </p>
                       {world.ship.destinationId && (
                         <>
@@ -341,6 +342,9 @@ function App() {
                       )}
                     </div>
                     <h3>Travel orders</h3>
+                    {world.trajectory && (
+                      <p>Transfer delta-v: {world.trajectory.requiredDeltaVKmPerSecond.toFixed(3)} km/s · Fuel estimate unavailable</p>
+                    )}
                     <div className="order-buttons">
                       {world.objects
                         .filter((o) => o.kind === 'planet')
@@ -365,8 +369,13 @@ function App() {
                           </button>
                         ))}
                     </div>
+                    {world.ship.destinationId && (
+                      <button disabled={disabled || snapshot?.running} onClick={() => void command('cancel-travel')}>
+                        Cancel course
+                      </button>
+                    )}
                     <p className="muted">
-                      Stop time processing to issue or replace an order.
+                      Six-hour impulsive transfer in Helios gravity. Stop time processing to replace or cancel an order. Cancellation retains momentum.
                     </p>
                   </>
                 ) : selected.kind === 'planet' ? (
@@ -391,7 +400,7 @@ function App() {
                   </>
                 ) : (
                   <p className="muted">
-                    System reference origin. Stellar physics deferred.
+                    System reference origin and gravitational primary.
                   </p>
                 )}
               </div>

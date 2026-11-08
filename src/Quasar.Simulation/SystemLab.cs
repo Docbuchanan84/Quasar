@@ -3,33 +3,44 @@ namespace Quasar.Simulation;
 public sealed record LabObject(string Id, string Name, string Kind, Position3 Position, string? ParentId,
     Velocity3? VelocityKmPerSecond = null);
 public sealed record LabEvent(long Sequence, long AtTicks, string Kind, string ObjectId, string Message);
-public sealed record TravelPlan(string DestinationId, Position3 DeparturePosition, long DepartureTicks, long ArrivalTicks);
 public sealed record ShipStatus(string Status, double SpeedKmPerSecond, string? DestinationId,
     long? ArrivalTicks, double RemainingDistanceKm);
-public sealed record LabSnapshot(long ElapsedTicks, LabObject[] Objects, ShipStatus Ship, LabEvent[] Events);
+public sealed record LabSnapshot(long ElapsedTicks, LabObject[] Objects, ShipStatus Ship, LabEvent[] Events,
+    TrajectoryDisplay? Trajectory = null);
+public sealed record TrajectoryDisplayPoint(string AtTicks, Position3 PositionKm, Velocity3 VelocityKmPerSecond);
+public sealed record TrajectoryDisplay(string DepartureTicks, string ArrivalTicks, double TravelSeconds,
+    double RequiredDeltaVKmPerSecond, TransferFuelEstimate Fuel, TrajectoryDisplayPoint[] Points);
 
-/// <summary>A deliberately small, headless fixture. No real-time timer, network, or storage dependency.</summary>
+/// <summary>Headless fixture using the planner/execution contracts available to future fleet systems.</summary>
 public sealed class SystemLab
 {
     public const string ShipId = "ship-pathfinder";
-    public const double ShipSpeed = 25;
-    // Preserve the accepted fixed-body travel lab. Orbital fixtures use the same service;
-    // moving-target interception and spacecraft trajectories require their own task.
+    private const string PrimaryId = "star-helios";
     private readonly CelestialPositionService celestialPositions = new(
     [
-        new("star-helios", "Helios", CelestialBodyKind.Star, 1.32712440018e11),
-        new("planet-iris", "Iris", CelestialBodyKind.Planet, 398600.435, "star-helios",
+        new(PrimaryId, "Helios", CelestialBodyKind.Star, 1.32712440018e11),
+        new("planet-iris", "Iris", CelestialBodyKind.Planet, 398600.435, PrimaryId,
             ReferenceState: new(new(1_200_000, 400_000, 200_000), default)),
-        new("planet-nereid", "Nereid", CelestialBodyKind.Planet, 42828.375, "star-helios",
+        new("planet-nereid", "Nereid", CelestialBodyKind.Planet, 42828.375, PrimaryId,
             ReferenceState: new(new(-2_000_000, 1_300_000, -600_000), default))
     ]);
-    public ICelestialPositionService CelestialPositions => celestialPositions;
+    private readonly MovementExecution movement;
+    private readonly TrajectoryPlanner planner;
     private readonly List<LabEvent> events = [];
-    private Position3 shipPosition = new(900_000, -200_000, 350_000);
-    private TravelPlan? travel;
-    public long ElapsedTicks { get; private set; }
+    private TrajectoryDisplay? display;
+    public ICelestialPositionService CelestialPositions => celestialPositions;
+    public long ElapsedTicks => movement.ElapsedTicks;
 
-    public SystemLab() => Record("created", ShipId, "System Lab initialized. Pathfinder standing by.");
+    public SystemLab()
+    {
+        planner = new(celestialPositions); movement = new(celestialPositions);
+        var position = new Position3(900_000, -200_000, 350_000);
+        var r = Vector3d.From(position);
+        var transverse = Vector3d.Cross(new(0, 0, 1), r);
+        var speed = Math.Sqrt(celestialPositions.GetEnvironment(PrimaryId).GravitationalParameterKm3PerSecond2 / r.Length);
+        movement.AddSpacecraft(ShipId, new(position, (transverse / transverse.Length * speed).Velocity), PrimaryId);
+        Record("created", "System Lab initialized. Pathfinder coasting in Helios gravity.");
+    }
 
     public LabSnapshot Snapshot()
     {
@@ -38,53 +49,61 @@ public sealed class SystemLab
             body.Kind.ToString().ToLowerInvariant(), states[body.Id].PositionKm, body.ParentId,
             states[body.Id].VelocityKmPerSecond)).OrderBy(body => body.ParentId is null ? 0 : 1)
             .ThenBy(body => body.Id, StringComparer.Ordinal).ToArray();
-        var destination = travel is null ? null : bodies.Single(body => body.Id == travel.DestinationId);
+        var ship = movement.View(ShipId);
+        var distance = ship.DestinationId is null ? 0 : ship.State.PositionKm.DistanceTo(states[ship.DestinationId].PositionKm);
         return new(ElapsedTicks,
-            [.. bodies, new(ShipId, "Pathfinder", "spacecraft", shipPosition, null)],
-            new(travel is null ? "Idle" : "Underway", ShipSpeed, travel?.DestinationId,
-                travel?.ArrivalTicks, destination is null ? 0 : shipPosition.DistanceTo(destination.Position)),
-            [.. events]);
+            [.. bodies, new(ShipId, "Pathfinder", "spacecraft", ship.State.PositionKm, null, ship.State.VelocityKmPerSecond)],
+            new(ship.Status, Vector3d.From(ship.State.VelocityKmPerSecond).Length, ship.DestinationId,
+                ship.ArrivalTicks, distance), [.. events], display is null ? null : display with { Points = [.. display.Points] });
     }
 
-    public void OrderTravel(string destinationId)
+    public TrajectoryPlan PreviewTravel(string destinationId, int flightSeconds = 21600)
     {
-        var destination = celestialPositions.Bodies.Values.SingleOrDefault(body => body.Id == destinationId && body.Kind == CelestialBodyKind.Planet)
-            ?? throw new ArgumentException("Choose a planet in this system.", nameof(destinationId));
-        if (travel?.DestinationId == destinationId)
-            throw new InvalidOperationException("Already travelling to that planet.");
-        var distance = shipPosition.DistanceTo(celestialPositions.GetState(destinationId, ElapsedTicks).PositionKm);
-        if (distance == 0) throw new InvalidOperationException("Already at that planet.");
-        var durationTicks = checked((long)Math.Ceiling(distance / ShipSpeed * TimeSpan.TicksPerSecond));
-        var arrival = checked(ElapsedTicks + durationTicks);
-        travel = new(destinationId, shipPosition, ElapsedTicks, arrival);
-        Record("order", ShipId, $"Pathfinder ordered to {destination.Name}.");
+        if (!celestialPositions.Bodies.TryGetValue(destinationId, out var destination) || destination.Kind != CelestialBodyKind.Planet)
+            throw new ArgumentException("Choose a planet in this system.", nameof(destinationId));
+        if (flightSeconds is < 1 or > 315576000) throw new ArgumentException("Flight time must be between one second and ten Julian years.");
+        var state = movement.StateAt(ShipId, ElapsedTicks);
+        if (state.PositionKm.DistanceTo(celestialPositions.GetState(destinationId, ElapsedTicks).PositionKm) < 1e-6)
+            throw new InvalidOperationException("Already at that planet.");
+        return planner.Plan(new(state, ElapsedTicks, new(PrimaryId,
+            checked(ElapsedTicks + (long)flightSeconds * TimeSpan.TicksPerSecond), new(destinationId))));
     }
 
-    /// <summary>Advance directly to a deadline; arrival interrupts the requested interval.</summary>
+    public void OrderTravel(string destinationId, int flightSeconds = 21600)
+    {
+        if (movement.CommittedPlan(ShipId)?.Destination.BodyId == destinationId)
+            throw new InvalidOperationException("Already travelling to that planet.");
+        var plan = PreviewTravel(destinationId, flightSeconds);
+        var presentation = Present(plan);
+        movement.Commit(ShipId, plan); display = presentation;
+        Record("order", $"Pathfinder transfer committed to {celestialPositions.Bodies[destinationId].Name}; departure impulse applied.");
+    }
+
+    public void CancelTravel()
+    {
+        movement.Cancel(ShipId); display = null;
+        Record("cancel", "Pathfinder course cancelled; retaining velocity on an unforced gravitational coast.");
+    }
+
+    public CelestialState ShipStateAt(long atTicks) => movement.StateAt(ShipId, atTicks);
+
+    public static TrajectoryDisplay Present(TrajectoryPlan plan) => new(Ticks(plan.DepartureTicks), Ticks(plan.ArrivalTicks),
+        plan.TravelSeconds, plan.RequiredDeltaVKmPerSecond, plan.Fuel,
+        plan.Sample().Select(p => new TrajectoryDisplayPoint(Ticks(p.AtTicks), p.State.PositionKm, p.State.VelocityKmPerSecond)).ToArray());
+
     public bool Advance(TimeSpan duration)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(duration.Ticks);
-        var targetTicks = checked(ElapsedTicks + duration.Ticks); // Validate before changing any state.
-        if (travel is { } plan)
+        var consequences = movement.Advance(duration);
+        foreach (var consequence in consequences)
         {
-            var destination = celestialPositions.Bodies[plan.DestinationId];
-            var destinationPosition = celestialPositions.GetState(plan.DestinationId, plan.ArrivalTicks).PositionKm;
-            if (plan.ArrivalTicks <= targetTicks)
-            {
-                ElapsedTicks = plan.ArrivalTicks;
-                shipPosition = destinationPosition;
-                travel = null;
-                Record("arrival", ShipId, $"Pathfinder arrived at {destination.Name}. Awaiting orders.");
-                return true;
-            }
-            // Always derive from the original departure, never accumulate per-step position errors.
-            shipPosition = plan.DeparturePosition.Interpolate(destinationPosition,
-                (double)(targetTicks - plan.DepartureTicks) / (plan.ArrivalTicks - plan.DepartureTicks));
+            if (consequence.Kind == "arrival") display = null;
+            Record(consequence.Kind, consequence.Kind == "arrival"
+                ? "Pathfinder arrived. Arrival impulse applied; awaiting orders."
+                : "Pathfinder changed gravitational primary at a committed patch boundary.");
         }
-        ElapsedTicks = targetTicks;
-        return false;
+        return consequences.Length > 0;
     }
 
-    private void Record(string kind, string objectId, string message) =>
-        events.Add(new(events.Count + 1L, ElapsedTicks, kind, objectId, message));
+    private static string Ticks(long ticks) => ticks.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    private void Record(string kind, string message) => events.Add(new(events.Count + 1L, ElapsedTicks, kind, ShipId, message));
 }

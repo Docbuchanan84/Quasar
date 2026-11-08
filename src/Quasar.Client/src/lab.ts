@@ -1,4 +1,12 @@
 export type Position = { x: number; y: number; z: number }
+export type Trajectory = {
+  departureTicks: string
+  arrivalTicks: string
+  travelSeconds: number
+  requiredDeltaVKmPerSecond: number
+  fuel: { propellantMassKg: number | null; unavailableReason: string | null }
+  points: { atTicks: string; positionKm: Position; velocityKmPerSecond: Position }[]
+}
 export type LabObject = {
   id: string
   name: string
@@ -15,6 +23,7 @@ export type Snapshot = {
   durationSeconds: number
   mode: 'once' | 'continuous'
   world: {
+    trajectory: Trajectory | null
     elapsedTicks: number
     objects: LabObject[]
     ship: {
@@ -34,6 +43,7 @@ export type Snapshot = {
   }
 }
 export type MapProps = {
+  trajectory?: Trajectory | null
   objects: LabObject[]
   selectedId: string
   destinationId: string | null

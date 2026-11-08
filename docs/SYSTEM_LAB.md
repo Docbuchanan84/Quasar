@@ -1,5 +1,11 @@
 # System Lab implementation — Task 002
 
+**Agent 3 update (8 November 2026):** straight-line travel below is historical.
+Current movement uses gravitational Lambert transfers, impulsive departure/arrival
+and analytical coasts. Cancellation retains momentum; both maps draw shared
+trajectory samples. See [SPACECRAFT_TRAJECTORIES.md](SPACECRAFT_TRAJECTORIES.md)
+for current behavior and limits. Planets remain fixed fixture bodies.
+
 ## Authority and state
 
 `Quasar.Simulation/SystemLab.cs` contains the reusable predefined fixture, immutable

@@ -1,5 +1,10 @@
 # Approved frontend architecture
 
+Agent 3 movement update: both maps consume server-calculated, timestamped gravity
+trajectory samples. Render loops and camera coordinates do not propagate ships.
+See SPACECRAFT_TRAJECTORIES.md for current boundaries and limits; earlier lab
+straight-line movement descriptions are historical.
+
 **Stack approved: 8 November 2026. Task 002 implemented and deployed the same day.**
 The owner subsequently confirmed the initial phone experience and supplied two
 portrait screenshots of the working 2D map. See [mobile validation evidence](MOBILE_AND_REMOTE_ACCESS.md).

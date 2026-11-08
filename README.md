@@ -1,5 +1,11 @@
 # Quasar
 
+**Agent 3 update:** authoritative gravitational transfers replace the historical
+constant-speed lab movement below. Planning, headless execution and map samples
+have separate interfaces. See [spacecraft trajectories](docs/SPACECRAFT_TRAJECTORIES.md)
+for delta-v, SOI patches, APIs, checks and limits. Buttons select six-hour impulsive
+transfers; fuel/finite thrust remain unavailable.
+
 [![Verify](https://github.com/Docbuchanan84/Quasar/actions/workflows/verify.yml/badge.svg)](https://github.com/Docbuchanan84/Quasar/actions/workflows/verify.yml) · MIT
 
 Quasar is an original, simulation-first 4X/grand strategy project inspired by Aurora C#.

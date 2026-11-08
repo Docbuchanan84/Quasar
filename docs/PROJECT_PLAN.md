@@ -1,5 +1,16 @@
 # Quasar implementation plan
 
+## Agent 3 — spacecraft trajectories (8 November 2026)
+
+The explicit Agent 3 task supersedes the historical next-task recommendation for
+this branch. Implemented on Agent 2: pure Lambert planning, analytical gravity
+coasts, explicit SOI-patched itineraries, delta-v, headless execution/events,
+cancellation/replanning and shared map samples. Fuel remains unavailable without
+propulsion/mass data. See [SPACECRAFT_TRAJECTORIES.md](SPACECRAFT_TRAJECTORIES.md).
+No save format, permanent scheduler, automatic SOI route search or dependency was
+selected. Recommended next task: define a concrete spacecraft propulsion/mass
+model before implementing fuel expenditure or finite thrust.
+
 ## Current objective
 
 **Task 002 status: implemented, deployed, automated checks passed, and initial

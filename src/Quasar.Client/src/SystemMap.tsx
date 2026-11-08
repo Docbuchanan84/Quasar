@@ -57,6 +57,7 @@ export default function SystemMap(props: MapProps) {
           current.current.objects,
           current.current.selectedId,
           current.current.destinationId,
+          current.current.trajectory,
           current.current.references,
           zoom,
           panX,
@@ -68,7 +69,7 @@ export default function SystemMap(props: MapProps) {
         lastDraw = key
         for (const child of scene.removeChildren())
           child.destroy({ children: true })
-        const { objects, selectedId, destinationId, references } =
+        const { objects, selectedId, trajectory, references } =
           current.current
         const lines = new Graphics()
         scene.addChild(lines)
@@ -96,28 +97,13 @@ export default function SystemMap(props: MapProps) {
           }
           lines.circle(origin.x, origin.y, 3).stroke({ color: '#526778' })
         }
-        const ship = objects.find((o) => o.kind === 'spacecraft'),
-          destination = objects.find((o) => o.id === destinationId)
-        if (ship && destination) {
-          const a = screen(ship.position.x, ship.position.y),
-            b = screen(destination.position.x, destination.position.y)
-          lines
-            .moveTo(a.x, a.y)
-            .lineTo(b.x, b.y)
-            .stroke({ color: '#87e4bd', width: 1.5 })
-          const angle = Math.atan2(b.y - a.y, b.x - a.x),
-            mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
-          lines
-            .moveTo(
-              mid.x - 10 * Math.cos(angle - 0.5),
-              mid.y - 10 * Math.sin(angle - 0.5),
-            )
-            .lineTo(mid.x, mid.y)
-            .lineTo(
-              mid.x - 10 * Math.cos(angle + 0.5),
-              mid.y - 10 * Math.sin(angle + 0.5),
-            )
-            .stroke({ color: '#87e4bd', width: 2 })
+        if (trajectory) {
+          for (const [i, sample] of trajectory.points.entries()) {
+            const p = screen(sample.positionKm.x, sample.positionKm.y)
+            if (i === 0) lines.moveTo(p.x, p.y)
+            else lines.lineTo(p.x, p.y)
+          }
+          lines.stroke({ color: '#87e4bd', width: 1.5 })
         }
         for (const object of objects) {
           const p = screen(object.position.x, object.position.y),

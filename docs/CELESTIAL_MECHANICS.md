@@ -1,5 +1,10 @@
 # Celestial mechanics and position queries
 
+**Agent 3 update:** [SPACECRAFT_TRAJECTORIES.md](SPACECRAFT_TRAJECTORIES.md) now
+implements the separate spacecraft planning/execution task. Its lab transfers
+replace the historical constant-speed travel preservation described below.
+The celestial service itself remains unchanged.
+
 Implemented for the owner's **Agent 2: Celestial Mechanics and Position Service**
 request on 8 November 2026. This headless simulation feature is independent of
 ASP.NET, renderer frames, cameras, and connected clients. No runtime dependencies

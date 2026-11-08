@@ -153,7 +153,7 @@ export default function SpaceMap(props: MapProps) {
       }
       const render = () => {
         if (document.hidden) return
-        const { objects, selectedId, destinationId, references } =
+        const { objects, selectedId, trajectory, references } =
           current.current
         for (const object of objects) {
           const mesh = meshes.get(object.id)!
@@ -168,17 +168,15 @@ export default function SpaceMap(props: MapProps) {
           mesh.scaling.setAll(size)
         }
         for (const guide of guides) guide.setEnabled(references)
-        const ship = objects.find((o) => o.kind === 'spacecraft'),
-          destination = objects.find((o) => o.id === destinationId)
-        const routeKey = JSON.stringify([ship?.position, destinationId])
+        const routeKey = JSON.stringify(trajectory)
         if (routeKey !== lastRoute) {
           route?.dispose()
           route = null
           lastRoute = routeKey
-          if (ship && destination) {
+          if (trajectory) {
             const line = MeshBuilder.CreateLines(
               'movement-vector',
-              { points: [point(ship.position), point(destination.position)] },
+              { points: trajectory.points.map((sample) => point(sample.positionKm)) },
               scene,
             )
             line.color = Color3.FromHexString('#87e4bd')
