@@ -57,17 +57,20 @@ Retain the existing TypeScript/Vite toolchain. All views represent the same C#
 simulation and will share entity identity and coordinate transformations;
 rendering/interpolation is presentation, not authoritative game logic.
 
-**Implementation status:** React already exists. `@babylonjs/core` 9.35.0 and
-`pixi.js` 8.22.0 are installed with exact direct versions and a refreshed npm lock.
-A repeatable headless package/browser-bundle check is included in verification.
-Maps, scene components, and simulation integration have not been implemented.
+**Implementation status (updated after Task 002):** React controls, Babylon 3D,
+and Pixi 2D maps are implemented against one authoritative C# fixture.
+`@babylonjs/core` 9.35.0 and `pixi.js` 8.22.0 retain their locked versions.
+Headless checks, desktop browser workflows, and initial owner phone 2D use are
+verified. See FRONTEND_ARCHITECTURE.md and MOBILE_AND_REMOTE_ACCESS.md for bounds.
 
 **Deferred:** MapLibre GL JS is not part of the approved initial stack; no package
 was installed. Database, push transport, physics integration, React renderer
 wrappers, and other optional libraries were not approved by this selection.
 
-**Still open:** projection/tiling, coordinate units/precision, shared selection
-contracts, level of detail, labels, data volume, and measured rendering budgets.
+**Still open beyond the lab:** planetary projection/tiling, large-world precision,
+level of detail, data volume, and measured rendering budgets. The lab's XYZ
+kilometres, selection IDs, coordinate transforms, and labels are documented,
+provisional implementation choices rather than universal spatial commitments.
 See [FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md).
 
 ## Approved — first-class iPhone browser play (2026-11-08)
@@ -134,7 +137,12 @@ approvals of permanent architecture:
 - Use the existing Git branch/configuration. No commit, remote, repository
   publication, or push was performed during initialization.
 
-## Recommended proposals awaiting confirmation
+## Historical Task 001 recommendations
+
+The table records the earlier recommendations, not a claim that Task 002 still
+lacks an in-process writer or HTTP boundary. The approved System Lab scope below
+authorized the minimal implementation choices that now exist. Broader permanent
+architecture choices remain open unless explicitly approved.
 
 | Proposal | Reason / tradeoff |
 | --- | --- |
@@ -190,3 +198,20 @@ These are provisional mechanics, not permanent physics/scheduler/save decisions.
 See SYSTEM_LAB.md. Other proposals above are historical unless superseded here;
 databases, push transport, universal entity frameworks, and unattended startup
 remain open/deferred. Save/load is the recommended next task, not implemented.
+
+## Approved — initial System Lab experience baseline (2026-11-08)
+
+**Status: Approved for the initial Task 002 experience.** After using the prototype,
+the owner said: "It looks so good already and works just how I want." Two supplied
+portrait phone screenshots show the 2D tactical display, selected spacecraft,
+changing depth, and stopped/processing Continuous controls. This provides real
+device evidence and owner acceptance of the current visual/control direction.
+
+Preserve the restrained technical display and compact interval selector with
+Once/Continuous and Play/Stop as the baseline when extending the lab. This is acceptance
+of the initial experience, not approval of a permanent scheduler, travel physics,
+save format, or every future UI detail. Further features still need a concrete task.
+
+The screenshots do not establish physical-phone 3D support, exact iOS/browser
+versions, every gesture, landscape/lifecycle/cellular behavior, or measured scale.
+See MOBILE_AND_REMOTE_ACCESS.md for explicit evidence and remaining checks.

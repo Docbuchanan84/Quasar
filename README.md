@@ -8,6 +8,11 @@ Frequent iPhone browser play is a core pillar, alongside desktop use.
 
 ## System Lab — Task 002
 
+**Implemented, deployed, and owner-accepted on 8 November 2026.** The owner
+confirmed that it looks and works as intended and supplied actual phone
+screenshots of the portrait 2D display, selected spacecraft, movement, and
+Continuous/Stop controls. See [device evidence and remaining checks](docs/MOBILE_AND_REMOTE_ACCESS.md).
+
 The first playable lab contains Helios, two stationary planets (Iris and Nereid),
 and the spacecraft Pathfinder in genuine XYZ space. PixiJS provides a tactical XY
 projection; Babylon.js provides a rotatable 3D view of the same C# state.
@@ -59,7 +64,14 @@ The existing private Tailscale HTTPS endpoint serves the built app and HTTP API
 from one ASP.NET origin. The owner's address remains in ignored local context.
 See [hosting](docs/HOSTING.md) for publish/restart/rollback instructions. The PC
 must stay awake and the foreground host must remain running; no unattended startup
-was added. Desktop/mobile emulation checks do not establish real iPhone GPU readiness.
+was added. Basic actual-phone 2D use is confirmed; physical-phone 3D, lifecycle,
+cellular-only access, exact iOS/browser versions, and measured capacity remain open.
+
+Task 002 passed 21 automated tests, full local verification, HTTP/browser smoke
+checks, and [GitHub CI](https://github.com/Docbuchanan84/Quasar/actions/runs/42517246183).
+[PR #2](https://github.com/Docbuchanan84/Quasar/pull/2) tracks the implementation
+and follow-up documentation; its current merge/check status is visible on GitHub.
+The recommended next development task is recoverable versioned save/load.
 
 The shared Google Game Design Record is the project knowledge/design source;
 Quasar does not use Obsidian. See [sources](docs/SOURCES.md),

@@ -2,6 +2,11 @@
 
 ## Current objective
 
+**Task 002 status: implemented, deployed, automated checks passed, and initial
+phone experience accepted by the owner on 8 November 2026.** Remaining device
+qualification is tracked below; it does not erase the successful actual-phone
+2D check. No Task 003 implementation is authorized by this status update.
+
 Task 002 is the **System Lab** vertical slice requested by the owner on 8 November
 2026. It supersedes the earlier clock-only Task 002 and incorporates the previous
 003–005 connection/universe milestones plus the approved initial map stack.
@@ -24,6 +29,20 @@ in Git history rather than serving as the active task specification.
 See [System Lab implementation](SYSTEM_LAB.md) for contracts and operational details.
 See [development log](DEVLOG.md) for actual checks and remaining device validation.
 
+## Acceptance evidence and handoff
+
+- Implementation commit: `32d45a8`; [Task 002 PR #2](https://github.com/Docbuchanan84/Quasar/pull/2).
+- [Implementation CI passed](https://github.com/Docbuchanan84/Quasar/actions/runs/42517246183),
+  alongside 21 local simulation/session tests and HTTP/browser checks.
+- The owner reported that the lab "looks so good already and works just how I
+  want" and supplied actual phone screenshots of stopped/processing Continuous
+  controls, the selected ship, and changing depth in the 2D tactical map.
+- [Mobile validation](MOBILE_AND_REMOTE_ACCESS.md) separates visible evidence,
+  the owner's broader acceptance, automated coverage, and checks still outstanding.
+- A requested post-test reset was performed by restarting only Quasar and was
+  verified at elapsed zero, paused, ship idle, four objects, one initialization
+  event. No reset endpoint/button or save system was added.
+
 ## Next task
 
 Implement a small versioned save/load feature with atomic writes, recoverable
@@ -35,7 +54,9 @@ format and migration policy in that task; no database has been selected.
 - Real orbital/propulsion models, physical size/time scales, collision and docking.
 - Permanent scheduling, variable fidelity, look-ahead, and cross-platform determinism.
 - Save schema, history retention, large-world performance budgets, and terrain data.
-- Actual iPhone 17 Pro renderer/touch/lifecycle validation and unattended host startup.
+- Physical-phone 3D, full gesture/order/arrival/lifecycle checks, landscape,
+  exact iOS/browser versions, cellular-only access, and measured rendering budgets.
+- Unattended host startup. Basic actual-phone 2D use and initial acceptance are confirmed.
 
 Keep the C# library independent of web/rendering/storage packages. Preserve the
 approved React/TypeScript/Vite, Babylon.js, PixiJS, ASP.NET, and .NET 10 foundation.

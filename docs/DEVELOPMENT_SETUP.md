@@ -97,8 +97,10 @@ GitHub Actions runs the same Setup/Verify scripts on a Windows runner for `main`
 pushes, pull requests, and manual dispatch. No repository secrets are required.
 See [CONTRIBUTING.md](../CONTRIBUTING.md) and the [development log](DEVLOG.md).
 
-The private skeleton was confirmed on the owner's iPhone 17 Pro. Exact iOS/browser
-version, cellular-only access, and renderer GPU performance remain unverified.
+The owner confirmed the System Lab's initial phone experience and supplied
+portrait 2D screenshots. Exact iOS/browser versions, physical-phone 3D/full
+lifecycle coverage, cellular-only access, and measured GPU capacity remain open.
+See [mobile evidence](MOBILE_AND_REMOTE_ACCESS.md).
 Private hosting currently requires a foreground host process; unattended startup
 is not enabled. Original workstation audit documents remain recoverable in the
 owner's private local context. Generated files should not be committed; `.gitignore`
@@ -109,6 +111,6 @@ does not itself prevent a file-sync service from syncing build directories.
 No system SDK/PATH, Docker, Tailscale, or runtime dependency changes. The existing
 xUnit project also references the server for session tests; locked restore was
 refreshed accordingly. Vite's lazy Babylon chunk exceeds its 500 kB warning level
-(~1.09 MB raw/~255 kB gzip); builds pass. Actual phone GPU/performance checks and
+(~1.09 MB raw/~265 kB gzip); builds pass. Broader phone GPU/performance checks and
 unattended startup remain unresolved. Use a separate loopback port such as 5090
 for isolated API tests while the published host occupies 5080.

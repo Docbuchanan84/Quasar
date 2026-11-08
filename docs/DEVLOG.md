@@ -68,7 +68,43 @@ the owner's shared Google Doc remains the design discussion record.
 - Approved scope: System Lab and Once/Continuous controls. Provisional: stationary
   bodies, 25 km/s straight-line travel, reference guides, runner cadence and lease.
   No scheduler, persistent save format, calendar, database, or terrain model selected.
-- Pending: actual iPhone 17 Pro gameplay/rendering/touch/lifecycle checks and exact
-  iOS/browser version. Previous skeleton confirmation does not establish these.
+- At implementation handoff: actual iPhone 17 Pro gameplay/rendering/touch/lifecycle
+  checks and exact iOS/browser version were pending. The subsequent owner check
+  below confirms basic portrait 2D use; broader device coverage remains open.
   No functional blocker for the deployed lab; phone capacity remains unmeasured.
 - Next: small versioned save/load with atomic writes and recoverable backups.
+
+## 2026-11-08 — Owner phone acceptance and documentation follow-up
+
+- The owner reported: "It looks so good already and works just how I want" and
+  requested a thorough documentation update, supplying two phone screenshots.
+- Recorded actual-device evidence separately from automated tests and the owner's
+  broader acceptance: portrait 2D tactical rendering, connected host, selected
+  Pathfinder, stopped/processing Continuous controls, and changing position/depth.
+  The two visible clocks differ by five simulated minutes; no wall-clock/GPU
+  performance is inferred. Neither image shows 3D or an arrival/gesture sequence.
+- Preserved original screenshots and SHA-256 provenance under ignored source
+  evidence. Private address/browser content was not staged or published.
+- Reconciled README, mobile/frontend/hosting/setup guidance, source index,
+  implementation contracts, milestones, decisions, and agent handoff guidance.
+  Removed stale current-tense claims that maps/game endpoints do not exist.
+- Marked Task 002 implemented/deployed and its initial phone experience accepted.
+  Provisional physics/time mechanisms remain provisional; the feedback does not
+  authorize a new feature or settle permanent architecture.
+- Recorded the owner-requested post-deployment reset: only Quasar restarted;
+  verified zero clock, paused, ship idle, four objects and one initial event.
+  Later owner play is preserved; this documentation work does not reset the host.
+- Implementation CI passed for `32d45a8`:
+  [run 42517246183](https://github.com/Docbuchanan84/Quasar/actions/runs/42517246183).
+  Follow-up documentation is on [PR #2](https://github.com/Docbuchanan84/Quasar/pull/2);
+  consult its live checks/merge status rather than treating a dated note as current.
+- Updated the shared Google Game Design Record with the owner's acceptance,
+  screenshot observations, and narrowed open device checks; readback verifies
+  the change. This was an explicit documentation request, not a dummy access edit.
+- Validation for this follow-up: documentation/link/status consistency, screenshot
+  copy hashes and Git-ignore checks, staged privacy/whitespace review, and PR CI.
+  No new runtime behavior tests or deployment are needed for documentation only.
+- Still open: exact iOS/browser versions, physical-phone 3D, full gesture/order/
+  arrival flow, landscape/scaling, lock/app-switch recovery, cellular-only access,
+  measured capacity/heat/battery, save/load, and unattended host startup.
+- Next development task: recoverable versioned save/load; no Task 003 work started.

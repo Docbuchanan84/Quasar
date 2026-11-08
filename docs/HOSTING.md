@@ -5,9 +5,10 @@
 The owner's private endpoint is recorded in the ignored
 `docs/LOCAL_PROJECT_CONTEXT.md`. Public clones should configure their own Serve
 address; `quasar.example.invalid` below is a placeholder, not a live URL.
-Connect Tailscale on the phone first. The owner confirmed the page works on the
-actual iPhone 17 Pro. Its iOS/browser version and a separate cellular-only test
-have not been recorded.
+Connect Tailscale on the phone first. The owner confirmed the System Lab experience
+and supplied actual phone portrait screenshots of 2D rendering and active/stopped
+Continuous controls. See [device evidence](MOBILE_AND_REMOTE_ACCESS.md). Exact
+iOS/browser versions and a separate cellular-only test have not been recorded.
 
 ## What runs
 
@@ -110,8 +111,10 @@ Do not run `tailscale serve reset`; that would affect the other services.
 - Build, formatting, frontend lint/type/build, and headless renderer checks passed.
   The existing simulation test project still has no behavior tests.
 
-Still unverified: cellular-only access, exact iOS/browser version, physical phone
-gameplay/renderer/lifecycle behavior, reboot recovery, and unattended hosting.
+The later Task 002 owner check supersedes the skeleton-only validation for basic
+portrait 2D gameplay. Still unverified: cellular-only access, exact iOS/browser
+versions, physical-phone 3D/complete gesture/lifecycle coverage, reboot recovery,
+and unattended hosting.
 
 ## Task 002 deployment and recovery
 
@@ -131,3 +134,16 @@ The app's continuous runner is active only after Play. It processes at most four
 selected intervals per second and stops on arrival or controller lease expiry
 (five seconds). A browser reload creates a new controller ID and does not silently
 resume the previous run. Hosting remains the existing foreground process model.
+
+## Requested reset and later acceptance (2026-11-08)
+
+After deployment checks, the owner explicitly requested a reset. Only Quasar was
+restarted through the existing scripts. Readback verified elapsed zero, paused,
+Pathfinder idle, four objects, and one initialization event. The reset changed no
+Serve route and added no reset endpoint/button. Subsequent owner play advanced the
+world again; those later screenshots are historical evidence, not its current state.
+
+The owner then accepted the phone look and behavior and supplied the two portrait
+screenshots described in MOBILE_AND_REMOTE_ACCESS.md. This documentation update
+requires no release publication, host restart, live-world mutation, or network
+reconfiguration. Do not reset ongoing play to match a screenshot or old test result.
