@@ -1,5 +1,18 @@
 # Development log
 
+## 2026-11-08 — Course release deployment and documentation
+
+- PR #8 merged as `a3a052f` after passing CI and was published through the
+  existing private preview. The release restart reset the in-memory lab. Prior
+  releases and rollback metadata were retained. Private HTTPS returned the
+  updated client, readiness, and a 65-point Iris course preview.
+- Reconciled the player guide, simulation and HTTP contracts, hosting, milestone,
+  test, and source records with the deployed code. The live Google Game Design
+  Record now summarizes the current release near the top and keeps the earlier design and
+  Task 002 evidence as historical context. The scoped native edit was verified
+  by revision readback, headings, and links.
+- Current course and 3D validation on the physical iPhone 17 Pro remains open.
+
 ## 2026-11-08 — Agent 4 course plotting and map integration
 
 - Created isolated `codex/course-plotting` from navigation `a8190fe`; integration

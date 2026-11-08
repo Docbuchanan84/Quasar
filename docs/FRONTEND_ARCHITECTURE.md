@@ -21,8 +21,8 @@ physics, a scheduler, or a measured mobile capacity.
 | Technology | Responsibility | Task 002 implementation |
 | --- | --- | --- |
 | React / TypeScript / Vite | Controls, inspection, orders, history, layout, connection state | Shared snapshot and selection; collapsible inspector/history; compact time selectors |
-| Babylon.js 9.35.0 | Genuine 3D views and future globes | Selectable XYZ symbols, orbit reference guides, travel line, camera rotation/pan/zoom, readable screen-space labels |
-| PixiJS 8.22.0 | 2D tactical/operational maps and plans | Selectable XY projection, Z labels, symbols, grid/reference guides, travel vector, pan/zoom |
+| Babylon.js 9.35.0 | Genuine 3D views and future globes | Selectable XYZ symbols, orbit reference guides, shared course overlays, camera rotation/pan/zoom, readable screen-space labels |
+| PixiJS 8.22.0 | 2D tactical/operational maps and plans | Selectable XY projection, Z labels, symbols, grid/reference guides, shared course overlays, pan/zoom |
 
 Both approved renderer versions are installed and locked. No React renderer
 wrappers, GUI package, external art/font service, physics package, database, or
@@ -44,8 +44,8 @@ they are illustrative guides, not orbital motion. Symbol size is visual, not a
 physical radius or a limit on future simulation detail.
 
 Camera movement and label projection are client-only. No render tick calculates
-canonical movement or advances time. Travel lines and vectors are derived from
-server snapshots. See [System Lab contracts](SYSTEM_LAB.md).
+canonical movement or advances time. The preview and committed paths use the same server-sampled trajectory contract.
+Departure and future arrival markers use planned positions. See [System Lab contracts](SYSTEM_LAB.md).
 
 ## Components and lifecycle
 
@@ -75,7 +75,8 @@ those systems exist; do not invent a universal map/entity framework in advance.
 
 `scripts/Verify.ps1` runs frontend lint/type/build plus the existing headless
 Babylon/Pixi loading and browser-bundle check. Headless success is not GPU evidence.
-Desktop browser checks additionally exercised real renderer canvases, selection,
+The course release passed 22 course and 38 navigation/lifecycle checks in desktop
+Chromium. Browser checks exercised real renderer canvases, selection,
 shared inspector XYZ, camera controls, reference toggles, repeated switching,
 responsive layouts, and failed-import recovery.
 

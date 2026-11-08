@@ -31,27 +31,23 @@ login was added. Game commands require same-origin JSON requests and instance/
 revision validation. This is one shared private lab, not individual user games;
 per-user authentication remains a future design question.
 
-## Current process lifetime
+## Current release and process lifetime
 
-**The host now runs in a separate visible PowerShell window.** Keep that window,
-the PC, and its network available. The earlier temporary agent-managed command
-session repeatedly failed to keep the host running between turns. Recovery on
-2026-11-08 launched the existing Start-HostedApp.ps1 in its own visible console;
-the host's parent is that PowerShell process, not an active tool command.
-Tailscale's Serve configuration persists but cannot keep a stopped application
-running. Closing the host window or rebooting still stops the preview.
-Unattended startup is not enabled.
+Gameplay release `a3a052f` (PR #8) was deployed on 8 November 2026. The host
+serves the merged System Lab, including the nine time intervals, gravitational
+movement, updated navigation, and course plotting. Private HTTPS returned the
+new client and a 65-point Iris course preview. The deployment retained the prior
+release and a `deployment-before-course-*.json` metadata backup. The restart
+began a new shared in-memory lab with Pathfinder coasting at elapsed zero.
 
-Automatic approval review rejected detached background launch attempts with
-"blocked by policy". A trial scheduled task also failed to locate its working
-directory/executable; a noninteractive registration was denied by Windows.
-The failed Quasar task was removed. No alternative hidden launcher or execution
-policy override was installed. A durable independent service/startup setup
-requires a deliberate follow-up on the PC.
-
-The existing AC/DC sleep-after timeout was observed as zero (never). Power
-settings were not changed. Manual sleep, shutdown, network loss, or app termination
-still make the service unavailable.
+The current launcher is a separate PowerShell process that runs the foreground
+`Run-HostedApp.ps1` wrapper independently of the tool command session. Keep the
+PC and network available. Tailscale Serve persists independently of the app.
+Startup after reboot is manual. Earlier temporary command sessions failed to
+keep the host running between turns, and a separate visible terminal was used
+for the earlier recovery described below. Historical startup experiments included
+a rejected detached launch and an unsuccessful scheduled task, which was removed.
+The current deployment uses the existing runner.
 
 ## Start or update from the PC
 
@@ -67,9 +63,8 @@ Set-Location 'C:\path\to\Quasar'
 .\scripts\Start-HostedApp.ps1
 ```
 
-Run the start command in a separate visible PowerShell terminal on the PC, not
-only a temporary agent execution session. It remains running; keep that window
-open. Ctrl+C stops it. The app has no unattended restart after a reboot.
+For a manual start, run the command in a PowerShell terminal on the PC and keep
+it open. Ctrl+C stops the foreground wrapper. The app starts manually after reboot.
 To restart the existing publication without rebuilding, use just Stop then Start.
 Stop targets only Quasar assemblies published under its own host directory.
 It does not alter Tailscale or other projects.
@@ -89,8 +84,10 @@ Invoke-RestMethod 'https://quasar.example.invalid:9443/api/health'
 tailscale serve status
 ```
 
-Expect `application: Quasar`, `status: ready`, `stage: system-lab`. The page and
-health response use `Cache-Control: no-store`. Built JS/CSS/favicon assets return
+Expect `application: Quasar`, `status: ready`, `stage: system-lab`. For the course
+release, check the Plot Course control and the read-only course preview endpoint
+while time processing is stopped. The page and health response use
+`Cache-Control: no-store`. Built JS/CSS/favicon assets return
 200; unknown API paths return 404 rather than the HTML page.
 
 The pre-change Serve configuration was saved locally as
@@ -122,7 +119,7 @@ portrait 2D gameplay. Still unverified: cellular-only access, exact iOS/browser
 versions, physical-phone 3D/complete gesture/lifecycle coverage, reboot recovery,
 and unattended hosting.
 
-## Task 002 deployment and recovery
+## Release rollback and Task 002 deployment history
 
 Release publication preserves previous release directories. The pre-Task-002
 deployment metadata was copied to `deployment-before-task002.json` in the host
@@ -139,8 +136,7 @@ offers Reload display.
 The app's continuous runner is active only after Play. It processes at most four
 selected intervals per second and stops on arrival or controller lease expiry
 (five seconds). A browser reload creates a new controller ID and does not silently
-resume the previous run. Hosting remains foreground; see the current process
-lifetime section for the separate visible terminal used after recovery.
+resume the previous run. See the current process lifetime section for the running launcher.
 
 ## Requested reset and later acceptance (2026-11-08)
 

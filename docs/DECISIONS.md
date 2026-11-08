@@ -16,8 +16,7 @@ sustained large-world budgets remain pending; desktop tests do not approve scale
 
 ## Approved — Agent 3 spacecraft movement scope (2026-11-08)
 
-**Status: Approved by the owner's explicit Agent 3 request; implemented in this
-task branch.** Separate C# planning, execution and presentation; use Agent 2
+**Status: Approved by the owner's explicit Agent 3 request and merged in PR #7.** Separate C# planning, execution and presentation; use Agent 2
 ephemerides, physical gravitational transfers, delta-v, deterministic queries,
 cancellation/replanning and event-aware headless advancement. Conditional fuel
 spending remains unavailable because propulsion/mass data do not exist.
@@ -139,7 +138,7 @@ published ASP.NET host at loopback 5080, serving built React assets and read-onl
 `/api/health` under one origin. Existing routes on 443/8443 were preserved.
 The owner confirmed "Works perfectly" on the actual iPhone 17 Pro.
 
-The app currently runs in a managed foreground terminal. Automatic background
+The deployed app runs through the foreground wrapper in a separate PowerShell process. Automatic background
 launch was rejected by approval review; the failed scheduled task was removed.
 Unattended startup and future command authorization remain open. No game-time
 semantics were changed. See [HOSTING.md](HOSTING.md) for controls and limits.
@@ -233,13 +232,14 @@ controls: choose an interval, choose Once or Continuous, press Play; stop manual
 or at an event requiring attention. Arrival supplies the first interrupt. The
 owner selected in-memory state and a small representative surface inset.
 
-Implementation choices for this lab: fixed fixture IDs/XYZ kilometres, stationary
+Original Task 002 implementation choices: fixed fixture IDs/XYZ kilometres, stationary
 planets, constant-speed straight-line travel, checked elapsed ticks, one serialized
 in-process writer, HTTP snapshots/commands, and a short browser control lease.
 These are provisional mechanics, not permanent physics/scheduler/save decisions.
 See SYSTEM_LAB.md. Other proposals above are historical unless superseded here;
 databases, push transport, universal entity frameworks, and unattended startup
-remain open/deferred. Save/load is the recommended next task, not implemented.
+remain open or deferred. Gravitational movement and course plotting superseded the
+original straight-line fixture. Save/load remains a proposed slice.
 
 ## Approved — initial System Lab experience baseline (2026-11-08)
 

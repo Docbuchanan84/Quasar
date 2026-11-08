@@ -2,6 +2,11 @@
 
 ## Current status — 8 November 2026
 
+The deployed course release is `a3a052f`. Desktop Chromium verified the course
+workflow and navigation, including emulated touch. The physical-phone evidence
+below comes from the original System Lab release. The current course workflow,
+3D and lifecycle still need physical iPhone validation.
+
 **Task 002 is deployed and owner-accepted in actual phone use.** After trying the
 System Lab, the owner reported: "It looks so good already and works just how I
 want." Two supplied phone screenshots show the playable 2D tactical display in

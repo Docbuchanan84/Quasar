@@ -110,8 +110,8 @@ incurs no fictional fuel expenditure. A subsequent order departs that state.
 
 The lab retains its fixed planets as an artificial fixture. Pathfinder now starts
 on a circular Helios-relative coast. The old 25 km/s value was not a propulsion
-capability and is removed. Buttons select a six-hour transfer; the API permits
-other times. Generic tests cover moving orbital/inertial targets and primaries.
+capability and is removed. The course UI and API default to a six-hour transfer
+and accept other supported durations. Generic tests cover moving orbital/inertial targets and primaries.
 
 ## Feasibility, fuel and limits
 
@@ -169,4 +169,4 @@ node src/Quasar.Client/scripts/test-trajectory-api.mjs http://127.0.0.1:5093
 The live Game Design Record was read on 8 November 2026, including Project
 overview, Time behavior, and Control, orders and delegation. Edit tooling was
 exposed; writes were not tested and no shared-document edits were performed.
-Future propulsion/mass definition is the recommended next task.
+Propulsion and mass modelling remains open. See [the project plan](PROJECT_PLAN.md).

@@ -15,9 +15,9 @@ Node version in `.node-version`. Clone the repository, then run:
 
 Use the same verification command before submitting changes. It restores locked
 NuGet packages, builds .NET, runs the test runner and formatter, then checks the
-frontend lint, renderer packages, TypeScript, and Vite build. The current
-simulation test project has no behavior tests; add focused tests with real
-simulation behavior rather than treating an empty runner as a test-suite pass.
+frontend lint, renderer packages, TypeScript, and Vite build. The suite includes
+simulation and host-session xUnit cases plus Node navigation
+and coordinate checks. Add focused regression tests when behavior changes.
 
 ## Version control and notes
 
