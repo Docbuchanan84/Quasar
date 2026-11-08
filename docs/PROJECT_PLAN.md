@@ -52,6 +52,13 @@ This focused extension does not select a permanent scheduler or save format.
 
 ## Next task
 
+The owner requested a focused map-navigation improvement after the time-control
+expansion: remove redundant direction controls, protect selection from drags, and
+fix 3D orbit/pan/zoom/pivot behavior with the existing renderers. Implemented scope
+and test evidence are in [MAP_NAVIGATION.md](MAP_NAVIGATION.md). Physical iPhone
+validation of the changed controls is the immediate follow-up; this does not
+authorize a new simulation feature or select a new architecture.
+
 Implement a small versioned save/load feature with atomic writes, recoverable
 backups, stable identities, history, and stopped-on-load behavior. Select its exact
 format and migration policy in that task; no database has been selected.

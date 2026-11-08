@@ -32,8 +32,10 @@ works from another connected browser too. Stop processing before changing contro
 or issuing/replacing orders. Each advance uses the full selected duration; an
 arrival discards the unused remainder and waits for another Play command.
 
-Map gestures: 2D drag/pinch for pan/zoom; 3D drag/pinch/two-finger pan. Explicit
-camera buttons and object-list selection are available without gestures. The
+Map gestures: 2D drag/swipe to pan and wheel/pinch to zoom; 3D drag to orbit,
+right/middle/Ctrl-drag or two fingers to pan, wheel/pinch to zoom. Reset View,
+compact zoom buttons and 3D Focus Selected remain; redundant direction buttons
+are removed. See [navigation controls and checks](docs/MAP_NAVIGATION.md). The
 planet inspector includes an illustrative terrain/grid inset, not simulated geography.
 
 **Provisional:** constant-speed straight-line travel at 25 km/s; stationary bodies;

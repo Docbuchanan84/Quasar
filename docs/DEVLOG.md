@@ -184,3 +184,42 @@ the owner's shared Google Doc remains the design discussion record.
   no merge, force-push, deployment, or private-source publication is performed.
 - No implementation blocker or new architecture choice. Next: recoverable
   versioned save/load under a separately scoped task.
+
+## 2026-11-08 — Simplify map navigation and repair 3D camera controls
+
+- Implemented the owner's navigation task in `SystemMap.tsx`, `SpaceMap.tsx`,
+  `mapGestures.ts`, `spaceCamera.ts` and map styles. Removed four directional
+  buttons from both views and the redundant 3D rotate-step button. Kept compact
+  zoom alternatives, consistent **Reset View**, and added **Focus Selected**.
+- Diagnosed default Y-up versus Quasar's XY/Z frame, fixed-distance pan speed,
+  origin-only orbit pivot, persistent motion after Reset, and tap/drag ambiguity.
+  Use Z-up, screen-scaled panning, proportional/natural bounded zoom, reduced
+  orbit inertia and explicit selected-object focus/follow. Panning/two-finger
+  navigation releases follow while preserving selection. No renderer replacement.
+- Shared gesture intent tracking protects selection from jitter, drags and pinch
+  handoff; cancellations/lost capture/blur clear the gesture. Babylon retains its
+  camera input/capture/math; Pixi retains its Pointer Events path. Browser testing
+  also caught Babylon's attach-time bridge overwriting a prepended middle-button
+  pan entry; the corrected mapping has an attachment regression test.
+- `scripts/Verify.ps1` passed: locked restore, Release build (zero warnings/errors),
+  51 xUnit cases, .NET formatting, frontend lint, renderer loading/bundling,
+  **nine new Node/Babylon navigation tests**, TypeScript and production build.
+  The existing lazy 3D bundle-size warning remains; no new runtime dependency.
+- Playwright CLI passed **37 browser checks** on real Pixi/Babylon canvases:
+  desktop mouse orbit/pan/wheel/jitter/reset/focus, native Chromium touch tap,
+  swipe, two-finger pan, pinch/handoff/cancel, shared selection, course/reference
+  overlays and following a moving ship. Tests used an isolated loopback 5092 host.
+  Desktop and 393 × 852 screenshots were visually reviewed; artifacts are ignored.
+  The production build also rendered both maps and exercised 3D focus/reset in
+  Chromium against that isolated host without page errors.
+  These are not physical-iPhone/Safari tests or measured GPU capacity claims.
+- Updated README, frontend/mobile/setup guidance, approval and plan records, and
+  [MAP_NAVIGATION.md](MAP_NAVIGATION.md) with control mappings, diagnosis and
+  reproducible checks. The live Google Game Design Record was read on 8 November
+  2026 (title/interface/mobile headings verified). Edit tools are exposed but no
+  external-document write was requested or attempted.
+- Existing time-control work was preserved as the parent commit. Publication is
+  a focused stacked PR; no merge, force-push, hosted deployment/restart, system
+  configuration change, private-source publication, or live-world mutation.
+- No implementation blocker or new product/architecture proposal. Next: validate
+  these navigation changes on the owner's iPhone 17 Pro and record its versions.

@@ -116,3 +116,12 @@ refreshed accordingly. Vite's lazy Babylon chunk exceeds its 500 kB warning leve
 (~1.09 MB raw/~265 kB gzip); builds pass. Broader phone GPU/performance checks and
 unattended startup remain unresolved. Use a separate loopback port such as 5090
 for isolated API tests while the published host occupies 5080.
+
+## Map navigation checks (2026-11-08)
+
+`Verify.ps1` also runs `npm run test:maps`: nine Node/Babylon tests for tap/drag
+boundaries, pinch handoff/cancellation, input mappings after attachment, focus,
+reset, scaling and camera constraints. No new test/runtime package is needed.
+The optional real-browser mouse/native-touch script and its isolated-host setup
+are documented in [MAP_NAVIGATION.md](MAP_NAVIGATION.md). No new setup blocker;
+physical iPhone/Safari qualification remains open.

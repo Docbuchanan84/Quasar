@@ -201,6 +201,22 @@ main {
 }
 .map-canvas canvas {
   touch-action: none;
+  cursor: grab;
+}
+.map-canvas canvas:active {
+  cursor: grabbing;
+}
+.map-gestures {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  right: 12px;
+  margin: 0;
+  color: #9eb5c4;
+  font-size: 11px;
+  line-height: 1.5;
+  pointer-events: none;
+  text-shadow: 0 1px 3px #080f16;
 }
 .camera-controls {
   position: absolute;

@@ -61,7 +61,8 @@ Frequent iPhone browser play has been an approved core pillar since 8 November
 - Prefer readable type and primary targets of at least 44 by 44 CSS pixels.
   Avoid hover-only, mouse-only, or keyboard-required workflows.
 - Resolve map gesture conflicts with page scrolling/browser navigation. Preserve
-  explicit camera buttons and object-list selection as alternatives to gestures.
+  zoom/recovery buttons and object-list selection. The navigation follow-up removes
+  directional buttons with gesture equivalents; see [controls](MAP_NAVIGATION.md).
 - Respect safe areas, browser chrome, keyboards, text scaling, and page zoom.
 - Mount only the needed renderer; stop hidden work and dispose inactive engines.
   The PC simulation does not remove GPU/memory/battery constraints on the phone.

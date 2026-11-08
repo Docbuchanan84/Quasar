@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Application, Container, Graphics, Text } from 'pixi.js'
+import { MapGesture, wheelPixels } from './mapGestures'
 import { mapScale, objectColor, type MapProps } from './lab'
 
 export default function SystemMap(props: MapProps) {
@@ -38,12 +39,21 @@ export default function SystemMap(props: MapProps) {
       app.stage.addChild(scene)
       let zoom = 100,
         panX = 0,
-        panY = 0,
-        lastPinch = 0
+        panY = 0
       let lastDraw = ''
-      const pointers = new Map<number, { x: number; y: number }>()
-      let start = { x: 0, y: 0 },
-        moved = false
+      const gesture = new MapGesture()
+      const pointers = gesture.pointers
+      const clampZoom = (value: number) => Math.max(15, Math.min(800, value))
+      // Keep the world point beneath the cursor/finger midpoint stationary.
+      const zoomAt = (value: number, clientX: number, clientY: number) => {
+        const rect = app.canvas.getBoundingClientRect()
+        const x = clientX - rect.left - app.screen.width / 2
+        const y = clientY - rect.top - app.screen.height / 2
+        const ratio = clampZoom(value) / zoom
+        panX = x - (x - panX) * ratio
+        panY = y - (y - panY) * ratio
+        zoom = clampZoom(value)
+      }
       const screen = (x: number, y: number) => ({
         x: app.screen.width / 2 + panX + x * mapScale * zoom,
         y: app.screen.height / 2 + panY - y * mapScale * zoom,
@@ -176,41 +186,39 @@ export default function SystemMap(props: MapProps) {
           panY = 0
         } else if (action === 'in') zoom = Math.min(800, zoom * 1.3)
         else if (action === 'out') zoom = Math.max(15, zoom / 1.3)
-        else {
-          panX += action === 'left' ? 50 : action === 'right' ? -50 : 0
-          panY += action === 'up' ? 50 : action === 'down' ? -50 : 0
-        }
         draw()
       }
       controls.current('reset')
       const down = (e: PointerEvent) => {
+        if (e.button !== 0) return
         app.canvas.setPointerCapture(e.pointerId)
-        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
-        start = { x: e.clientX, y: e.clientY }
-        moved = false
-        lastPinch = 0
+        gesture.down(e.pointerId, e.clientX, e.clientY)
       }
       const move = (e: PointerEvent) => {
-        const previous = pointers.get(e.pointerId)
-        if (!previous) return
-        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
-        if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 5)
-          moved = true
+        const before = [...pointers.values()]
+        const previous = gesture.move(e.pointerId, e.clientX, e.clientY)
+        if (!previous || !gesture.dragging) return
         if (pointers.size === 2) {
-          moved = true
-          const [a, b] = [...pointers.values()],
-            distance = Math.hypot(a.x - b.x, a.y - b.y)
-          if (lastPinch)
-            zoom = Math.max(15, Math.min(800, (zoom * distance) / lastPinch))
-          lastPinch = distance
-        } else {
+          const [a, b] = before,
+            [c, d] = [...pointers.values()]
+          const oldDistance = Math.hypot(a.x - b.x, a.y - b.y)
+          const distance = Math.hypot(c.x - d.x, c.y - d.y)
+          if (oldDistance > 0 && distance > 0)
+            zoomAt(
+              (zoom * distance) / oldDistance,
+              (a.x + b.x) / 2,
+              (a.y + b.y) / 2,
+            )
+          panX += (c.x + d.x - a.x - b.x) / 2
+          panY += (c.y + d.y - a.y - b.y) / 2
+        } else if (pointers.size === 1 && !gesture.multiTouch) {
           panX += e.clientX - previous.x
           panY += e.clientY - previous.y
         }
         draw()
       }
       const up = (e: PointerEvent) => {
-        if (!moved && pointers.size === 1 && e.type !== 'pointercancel') {
+        if (gesture.up(e.pointerId, e.clientX, e.clientY) && e.button === 0) {
           const rect = app.canvas.getBoundingClientRect(),
             x = e.clientX - rect.left,
             y = e.clientY - rect.top
@@ -222,12 +230,24 @@ export default function SystemMap(props: MapProps) {
             .sort((a, b) => a.d - b.d)
           if (hits[0]?.d < 28) current.current.onSelect(hits[0].id)
         }
-        pointers.delete(e.pointerId)
-        lastPinch = 0
+        if (app.canvas.hasPointerCapture(e.pointerId))
+          app.canvas.releasePointerCapture(e.pointerId)
+      }
+      const cancel = (e: Event) => {
+        if (
+          e.type === 'lostpointercapture' &&
+          !pointers.has((e as PointerEvent).pointerId)
+        )
+          return
+        gesture.cancel()
       }
       const wheel = (e: WheelEvent) => {
         e.preventDefault()
-        zoom = Math.max(15, Math.min(800, zoom * Math.exp(-e.deltaY * 0.001)))
+        zoomAt(
+          zoom * Math.exp(-wheelPixels(e, element.clientHeight) * 0.001),
+          e.clientX,
+          e.clientY,
+        )
         draw()
       }
       const lost = (e: Event) => {
@@ -237,7 +257,9 @@ export default function SystemMap(props: MapProps) {
       app.canvas.addEventListener('pointerdown', down)
       app.canvas.addEventListener('pointermove', move)
       app.canvas.addEventListener('pointerup', up)
-      app.canvas.addEventListener('pointercancel', up)
+      app.canvas.addEventListener('pointercancel', cancel)
+      app.canvas.addEventListener('lostpointercapture', cancel)
+      window.addEventListener('blur', cancel)
       app.canvas.addEventListener('wheel', wheel, { passive: false })
       app.canvas.addEventListener('webglcontextlost', lost)
       // Four objects need redraws only on state/input/resize, not a permanent frame loop.
@@ -252,7 +274,9 @@ export default function SystemMap(props: MapProps) {
         app.canvas.removeEventListener('pointerdown', down)
         app.canvas.removeEventListener('pointermove', move)
         app.canvas.removeEventListener('pointerup', up)
-        app.canvas.removeEventListener('pointercancel', up)
+        app.canvas.removeEventListener('pointercancel', cancel)
+        app.canvas.removeEventListener('lostpointercapture', cancel)
+        window.removeEventListener('blur', cancel)
         app.canvas.removeEventListener('wheel', wheel)
         app.canvas.removeEventListener('webglcontextlost', lost)
         app.destroy(true, { children: true })
@@ -275,19 +299,24 @@ export default function SystemMap(props: MapProps) {
           {error}
         </p>
       )}
+      <p className="map-gestures">
+        Drag or swipe to pan · wheel or pinch to zoom
+      </p>
       <div className="camera-controls" aria-label="2D camera controls">
         {[
           ['in', '+'],
           ['out', '−'],
-          ['left', '←'],
-          ['right', '→'],
-          ['up', '↑'],
-          ['down', '↓'],
-          ['reset', 'Fit'],
+          ['reset', 'Reset View'],
         ].map(([action, label]) => (
           <button
             key={action}
-            aria-label={`Map ${action}`}
+            aria-label={
+              action === 'reset'
+                ? 'Reset View'
+                : action === 'in'
+                  ? 'Zoom in'
+                  : 'Zoom out'
+            }
             onClick={() => controls.current(action)}
           >
             {label}
