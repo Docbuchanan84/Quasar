@@ -16,6 +16,7 @@
 - Design core inspection, map selection, orders, pause/advance controls, and management flows for readable touch use in portrait, with useful landscape and desktop layouts. Preserve depth through focused views and drill-down. Avoid hover-only, mouse-only, or keyboard-required workflows; respect safe areas, software keyboards, text scaling, and browser zoom.
 - Budget mobile GPU, memory, battery/heat, and bandwidth. Load/render needed views and stop unnecessary work while hidden. Treat backgrounding, screen lock, network changes, and reconnect as normal. The backend remains authoritative; do not silently replay uncertain orders or advance canonical time in a browser tab.
 - Validate on the actual iPhone 17 Pro as well as desktop; responsive emulation is not proof of mobile rendering or lifecycle reliability. Safari is the recommended initial browser baseline, not a confirmed installed version. Do not claim measured capacity or phone readiness without device checks.
+- **Task 002 owner check (8 November 2026):** the owner accepted the initial look/interaction and supplied actual phone portrait screenshots of the working 2D map, selection/movement, and stopped/processing Continuous controls. Basic 2D phone use is confirmed. Exact iOS/browser versions, physical-phone 3D, full gesture/lifecycle/cellular coverage, and measured capacity remain open. See `docs/MOBILE_AND_REMOTE_ACCESS.md`; keep private screenshot originals out of Git.
 - **Approved remote skeleton (8 November 2026):** private Tailscale HTTPS proxies to the published ASP.NET/client host on loopback 5080. The owner's connection address is in the ignored `docs/LOCAL_PROJECT_CONTEXT.md`, not the public repository. The owner confirmed iPhone access. Preserve other Serve routes. Unattended startup remains unresolved; see `docs/HOSTING.md`.
 
 ## Project knowledge and shared tracking
@@ -68,8 +69,8 @@ publish the live document link or full private snapshots to make access easier.
 
 ## Hosted preview commands
 
-The private skeleton serves built React assets and read-only `/api/health` from
-one ASP.NET origin. It contains no game simulation or map features. Use
+The private host serves built React assets, `/api/health`, and the authoritative
+System Lab snapshot/command API from one ASP.NET origin. Use
 `scripts/Publish-HostedApp.ps1`, `scripts/Stop-HostedApp.ps1`, and
 `scripts/Start-HostedApp.ps1` for updates; keep the host terminal open. Published
 files live under `%LOCALAPPDATA%\Quasar\host`, outside the OneDrive checkout.
@@ -126,3 +127,13 @@ root can be supplied using `QUASAR_DOTNET_ROOT`. Do not edit the system PATH.
 - Never claim specific performance or scale capabilities without measurement. In particular, the time architecture (seconds to long jumps, simultaneous domains, look-ahead and variable fidelity) requires experiments before selecting a definitive implementation.
 - Avoid destructive operations, force pushes, silent Git commits/publishing, broad installs, and edits to shared documents outside the explicit task scope. Protect credentials and use official authenticated connection flows.
 - End significant work with: changed files, what was verified (including commands/results), decisions made vs still pending, blockers, and the single recommended next task. Do not claim checks passed if they were not run.
+
+## Task 002 implementation update (2026-11-08)
+
+The owner authorized and implemented the System Lab vertical slice. Treat the
+Task 001 descriptions above as historical. Current behavior and contracts are
+in `docs/SYSTEM_LAB.md`; current scope/next task are in `docs/PROJECT_PLAN.md`.
+Simulation/session behavior tests now exist. The host exposes authoritative game
+commands as well as health; maintain its same-origin JSON validation and private
+network access. No permanent scheduler, save format, or new runtime dependency
+was selected by implementing the provisional lab mechanics.

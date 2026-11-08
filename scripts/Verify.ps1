@@ -12,9 +12,11 @@ try {
     try {
         Invoke-QuasarCommand npm.cmd run lint
         Invoke-QuasarCommand npm.cmd run check:renderers
+        Invoke-QuasarCommand npm.cmd run test:maps
+        Invoke-QuasarCommand npm.cmd run test:coordinates
         Invoke-QuasarCommand npm.cmd run build
     } finally { Pop-Location }
-    Write-Host 'Verification complete. Task 001 has no permanent simulation tests yet.'
+    Write-Host 'Verification complete: simulation/session behavior tests, formatting, frontend and renderer checks.'
 } finally {
     Pop-Location
 }

@@ -1,22 +1,22 @@
-# Private Quasar skeleton hosting
+# Private Quasar hosting
 
 **Approved and deployed: 2026-11-08.**
 
 The owner's private endpoint is recorded in the ignored
 `docs/LOCAL_PROJECT_CONTEXT.md`. Public clones should configure their own Serve
 address; `quasar.example.invalid` below is a placeholder, not a live URL.
-Connect Tailscale on the phone first. The owner confirmed the page works on the
-actual iPhone 17 Pro. Its iOS/browser version and a separate cellular-only test
-have not been recorded.
+Connect Tailscale on the phone first. The owner confirmed the System Lab experience
+and supplied actual phone portrait screenshots of 2D rendering and active/stopped
+Continuous controls. See [device evidence](MOBILE_AND_REMOTE_ACCESS.md). Exact
+iOS/browser versions and a separate cellular-only test have not been recorded.
 
 ## What runs
 
 Tailscale Serve on private HTTPS port **9443** proxies to
-`http://127.0.0.1:5080`. ASP.NET serves the built React client and the read-only
-`GET /api/health` endpoint under one origin. The page displays connection status,
-checks the real backend, and supports manual refresh and browser online/offline
-and foreground-resume checks. There is no simulation clock, gameplay, or map
-feature yet.
+`http://127.0.0.1:5080`. ASP.NET serves the built React System Lab, health,
+and authoritative snapshot/command API under one origin. The lab includes 2D/3D
+maps, spacecraft orders, time controls, inspection, and event history. See
+[System Lab contracts](SYSTEM_LAB.md). State is in-memory: a restart resets it.
 
 Existing Serve routes were compared before/after and preserved:
 
@@ -27,15 +27,20 @@ Existing Serve routes were compared before/after and preserved:
 | 9443 — Quasar | `http://127.0.0.1:5080` |
 
 Access is tailnet-only. No public Funnel, router forwarding, or separate app
-login was added. This initial app exposes only its static preview and health
-endpoint; authorization for future game commands still requires design.
+login was added. Game commands require same-origin JSON requests and instance/
+revision validation. This is one shared private lab, not individual user games;
+per-user authentication remains a future design question.
 
 ## Current process lifetime
 
-**The host currently runs in a managed foreground terminal.** Keep that session,
-the PC, and its network available. Tailscale's Serve configuration persists, but
-it cannot keep a stopped application running. A reboot, closed host terminal, or
-terminated Codex runtime can stop this preview. Unattended startup is not enabled.
+**The host now runs in a separate visible PowerShell window.** Keep that window,
+the PC, and its network available. The earlier temporary agent-managed command
+session repeatedly failed to keep the host running between turns. Recovery on
+2026-11-08 launched the existing Start-HostedApp.ps1 in its own visible console;
+the host's parent is that PowerShell process, not an active tool command.
+Tailscale's Serve configuration persists but cannot keep a stopped application
+running. Closing the host window or rebooting still stops the preview.
+Unattended startup is not enabled.
 
 Automatic approval review rejected detached background launch attempts with
 "blocked by policy". A trial scheduled task also failed to locate its working
@@ -62,7 +67,9 @@ Set-Location 'C:\path\to\Quasar'
 .\scripts\Start-HostedApp.ps1
 ```
 
-The last command remains running; keep its terminal open. Ctrl+C stops it.
+Run the start command in a separate visible PowerShell terminal on the PC, not
+only a temporary agent execution session. It remains running; keep that window
+open. Ctrl+C stops it. The app has no unattended restart after a reboot.
 To restart the existing publication without rebuilding, use just Stop then Start.
 Stop targets only Quasar assemblies published under its own host directory.
 It does not alter Tailscale or other projects.
@@ -82,7 +89,7 @@ Invoke-RestMethod 'https://quasar.example.invalid:9443/api/health'
 tailscale serve status
 ```
 
-Expect `application: Quasar`, `status: ready`, `stage: skeleton`. The page and
+Expect `application: Quasar`, `status: ready`, `stage: system-lab`. The page and
 health response use `Cache-Control: no-store`. Built JS/CSS/favicon assets return
 200; unknown API paths return 404 rather than the HTML page.
 
@@ -96,7 +103,7 @@ tailscale serve --https=9443 off
 
 Do not run `tailscale serve reset`; that would affect the other services.
 
-## Validation completed
+## Historical skeleton validation (before Task 002)
 
 - Same-origin page, built JS/CSS, and backend health returned 200 over private
   HTTPS with normal certificate verification. Original Serve routes were unchanged.
@@ -110,5 +117,76 @@ Do not run `tailscale serve reset`; that would affect the other services.
 - Build, formatting, frontend lint/type/build, and headless renderer checks passed.
   The existing simulation test project still has no behavior tests.
 
-Still unverified: cellular-only access, exact iOS/browser version, phone lock/resume
-behavior, reboot recovery, unattended hosting, and future renderer GPU performance.
+The later Task 002 owner check supersedes the skeleton-only validation for basic
+portrait 2D gameplay. Still unverified: cellular-only access, exact iOS/browser
+versions, physical-phone 3D/complete gesture/lifecycle coverage, reboot recovery,
+and unattended hosting.
+
+## Task 002 deployment and recovery
+
+Release publication preserves previous release directories. The pre-Task-002
+deployment metadata was copied to `deployment-before-task002.json` in the host
+directory, alongside a before-change Serve configuration. No Serve configuration
+change is needed to update gameplay.
+
+If rollback is needed, stop only Quasar, preserve the current deployment metadata,
+restore the earlier metadata to `deployment.json`, then run Start-HostedApp.ps1.
+Old releases are retained; verify health after restart. All in-memory lab progress
+is lost on either update or rollback. Existing browser pages should reload after
+deployment; a failed lazy map load leaves the controls/inspector available and
+offers Reload display.
+
+The app's continuous runner is active only after Play. It processes at most four
+selected intervals per second and stops on arrival or controller lease expiry
+(five seconds). A browser reload creates a new controller ID and does not silently
+resume the previous run. Hosting remains foreground; see the current process
+lifetime section for the separate visible terminal used after recovery.
+
+## Requested reset and later acceptance (2026-11-08)
+
+After deployment checks, the owner explicitly requested a reset. Only Quasar was
+restarted through the existing scripts. Readback verified elapsed zero, paused,
+Pathfinder idle, four objects, and one initialization event. The reset changed no
+Serve route and added no reset endpoint/button. Subsequent owner play advanced the
+world again; those later screenshots are historical evidence, not its current state.
+
+The owner then accepted the phone look and behavior and supplied the two portrait
+screenshots described in MOBILE_AND_REMOTE_ACCESS.md. This documentation update
+requires no release publication, host restart, live-world mutation, or network
+reconfiguration. Do not reset ongoing play to match a screenshot or old test result.
+
+## White/empty page triage
+
+On 2026-11-08, an owner white-screen report coincided with a missing host process
+and connection refusal on loopback 5080. Starting the existing publication restored
+HTTPS and the browser UI. No log established why the foreground process exited;
+do not assume a renderer defect or a specific process-termination cause.
+
+Check loopback health and the private HTTPS page/health first. If loopback refuses
+connections and Quasar is absent, use Start-HostedApp.ps1 to start the existing
+release; publishing and changing Serve are unnecessary. Verify page/assets and
+snapshot responses, then inspect browser errors if the host is healthy but the
+page remains empty. Never use a tailnet-wide Serve reset to recover this app.
+
+A host that has already exited has lost this lab's in-memory state. Starting it
+creates a fresh fixture; it is not saved-game recovery. A remaining blank page
+may require a browser refresh after the endpoint recovers. Durable process
+supervision and recoverable save/load remain separate follow-up work.
+
+### Download prompt after an empty page
+
+The owner's subsequent phone screenshot offered `document.txt` instead of the
+game. At inspection, the host was absent again and Serve returned an empty 502
+for both `/` and `/index.html`, with no Content-Type. This was an unavailable
+origin, not an observed attachment header on a healthy game response. The phone's
+download behavior is consistent with that response, but its exact browser
+handling was not independently reproduced.
+
+Started the existing release in a separate visible PowerShell window, leaving
+Serve routes, published files, and startup configuration unchanged. Verified
+private HTTPS returned 200 and `text/html` without Content-Disposition; referenced
+JavaScript/CSS returned 200 with their correct MIME types. The page and 2D map
+rendered with no browser warnings/errors. After recovery, dismiss a stale
+download prompt and navigate afresh (an unused query string can avoid reusing
+the failed navigation). Do not save the download as a required game file.
+The owner then confirmed "Game loads now" on the phone using the fresh navigation.

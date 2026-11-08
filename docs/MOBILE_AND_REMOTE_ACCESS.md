@@ -1,115 +1,104 @@
 # iPhone play and remote access
 
-## Approved pillar — first-class iPhone browser play
+## Current status — 8 November 2026
 
-**Approved by the owner on 2026-11-08:** Quasar will frequently be played from
-the owner's **iPhone 17 Pro** browser. Phone usability is a core design pillar
-from the beginning. Desktop remains supported; simulation depth and authority
-remain in the C# backend. The installed iOS/browser version is not yet recorded.
+**Task 002 is deployed and owner-accepted in actual phone use.** After trying the
+System Lab, the owner reported: "It looks so good already and works just how I
+want." Two supplied phone screenshots show the playable 2D tactical display in
+portrait, including selected spacecraft, depth labels, movement vector, and
+Continuous time controls in stopped and processing states.
 
-Design core inspection, map selection, orders, pause/time controls, and management
-workflows for comfortable touch use on a phone. Preserve depth through focused
-views, drill-down, filtering, and progressive disclosure. A phone user should be
-able to play, not merely watch a desktop session.
+The established primary device is the owner's **iPhone 17 Pro**. The screenshots
+were supplied in that testing context; they do not independently establish the
+hardware model, installed iOS version, browser application/version, or network path.
+Those version/network details remain unrecorded. Safari remains the recommended
+baseline, not a claim about which browser produced these screenshots.
 
-## Implementation guidance
+This is a successful first real-device gameplay check. It is not a completed
+qualification of both renderers, every gesture, lifecycle behavior, or performance.
 
-These are guidelines and acceptance goals for future UI work, not claims that
-the current placeholder implements them:
+## Owner-supplied screenshot evidence
 
-- Support portrait for core workflows and useful landscape layouts. Reflow
-  inspectors into drawers/sheets or focused pages. Keep large-table scrolling
-  inside the relevant region rather than forcing the whole page sideways.
-- Use readable type and generous touch targets; approximately 44 by 44 CSS pixels
-  is a project target for primary actions. Avoid hover-only information, required
-  right-click/keyboard commands, and small unlabeled icon controls.
-- Provide deliberate map pan/zoom/selection behavior with clear gesture modes.
-  Resolve conflicts between map gestures, scrolling, and browser navigation.
-- Respect display safe areas, browser chrome, the software keyboard, text scaling,
-  and browser zoom. Do not disable page zoom to hide layout problems.
-- React owns the responsive controls; Pixi supplies 2D maps and Babylon supplies
-  3D views. Load the needed view, stop unnecessary work in hidden views, and
-  choose detail/pixel density with battery, heat, memory, and bandwidth in mind.
-  The approved libraries do not establish a mobile performance budget.
-- Treat app switching, screen lock, backgrounding, network changes, and reconnect
-  as ordinary conditions. Reload authoritative server state when needed and show
-  clear connected/synchronizing/disconnected states. Do not silently duplicate
-  an order after an uncertain acknowledgement or calculate canonical time in a tab.
-- Keep costly simulation work on the host. Graphics still execute on the phone;
-  a fast PC does not remove mobile GPU or memory limits.
+| Evidence | Visible result | What it establishes |
+| --- | --- | --- |
+| Image 1: full phone browser view | Host connected; 2D selected; clock D001 15:23:15; 1 minute / Continuous; Player stopped; Play available | Live private-site access and a readable portrait command display in a stopped state |
+| Image 1: system map | Helios, Iris, Nereid, selected Pathfinder, reference grid/circles, Z labels, travel vector, camera controls | Actual phone rendering of the Pixi tactical view and the selected-object presentation |
+| Image 2: closer view | Clock D001 15:28:15; Processing; Stop available; interval/mode controls disabled | Continuous processing is visibly active with the expected control state |
+| Image 2: spacecraft | Pathfinder remains selected near Nereid; Z label changes from approximately -469k km to -470k km | Consistent visible movement/depth updates across a five-minute difference in simulated time |
+| Owner feedback | "It looks so good already and works just how I want." | Owner acceptance of the initial look and interaction experience |
 
-Safari is the recommended initial browser baseline. Validate on the actual
-iPhone 17 Pro, record its iOS/browser version, and also check desktop. Responsive
-desktop emulation helps layout checks but does not prove phone rendering,
-touch behavior, suspension/resume, thermal behavior, or network reliability.
+The five-minute difference is **simulated** time. These still images do not measure
+wall-clock speed, frame rate, latency, or a precise trajectory. They do not show an
+arrival event, 3D scene, inspector/orders panel, or a gesture being performed.
+The owner's general success report is recorded separately from what is visible.
 
-## Approved remote access — live skeleton
+Original images and SHA-256 provenance are retained privately under ignored
+`docs/sources/task002-phone-validation-2026-11-08/`. Originals contain the private
+access address and browser chrome, so this public document includes observations
+rather than the images. The shared Google Game Design Record remains the project
+knowledge source; these files are supporting evidence, not another live record.
 
-The owner approved setup and requires access away from home. The live skeleton
-runs on this PC using private **Tailscale Serve over HTTPS** for the
-owner's phone. Tailscale is the access network; the PC remains the application
-host. The phone needs the Tailscale app connected to the appropriate tailnet and
-permission to reach the app, plus a working network connection.
+## Verification coverage
 
-The owner's private address is in the ignored `docs/LOCAL_PROJECT_CONTEXT.md`.
-The owner confirmed it
-works on the iPhone 17 Pro. See [HOSTING.md](HOSTING.md) for run/restart controls.
+| Check | Current evidence | Remaining work |
+| --- | --- | --- |
+| Private phone access and portrait 2D rendering | Owner report and supplied screenshots | Repeat after material renderer/layout changes |
+| Basic desired interaction experience | Owner acceptance; stopped/processing states and changing ship position shown | Expand deliberate workflow coverage as mechanics grow |
+| Both renderers, selection, orders, movement/arrival, Once/Continuous/Stop | Automated simulation/session/HTTP tests and desktop Chromium browser checks | Explicit physical-phone 3D and end-to-end order/arrival checks |
+| Pan, zoom, rotation, reference toggle, view cleanup | Desktop browser checks and implemented touch/control paths | Physical-phone drag/pinch/two-finger pan and repeated switching |
+| Portrait/landscape and narrow layouts | Actual portrait screenshot; automated 402/320 px and landscape checks | Actual phone landscape, text scaling, browser zoom, and safe-area transitions |
+| Background/lock, lease expiry, reconnect | Server tests and desktop offline/reconnect check | Physical-phone lock/app switching and recovery |
+| Wi-Fi/cellular | Working phone access; screenshot includes cellular signal indicator | Record the actual path; test cellular-only access explicitly |
+| GPU capacity, frame time, memory, heat/battery | Basic actual-phone 2D rendering works | Measure before setting scale/performance budgets |
 
-Deployed skeleton path:
+## Approved pillar and implementation guidance
+
+Frequent iPhone browser play has been an approved core pillar since 8 November
+2026. Desktop remains supported; the C# backend owns canonical state and time.
+
+- Keep inspection, selection, orders, and time controls usable in portrait and
+  useful in landscape. Preserve depth through focused views and drill-down.
+- Prefer readable type and primary targets of at least 44 by 44 CSS pixels.
+  Avoid hover-only, mouse-only, or keyboard-required workflows.
+- Resolve map gesture conflicts with page scrolling/browser navigation. Preserve
+  zoom/recovery buttons and object-list selection. The navigation follow-up removes
+  directional buttons with gesture equivalents; see [controls](MAP_NAVIGATION.md).
+- Respect safe areas, browser chrome, keyboards, text scaling, and page zoom.
+- Mount only the needed renderer; stop hidden work and dispose inactive engines.
+  The PC simulation does not remove GPU/memory/battery constraints on the phone.
+- Treat lock, backgrounding, and network changes as normal. Refresh authoritative
+  state on return, never replay uncertain orders, and never advance time in a tab.
+
+Task 002 uses a five-second lease renewed by the initiating visible browser.
+Without renewal, continuous processing stops at the next host tick after expiry.
+The host can process further selected intervals during that grace period; this
+is not an immediate disconnect guarantee. Reloading creates a new controller ID
+and does not silently resume the previous run. These are provisional lab semantics.
+
+## Existing private hosting
+
+The owner's private address is in ignored `docs/LOCAL_PROJECT_CONTEXT.md`. Connect
+Tailscale on the phone and open that HTTPS address. No Vite port or PC-localhost
+address is needed on the phone.
 
 ```text
 iPhone browser + Tailscale
-    -> private HTTPS endpoint via Tailscale Serve
-    -> local ASP.NET host serving built React assets and the API
+    -> private Tailscale Serve HTTPS 9443
+    -> loopback ASP.NET host 5080: built React assets and game API
     -> authoritative C# simulation
 ```
 
-One HTTPS origin now serves the built frontend and read-only health API. The
-phone does not use the Vite development port or a PC `localhost` address. The
-skeleton handles online/offline and foreground-resume checks. Game API commands,
-application authorization, and unattended service supervision remain future work.
-WebSockets remain an optional transport.
+The existing 443/8443 routes were preserved. No public Funnel, router forwarding,
+Docker reconfiguration, new login service, or unattended startup was added.
+Commands require same-origin JSON and instance/revision validation. This is one
+shared in-memory lab; per-user authorization remains a future design question.
 
-Use a distinct route/port arrangement that preserves existing services. Public
-Funnel, router port forwarding, exit nodes, and automatic two-way synchronization
-are not needed for this private app path. Quasar uses HTTPS 9443 to proxy local
-5080. The existing 443/8443 routes were compared and preserved.
-
-The PC, application process, power, and home internet must remain available.
-An asleep or powered-off PC cannot serve the game. Unattended startup, restarts,
-saves/backups, and a durable startup policy still need follow-up. The current
-host runs in a managed foreground terminal, not an unattended service. Automatic
-background launch was rejected by approval review and a failed trial task was
-removed; see [hosting limits](HOSTING.md#current-process-lifetime).
-If availability beyond this PC's uptime is needed later, evaluate an always-on
-host then. Tailscale cannot guarantee access without a working network path.
-
-## Live workstation inspection (2026-11-08)
-
-- Tailscale 1.102.3 reports `Running`, with this PC online.
-- Existing tailnet-only Serve HTTPS routes use port 443 to proxy local port 3000
-  and port 8443 to proxy local port 8081. Their application identities were not
-  inspected. Preserve both when planning Quasar access.
-- The authorized follow-up deployed built React assets and read-only `/api/health`
-  through ASP.NET, plus private Serve HTTPS 9443. There are no game endpoints.
-- The owner confirmed actual phone access. Firewall and power settings were not
-  changed; other Serve routes were preserved. Unattended startup is not enabled.
-
-## Validation and unresolved choices
-
-The initial actual-phone page check passed. Continue validation over both
-Wi-Fi and cellular: load, touch selection, inspection, a server-acknowledged
-command, portrait/landscape, keyboard use, lock/unlock, app switching, reconnect,
-and an unavailable host. Measure payload size, frame time, memory pressure, and
-battery/thermal behavior before setting budgets or claiming readiness.
-
-Still open: iOS/browser version, endpoint allocation, host process supervision,
-app authorization, save/recovery policy, offline behavior, and whether simulation
-continues or pauses when the player disconnects. Frequent mobile access does
-not decide those game-time semantics. Home-screen/PWA conveniences can be
-evaluated later; no native app or offline simulation is required by this pillar.
+The PC, network, and managed foreground host must stay available. Restarting the
+host resets clock, orders, positions, and history to the fixture; refreshing a page
+does not. See [hosting](HOSTING.md) for restart/rollback and [System Lab](SYSTEM_LAB.md)
+for time/command contracts. Durable save/load is the recommended next development
+task, followed by deliberate hosting and remaining device-validation work as scoped.
 
 References: [Tailscale Serve](https://tailscale.com/docs/reference/tailscale-cli/serve),
-[Tailscale on iOS](https://tailscale.com/docs/install/ios),
 [Page visibility](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API),
 [Viewport/zoom](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/meta/name/viewport).

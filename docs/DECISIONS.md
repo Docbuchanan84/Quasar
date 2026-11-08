@@ -1,5 +1,33 @@
 # Quasar decision record
 
+## Approved — Agent 3 spacecraft movement scope (2026-11-08)
+
+**Status: Approved by the owner's explicit Agent 3 request; implemented in this
+task branch.** Separate C# planning, execution and presentation; use Agent 2
+ephemerides, physical gravitational transfers, delta-v, deterministic queries,
+cancellation/replanning and event-aware headless advancement. Conditional fuel
+spending remains unavailable because propulsion/mass data do not exist.
+
+Task-scoped implementation: zero-revolution impulsive Lambert transfers,
+universal Kepler coasts, explicit parent/child SOI patches with costed corrections,
+immutable previews and a bounded event queue. This does not approve finite thrust,
+n-body physics, docking/capture, automatic route search, a permanent universal
+scheduler or measured capacity. See SPACECRAFT_TRAJECTORIES.md. Further propulsion
+and automatic routing work remain **Proposed** and require a concrete task.
+
+## Approved — celestial mechanics task scope (2026-11-08)
+
+The owner explicitly requested analytical Keplerian celestial mechanics,
+simulation-authoritative arbitrary-time position/velocity queries, hierarchical
+orbital systems, explicit units, cache invalidation and shared 2D/3D data. No
+spacecraft orders/course plotting are authorized by that request.
+
+**Implementation status: implemented and locally verified.** Reversible choices:
+immutable catalogue replacement, one-timestamp bounded cache, elliptic two-body
+propagation, GM-derived periods and approximate Laplace SOI. Fixed lab definitions
+preserve existing travel behavior. This does not approve permanent trajectory,
+scheduler, persistence or N-body architecture. See [contract](CELESTIAL_MECHANICS.md).
+
 Date: 2026-11-08. This record distinguishes user requirements, reversible setup
 choices made for Task 001, and proposals that have not received user approval.
 
@@ -57,17 +85,20 @@ Retain the existing TypeScript/Vite toolchain. All views represent the same C#
 simulation and will share entity identity and coordinate transformations;
 rendering/interpolation is presentation, not authoritative game logic.
 
-**Implementation status:** React already exists. `@babylonjs/core` 9.35.0 and
-`pixi.js` 8.22.0 are installed with exact direct versions and a refreshed npm lock.
-A repeatable headless package/browser-bundle check is included in verification.
-Maps, scene components, and simulation integration have not been implemented.
+**Implementation status (updated after Task 002):** React controls, Babylon 3D,
+and Pixi 2D maps are implemented against one authoritative C# fixture.
+`@babylonjs/core` 9.35.0 and `pixi.js` 8.22.0 retain their locked versions.
+Headless checks, desktop browser workflows, and initial owner phone 2D use are
+verified. See FRONTEND_ARCHITECTURE.md and MOBILE_AND_REMOTE_ACCESS.md for bounds.
 
 **Deferred:** MapLibre GL JS is not part of the approved initial stack; no package
 was installed. Database, push transport, physics integration, React renderer
 wrappers, and other optional libraries were not approved by this selection.
 
-**Still open:** projection/tiling, coordinate units/precision, shared selection
-contracts, level of detail, labels, data volume, and measured rendering budgets.
+**Still open beyond the lab:** planetary projection/tiling, large-world precision,
+level of detail, data volume, and measured rendering budgets. The lab's XYZ
+kilometres, selection IDs, coordinate transforms, and labels are documented,
+provisional implementation choices rather than universal spatial commitments.
 See [FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md).
 
 ## Approved — first-class iPhone browser play (2026-11-08)
@@ -134,7 +165,12 @@ approvals of permanent architecture:
 - Use the existing Git branch/configuration. No commit, remote, repository
   publication, or push was performed during initialization.
 
-## Recommended proposals awaiting confirmation
+## Historical Task 001 recommendations
+
+The table records the earlier recommendations, not a claim that Task 002 still
+lacks an in-process writer or HTTP boundary. The approved System Lab scope below
+authorized the minimal implementation choices that now exist. Broader permanent
+architecture choices remain open unless explicitly approved.
 
 | Proposal | Reason / tradeoff |
 | --- | --- |
@@ -174,3 +210,49 @@ For each consequential decision, record date, status (proposed / approved /
 superseded), user approval or other evidence, context, choice, and consequences.
 Do not infer design approval from a scaffold or promote exploratory notes into
 requirements. Update this record when an actual choice is made.
+
+## Approved — Task 002 System Lab scope (2026-11-08)
+
+The owner requested the playable System Lab and instructed implementation of its
+reviewed plan. This replaces the earlier clock-only Task 002 scope. Confirmed
+controls: choose an interval, choose Once or Continuous, press Play; stop manually
+or at an event requiring attention. Arrival supplies the first interrupt. The
+owner selected in-memory state and a small representative surface inset.
+
+Implementation choices for this lab: fixed fixture IDs/XYZ kilometres, stationary
+planets, constant-speed straight-line travel, checked elapsed ticks, one serialized
+in-process writer, HTTP snapshots/commands, and a short browser control lease.
+These are provisional mechanics, not permanent physics/scheduler/save decisions.
+See SYSTEM_LAB.md. Other proposals above are historical unless superseded here;
+databases, push transport, universal entity frameworks, and unattended startup
+remain open/deferred. Save/load is the recommended next task, not implemented.
+
+## Approved — initial System Lab experience baseline (2026-11-08)
+
+**Status: Approved for the initial Task 002 experience.** After using the prototype,
+the owner said: "It looks so good already and works just how I want." Two supplied
+portrait phone screenshots show the 2D tactical display, selected spacecraft,
+changing depth, and stopped/processing Continuous controls. This provides real
+device evidence and owner acceptance of the current visual/control direction.
+
+Preserve the restrained technical display and compact interval selector with
+Once/Continuous and Play/Stop as the baseline when extending the lab. This is acceptance
+of the initial experience, not approval of a permanent scheduler, travel physics,
+save format, or every future UI detail. Further features still need a concrete task.
+
+The screenshots do not establish physical-phone 3D support, exact iOS/browser
+versions, every gesture, landscape/lifecycle/cellular behavior, or measured scale.
+See MOBILE_AND_REMOTE_ACCESS.md for explicit evidence and remaining checks.
+
+## Approved — simplify map navigation (2026-11-08)
+
+**Status: Approved by the owner's explicit navigation task; implemented.** Remove
+direction/rotate-step buttons with gesture equivalents, preserve Reset View and
+essential recovery, protect map selection, and improve 3D navigation using the
+installed Pixi/Babylon input infrastructure. Add useful selected-object focus.
+
+Implementation uses Z-up orbit orientation, distance-scaled screen-plane panning,
+bounded proportional/natural zoom, reduced orbit inertia, tap/drag intent tracking,
+and explicit focus without recentering on ordinary selection. Details and checks
+are in MAP_NAVIGATION.md. No rendering stack, simulation, storage or scheduler
+decision changed. Actual-phone validation of these changed controls remains open.

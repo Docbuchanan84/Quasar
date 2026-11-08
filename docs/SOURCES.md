@@ -7,6 +7,8 @@
 - `docs/PROJECT_PLAN.md`: incremental milestones.
 - `docs/DEVLOG.md`: dated development results and validation.
 - Code, tests, pull requests, and CI: implemented behavior and its verification.
+- `docs/MOBILE_AND_REMOTE_ACCESS.md`: owner feedback, screenshot observations,
+  device validation coverage, and remaining checks for the implemented prototype.
 
 ## Owner's shared design record
 
@@ -26,6 +28,16 @@ Google Drive/Docs connector to verify a live read. If access is unavailable, say
 which public or dated local material was used and ask the owner for the necessary
 context. Building and running this repository does not require Google access.
 Do not create competing knowledge vaults or automatic two-way synchronization.
+
+## Task 002 owner evidence (2026-11-08)
+
+The owner confirmed the System Lab's initial look and interaction and supplied
+two phone screenshots. Hash-verified originals and provenance are retained in
+ignored `docs/sources/task002-phone-validation-2026-11-08/`. They contain a private
+access address/browser chrome and are excluded from the public repository.
+Public implementation records describe what is visible, separately from the
+owner's broader acceptance and tests that remain outstanding. The shared Google
+Game Design Record holds the corresponding project progress/acceptance update.
 
 ## Established directions reflected publicly
 

@@ -97,9 +97,31 @@ GitHub Actions runs the same Setup/Verify scripts on a Windows runner for `main`
 pushes, pull requests, and manual dispatch. No repository secrets are required.
 See [CONTRIBUTING.md](../CONTRIBUTING.md) and the [development log](DEVLOG.md).
 
-The private skeleton was confirmed on the owner's iPhone 17 Pro. Exact iOS/browser
-version, cellular-only access, and renderer GPU performance remain unverified.
+The owner confirmed the System Lab's initial phone experience and supplied
+portrait 2D screenshots. Exact iOS/browser versions, physical-phone 3D/full
+lifecycle coverage, cellular-only access, and measured GPU capacity remain open.
+See [mobile evidence](MOBILE_AND_REMOTE_ACCESS.md).
 Private hosting currently requires a foreground host process; unattended startup
-is not enabled. Original workstation audit documents remain recoverable in the
+is not enabled. Use a separate visible PowerShell window for Start-HostedApp.ps1;
+temporary agent command sessions did not keep the host available between turns.
+See HOSTING.md for the stopped-host/empty-502 recovery. Original audit documents remain recoverable in the
 owner's private local context. Generated files should not be committed; `.gitignore`
 does not itself prevent a file-sync service from syncing build directories.
+
+## Task 002 setup notes (2026-11-08)
+
+No system SDK/PATH, Docker, Tailscale, or runtime dependency changes. The existing
+xUnit project also references the server for session tests; locked restore was
+refreshed accordingly. Vite's lazy Babylon chunk exceeds its 500 kB warning level
+(~1.09 MB raw/~265 kB gzip); builds pass. Broader phone GPU/performance checks and
+unattended startup remain unresolved. Use a separate loopback port such as 5090
+for isolated API tests while the published host occupies 5080.
+
+## Map navigation checks (2026-11-08)
+
+`Verify.ps1` also runs `npm run test:maps`: nine Node/Babylon tests for tap/drag
+boundaries, pinch handoff/cancellation, input mappings after attachment, focus,
+reset, scaling and camera constraints. No new test/runtime package is needed.
+The optional real-browser mouse/native-touch script and its isolated-host setup
+are documented in [MAP_NAVIGATION.md](MAP_NAVIGATION.md). No new setup blocker;
+physical iPhone/Safari qualification remains open.
