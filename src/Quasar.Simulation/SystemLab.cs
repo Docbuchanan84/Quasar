@@ -74,6 +74,14 @@ public sealed class SystemLab
         if (movement.CommittedPlan(ShipId)?.Destination.BodyId == destinationId)
             throw new InvalidOperationException("Already travelling to that planet.");
         var plan = PreviewTravel(destinationId, flightSeconds);
+        CommitTravel(plan);
+    }
+
+    public void CommitTravel(TrajectoryPlan plan)
+    {
+        var destinationId = plan.Destination.BodyId;
+        if (destinationId is null || !celestialPositions.Bodies.ContainsKey(destinationId))
+            throw new ArgumentException("Choose a celestial destination in this system.");
         var presentation = Present(plan);
         movement.Commit(ShipId, plan); display = presentation;
         Record("order", $"Pathfinder transfer committed to {celestialPositions.Bodies[destinationId].Name}; departure impulse applied.");

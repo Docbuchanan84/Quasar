@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { Application, Container, Graphics, Text } from 'pixi.js'
 import { MapGesture, wheelPixels } from './mapGestures'
-import { objectColor, type MapProps } from './lab'
+import { courseColor, objectColor, type MapProps } from './lab'
 import { mapScale, referenceCircle } from './mapCoordinates'
 
 export default function SystemMap(props: MapProps) {
   const host = useRef<HTMLDivElement>(null)
   const current = useRef(props)
   const controls = useRef<(action: string) => void>(() => {})
+  const redraw = useRef<() => void>(() => {})
   const [error, setError] = useState('')
   useEffect(() => {
     current.current = props
+    redraw.current()
   }, [props])
   useEffect(() => {
     const element = host.current!
@@ -27,7 +29,9 @@ export default function SystemMap(props: MapProps) {
         preference: 'webgl',
       })
       if (disposed) {
-        app.destroy(true, { children: true })
+        // An older StrictMode/lazy initialization can finish after its replacement.
+        // Boolean true also releases Pixi's global pools, invalidating the active map's batches.
+        app.destroy({ removeView: true, releaseGlobalResources: false }, { children: true })
         return
       }
       element.appendChild(app.canvas)
@@ -41,7 +45,9 @@ export default function SystemMap(props: MapProps) {
       let zoom = 100,
         panX = 0,
         panY = 0
-      let lastDraw = ''
+      const lines = new Graphics()
+      scene.addChild(lines)
+      const symbols = new Map<string, { marker: Graphics; label: Text }>()
       const gesture = new MapGesture()
       const pointers = gesture.pointers
       const clampZoom = (value: number) => Math.max(15, Math.min(800, value))
@@ -60,26 +66,8 @@ export default function SystemMap(props: MapProps) {
         y: app.screen.height / 2 + panY - y * mapScale * zoom,
       })
       function draw() {
-        const key = JSON.stringify([
-          current.current.objects,
-          current.current.selectedId,
-          current.current.destinationId,
-          current.current.trajectory,
-          current.current.references,
-          zoom,
-          panX,
-          panY,
-          app.screen.width,
-          app.screen.height,
-        ])
-        if (key === lastDraw) return
-        lastDraw = key
-        for (const child of scene.removeChildren())
-          child.destroy({ children: true })
-        const { objects, selectedId, trajectory, references } =
-          current.current
-        const lines = new Graphics()
-        scene.addChild(lines)
+        const { objects, selectedId, courses, references } = current.current
+        lines.clear()
         if (references) {
           for (let n = -6; n <= 6; n++) {
             const a = screen(n * 1e6, -6e6),
@@ -95,7 +83,9 @@ export default function SystemMap(props: MapProps) {
           }
           const origin = screen(0, 0)
           for (const planet of objects.filter((o) => o.kind === 'planet')) {
-            for (const [i, point] of referenceCircle(planet.position).entries()) {
+            for (const [i, point] of referenceCircle(
+              planet.position,
+            ).entries()) {
               const q = screen(point.x, point.y)
               if (i === 0) lines.moveTo(q.x, q.y)
               else lines.lineTo(q.x, q.y)
@@ -104,18 +94,67 @@ export default function SystemMap(props: MapProps) {
           }
           lines.circle(origin.x, origin.y, 3).stroke({ color: '#526778' })
         }
-        if (trajectory) {
-          for (const [i, sample] of trajectory.points.entries()) {
+        for (const course of courses) {
+          const color = courseColor(course.kind)
+          const points = course.trajectory.points
+          for (const [i, sample] of points.entries()) {
             const p = screen(sample.positionKm.x, sample.positionKm.y)
-            if (i === 0) lines.moveTo(p.x, p.y)
+            if (i === 0 || (course.kind === 'preview' && i % 2 === 0))
+              lines.moveTo(p.x, p.y)
             else lines.lineTo(p.x, p.y)
           }
-          lines.stroke({ color: '#87e4bd', width: 1.5 })
+          lines.stroke({ color, width: course.kind === 'preview' ? 2.5 : 1.5 })
+          const departure = points[0]?.positionKm,
+            arrival = points.at(-1)?.positionKm
+          if (departure && arrival) {
+            const d = screen(departure.x, departure.y),
+              a = screen(arrival.x, arrival.y)
+            lines.rect(d.x - 5, d.y - 5, 10, 10).stroke({ color, width: 2 })
+            lines
+              .poly([
+                a.x,
+                a.y - 12,
+                a.x + 12,
+                a.y,
+                a.x,
+                a.y + 12,
+                a.x - 12,
+                a.y,
+              ])
+              .stroke({ color, width: 2 })
+            lines.circle(a.x, a.y, 18).stroke({ color, width: 1 })
+          }
+        }
+        const ids = new Set(objects.map((o) => o.id))
+        for (const [id, symbol] of symbols) {
+          if (!ids.has(id)) {
+            symbol.marker.destroy()
+            symbol.label.destroy()
+            symbols.delete(id)
+          }
         }
         for (const object of objects) {
           const p = screen(object.position.x, object.position.y),
             color = objectColor(object.kind)
-          const marker = new Graphics()
+          let symbol = symbols.get(object.id)
+          if (!symbol) {
+            symbol = {
+              marker: new Graphics(),
+              label: new Text({
+                text: '',
+                style: {
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                  fill: color,
+                  lineHeight: 15,
+                },
+              }),
+            }
+            symbols.set(object.id, symbol)
+            scene.addChild(symbol.marker, symbol.label)
+          }
+          const { marker, label } = symbol
+          marker.clear()
           if (object.kind === 'spacecraft')
             marker
               .poly([
@@ -136,21 +175,11 @@ export default function SystemMap(props: MapProps) {
               .fill({ color, alpha: 0.2 })
           if (object.id === selectedId)
             marker.circle(p.x, p.y, 18).stroke({ color: '#ffffff', width: 1.5 })
-          scene.addChild(marker)
-          const label = new Text({
-            text: `${object.name}\nZ ${(object.position.z / 1000).toFixed(0)}k km`,
-            style: {
-              fontFamily: 'monospace',
-              fontSize: 11,
-              fill: color,
-              lineHeight: 15,
-            },
-          })
+          label.text = `${object.name}\nZ ${(object.position.z / 1000).toFixed(0)}k km`
           label.position.set(
             Math.max(4, Math.min(p.x + 15, app.screen.width - 115)),
             object.kind === 'planet' ? p.y - 40 : p.y + 16,
           )
-          scene.addChild(label)
         }
         app.render()
       }
@@ -197,13 +226,17 @@ export default function SystemMap(props: MapProps) {
           const rect = app.canvas.getBoundingClientRect(),
             x = e.clientX - rect.left,
             y = e.clientY - rect.top
-          const hits = current.current.objects
-            .map((o) => {
-              const p = screen(o.position.x, o.position.y)
-              return { id: o.id, d: Math.hypot(x - p.x, y - p.y) }
-            })
-            .sort((a, b) => a.d - b.d)
-          if (hits[0]?.d < 28) current.current.onSelect(hits[0].id)
+          let nearest: string | null = null,
+            distance = 28
+          for (const object of current.current.objects) {
+            const p = screen(object.position.x, object.position.y)
+            const d = Math.hypot(x - p.x, y - p.y)
+            if (d < distance) {
+              nearest = object.id
+              distance = d
+            }
+          }
+          if (nearest) current.current.onSelect(nearest)
         }
         if (app.canvas.hasPointerCapture(e.pointerId))
           app.canvas.releasePointerCapture(e.pointerId)
@@ -237,15 +270,21 @@ export default function SystemMap(props: MapProps) {
       window.addEventListener('blur', cancel)
       app.canvas.addEventListener('wheel', wheel, { passive: false })
       app.canvas.addEventListener('webglcontextlost', lost)
-      // Four objects need redraws only on state/input/resize, not a permanent frame loop.
-      const redraw = () => {
-        draw()
+      // State and camera events redraw; ordinary idle time performs no object serialization or rebuilds.
+      redraw.current = () => {
+        if (!document.hidden) draw()
       }
-      const interval = window.setInterval(() => {
-        if (!document.hidden) redraw()
-      }, 250)
+      const resize = new ResizeObserver(() => {
+        app.resize()
+        redraw.current()
+      })
+      resize.observe(element)
+      document.addEventListener('visibilitychange', redraw.current)
+      const visibility = redraw.current
       cleanup = () => {
-        clearInterval(interval)
+        redraw.current = () => {}
+        resize.disconnect()
+        document.removeEventListener('visibilitychange', visibility)
         app.canvas.removeEventListener('pointerdown', down)
         app.canvas.removeEventListener('pointermove', move)
         app.canvas.removeEventListener('pointerup', up)
@@ -254,9 +293,9 @@ export default function SystemMap(props: MapProps) {
         window.removeEventListener('blur', cancel)
         app.canvas.removeEventListener('wheel', wheel)
         app.canvas.removeEventListener('webglcontextlost', lost)
-        app.destroy(true, { children: true })
+        app.destroy({ removeView: true, releaseGlobalResources: false }, { children: true })
       }
-      redraw()
+      redraw.current()
     })().catch(() => {
       if (!disposed)
         setError('2D graphics unavailable. Use the object list or try 3D.')

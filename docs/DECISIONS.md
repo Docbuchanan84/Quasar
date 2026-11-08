@@ -1,5 +1,19 @@
 # Quasar decision record
 
+## Approved — Agent 4 course plotting and map integration (2026-11-08)
+
+**Status: Approved by the owner's explicit Agent 4 task; implemented.** Both maps
+consume the existing authoritative position/trajectory services. Preview, local
+cancellation, flight-duration adjustment and explicit confirmation are separate
+steps. The host retains a bounded, revision-bound solved plan for exact
+confirmation; changed state requires recalculation. Previewing never executes
+movement. Shared samples supply preview/committed paths and departure/future
+arrival markers. Missing fuel remains unavailable. Details: [COURSE_PLOTTING.md](COURSE_PLOTTING.md).
+
+This authorizes the requested interaction integration, not new propulsion,
+fleet, persistence, scheduler or rendering systems. Physical-phone checks and
+sustained large-world budgets remain pending; desktop tests do not approve scale.
+
 ## Approved — Agent 3 spacecraft movement scope (2026-11-08)
 
 **Status: Approved by the owner's explicit Agent 3 request; implemented in this

@@ -1,5 +1,10 @@
 # Spacecraft trajectories and movement
 
+Agent 4 adds a player preview/adjust/confirm workflow and a revision-bound
+`course-preview` / `commit-course` host adapter retaining the exact solved plan.
+Immediate travel buttons are replaced; existing APIs below remain compatible.
+See [COURSE_PLOTTING.md](COURSE_PLOTTING.md) for the current UI and confirmation contract.
+
 Implemented for the owner's Agent 3 request on 8 November 2026, stacked on
 Agent 2's celestial service (`2f79207`). No runtime packages, fleet hierarchy,
 propulsion model, save format or permanent general scheduler were added.

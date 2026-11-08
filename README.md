@@ -1,10 +1,14 @@
 # Quasar
 
+**Agent 4 course plotting:** select Pathfinder → **Plot Course** → choose a planet
+and flight duration → review → **Issue Order**. Preview/cancel never move the ship.
+Gold dashed previews and green committed paths use the same server samples in
+2D/3D. See [workflow, contracts and verification](docs/COURSE_PLOTTING.md).
+
 **Agent 3 update:** authoritative gravitational transfers replace the historical
 constant-speed lab movement below. Planning, headless execution and map samples
 have separate interfaces. See [spacecraft trajectories](docs/SPACECRAFT_TRAJECTORIES.md)
-for delta-v, SOI patches, APIs, checks and limits. Buttons select six-hour impulsive
-transfers; fuel/finite thrust remain unavailable.
+for delta-v, SOI patches, APIs, checks and limits. Fuel/finite thrust remain unavailable.
 
 [![Verify](https://github.com/Docbuchanan84/Quasar/actions/workflows/verify.yml/badge.svg)](https://github.com/Docbuchanan84/Quasar/actions/workflows/verify.yml) · MIT
 
@@ -25,7 +29,7 @@ projection; Babylon.js provides a rotatable 3D view of the same C# state.
 React supplies selection, inspection, orders, time controls, and event history.
 
 1. Select Pathfinder on the map or in the object list.
-2. Choose **Travel to Iris** or **Travel to Nereid**.
+2. Choose **Plot Course**, select Iris or Nereid, review, then **Issue Order**.
 3. Select an advance interval: 1, 5, or 30 seconds; 1 minute; 1 hour; or
    1, 5, 15, or 30 days.
 4. Choose **Once** or **Continuous**, then press **Play**.

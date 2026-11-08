@@ -43,6 +43,13 @@ app.MapGet("/api/health", (HttpContext context) =>
 });
 
 app.MapGet("/api/lab", (LabSession session) => session.Snapshot());
+app.MapGet("/api/lab/course-preview", (string destinationId, int? flightSeconds, LabSession session) =>
+{
+    try { return Results.Ok(session.PreviewCourse(destinationId, flightSeconds ?? 21600)); }
+    catch (InvalidOperationException error) { return Results.Conflict(new { error = error.Message }); }
+    catch (Exception error) when (error is ArgumentException or OverflowException)
+    { return Results.BadRequest(new { error = error.Message }); }
+});
 app.MapGet("/api/lab/trajectory-preview", (string destinationId, int? flightSeconds, LabSession session) =>
 {
     try { return Results.Ok(session.PreviewTravel(destinationId, flightSeconds ?? 21600)); }

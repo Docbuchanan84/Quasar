@@ -1,5 +1,5 @@
 // Run with Playwright CLI run-code --filename from the repository root.
-// Requires Vite :5173 and an ISOLATED System Lab host :5092. Never use a live game.
+// Requires Vite :5174 and an ISOLATED System Lab host :5094. Never use a live game.
 // oxlint-disable-next-line no-unused-expressions -- Playwright CLI evaluates this function.
 async (page) => {
   const results = []
@@ -13,35 +13,41 @@ async (page) => {
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url())
     const response = await route.fetch({
-      url: 'http://127.0.0.1:5092' + url.pathname,
+      url: 'http://127.0.0.1:5094' + url.pathname + url.search,
       headers: {
         ...route.request().headers(),
-        origin: 'http://127.0.0.1:5092',
+        origin: 'http://127.0.0.1:5094',
       },
     })
     await route.fulfill({ response })
   })
   await page.addInitScript(() => {
-    globalThis.__PIXI_APP_INIT__ = (app) => {
-      globalThis.testPixi = app
-    }
+    const apps = []
+    globalThis.__PIXI_APP_INIT__ = (app) => apps.push(app)
+    // StrictMode may finish disposing an earlier async Pixi initialization later.
+    Object.defineProperty(globalThis, 'testPixi', {
+      configurable: true,
+      get: () => apps.find((app) => app.stage && app.canvas?.isConnected),
+    })
   })
   const errors = []
   page.on('pageerror', (error) => errors.push(error.message))
   await page.setViewportSize({ width: 1280, height: 950 })
-  await page.goto('http://127.0.0.1:5173')
+  await page.goto('http://127.0.0.1:5174')
   await page.locator('canvas').waitFor()
   await page.waitForFunction(
     () => globalThis.testPixi?.stage?.children[0]?.children.length > 0,
   )
-  const labels2d = () =>
-    page.evaluate(() =>
+  const labels2d = async () => {
+    await page.waitForFunction(() => globalThis.testPixi?.stage?.children[0]?.children.length > 0)
+    return page.evaluate(() =>
       Object.fromEntries(
         globalThis.testPixi.stage.children[0].children
           .filter((c) => c.text)
           .map((c) => [c.text.split('\n')[0], { x: c.x, y: c.y }]),
       ),
     )
+  }
   const bounds = () => page.locator('canvas').boundingBox()
   const drag = async (x, y, dx, dy, button = 'left') => {
     await page.mouse.move(x, y)
@@ -312,18 +318,28 @@ async (page) => {
   await reset()
   await page.getByRole('button', { name: 'Pathfinder', exact: true }).click()
   await page.getByRole('button', { name: 'Focus Selected Object' }).click()
-  const priorShipX = await page.evaluate(() =>
-    globalThis.testScene.getMeshByName('ship-pathfinder').position.x,
+  const priorShipX = await page.evaluate(
+    () => globalThis.testScene.getMeshByName('ship-pathfinder').position.x,
   )
-  const irisOrder = page.getByRole('button', { name: 'Travel to Iris', exact: true })
-  if (await irisOrder.isEnabled()) await irisOrder.click()
-  else await page.getByRole('button', { name: 'Travel to Nereid', exact: true }).click()
+  await page.getByRole('button', { name: 'Plot Course', exact: true }).click()
+  await page.getByLabel('Course destination').selectOption('planet-nereid')
+  await page.waitForFunction(
+    () =>
+      ![...document.querySelectorAll('button')].find(
+        (b) => b.textContent === 'Issue Order',
+      )?.disabled,
+  )
+  await page.getByRole('button', { name: 'Issue Order', exact: true }).click()
   await page
     .getByRole('combobox', { name: 'Advance interval' })
     .selectOption('3600')
   await page.getByRole('button', { name: '▶ Play', exact: true }).click()
   await page.waitForFunction(
-    (before) => Math.abs(globalThis.testScene.getMeshByName('ship-pathfinder').position.x - before) > 0.000001,
+    (before) =>
+      Math.abs(
+        globalThis.testScene.getMeshByName('ship-pathfinder').position.x -
+          before,
+      ) > 0.000001,
     priorShipX,
   )
   const moving = await camera()
@@ -336,7 +352,7 @@ async (page) => {
   )
   check(
     await page.evaluate(
-      () => !!globalThis.testScene.getMeshByName('movement-vector'),
+      () => !!globalThis.testScene.getMeshByName('committed-trajectory'),
     ),
     'Travel order and 3D course overlay remain functional',
   )
@@ -350,7 +366,7 @@ async (page) => {
   )
   await page.getByRole('checkbox', { name: 'Reference guides' }).check()
   await reset()
-  // Movement above is intentionally confined to the disposable :5092 host.
+  // Movement above is intentionally confined to the disposable :5094 host.
   await page.screenshot({
     path: 'output/playwright/map-touch-3d.png',
     fullPage: true,
@@ -446,7 +462,16 @@ async (page) => {
     (await page.locator('.camera-controls button').count()) === 3,
     '2D redundant directions removed; zoom/reset retained',
   )
-  check(errors.length === 0, 'No browser runtime errors: ' + errors.join('; '))
   await cdp.detach()
+  for (let cycle = 0; cycle < 3; cycle++) {
+    await page.reload()
+    await page.waitForFunction(() => globalThis.testPixi?.stage?.children[0]?.children.length > 0)
+    await page.setViewportSize({ width: cycle % 2 ? 393 : 800, height: 852 })
+    await page.getByRole('button', { name: 'Reset View', exact: true }).click()
+    await wait()
+    if (await page.getByRole('alert').count()) throw new Error('Map failed after remount/resize')
+  }
+  check(true, 'Repeated StrictMode remount and resize preserve active Pixi graphics')
+  check(errors.length === 0, 'No browser runtime errors: ' + errors.join('; '))
   return { passed: results.length, checks: results }
 }
