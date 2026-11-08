@@ -108,3 +108,21 @@ the owner's shared Google Doc remains the design discussion record.
   arrival flow, landscape/scaling, lock/app-switch recovery, cellular-only access,
   measured capacity/heat/battery, save/load, and unattended host startup.
 - Next development task: recoverable versioned save/load; no Task 003 work started.
+
+## 2026-11-08 — White-screen report / stopped-host recovery
+
+- Owner reported a white screen after previously successful phone play.
+- Inspection found no running Quasar/.NET host process and loopback 5080 refused
+  connections. Serve routes still targeted their existing ports. The host log
+  contained no termination cause; the reason for process exit is unconfirmed.
+- Started the existing published release with Start-HostedApp.ps1. No source,
+  release, Tailscale, startup-service, or system configuration change was needed.
+- Verified private HTTPS page/health/snapshot responses, stage system-lab, four
+  fixture objects, paused clock at zero, and rendered browser controls/map. The
+  browser reported zero console warnings/errors during this recovery check.
+- State from the stopped process was already lost: the lab is in-memory. Recovery
+  started the fixture; it did not restore the owner's earlier session.
+- Remaining availability limitation: hosting still depends on a managed foreground
+  process. No permanent unattended supervisor was installed. Startup reliability
+  now warrants an operational follow-up before relying on continuous access;
+  recoverable save/load remains the next game-development task.

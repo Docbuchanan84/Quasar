@@ -147,3 +147,21 @@ The owner then accepted the phone look and behavior and supplied the two portrai
 screenshots described in MOBILE_AND_REMOTE_ACCESS.md. This documentation update
 requires no release publication, host restart, live-world mutation, or network
 reconfiguration. Do not reset ongoing play to match a screenshot or old test result.
+
+## White/empty page triage
+
+On 2026-11-08, an owner white-screen report coincided with a missing host process
+and connection refusal on loopback 5080. Starting the existing publication restored
+HTTPS and the browser UI. No log established why the foreground process exited;
+do not assume a renderer defect or a specific process-termination cause.
+
+Check loopback health and the private HTTPS page/health first. If loopback refuses
+connections and Quasar is absent, use Start-HostedApp.ps1 to start the existing
+release; publishing and changing Serve are unnecessary. Verify page/assets and
+snapshot responses, then inspect browser errors if the host is healthy but the
+page remains empty. Never use a tailnet-wide Serve reset to recover this app.
+
+A host that has already exited has lost this lab's in-memory state. Starting it
+creates a fresh fixture; it is not saved-game recovery. A remaining blank page
+may require a browser refresh after the endpoint recovers. Durable process
+supervision and recoverable save/load remain separate follow-up work.
