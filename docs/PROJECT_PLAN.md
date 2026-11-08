@@ -1,5 +1,19 @@
 # Quasar implementation plan
 
+## Agent 4 — course plotting (8 November 2026)
+
+Implemented the explicitly requested preview/recalculate/cancel/confirm workflow,
+with shared 2D/3D samples and revision-bound exact-plan confirmation. Integrated
+Agent 2/3 branches with the current navigation/time-control work. All simulation,
+session, coordinate, navigation and browser checks are documented in
+[COURSE_PLOTTING.md](COURSE_PLOTTING.md). No new runtime package or physical model.
+The one-ship lab supports planet targets and flight-duration adjustment; generic
+fleet/waypoint UI awaits host support. No implementation blocker remains.
+
+**Immediate next task:** validate this workflow and both maps on the owner's
+physical iPhone 17 Pro and record OS/browser versions. Historical next-task
+recommendations below remain candidates; none are implicitly authorized here.
+
 ## Agent 3 — spacecraft trajectories (8 November 2026)
 
 The explicit Agent 3 task supersedes the historical next-task recommendation for

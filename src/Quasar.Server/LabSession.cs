@@ -3,7 +3,10 @@ using Quasar.Simulation;
 namespace Quasar.Server;
 
 public sealed record LabCommand(string InstanceId, long Revision, string ClientId, string Operation,
-    int? DurationSeconds = null, string? Mode = null, string? DestinationId = null, int? FlightSeconds = null);
+    int? DurationSeconds = null, string? Mode = null, string? DestinationId = null, int? FlightSeconds = null,
+    string? PreviewId = null);
+public sealed record CoursePreview(string PreviewId, string InstanceId, long Revision, string ShipId,
+    string DestinationId, double SampledDistanceKm, string[] Warnings, TrajectoryDisplay Trajectory);
 public sealed record SessionSnapshot(string InstanceId, long Revision, bool Running, string StopReason,
     int DurationSeconds, string Mode, LabSnapshot World);
 
@@ -12,6 +15,7 @@ public sealed class LabSession(TimeProvider timeProvider)
 {
     private readonly object gate = new();
     private readonly SystemLab world = new();
+    private readonly Dictionary<string, (long Revision, TrajectoryPlan Plan)> previews = [];
     private readonly string instanceId = Guid.NewGuid().ToString();
     private long revision;
     private bool running;
@@ -38,6 +42,25 @@ public sealed class LabSession(TimeProvider timeProvider)
     public CelestialState ShipStateAt(long atTicks)
     {
         lock (gate) return world.ShipStateAt(atTicks);
+    }
+
+    public CoursePreview PreviewCourse(string destinationId, int flightSeconds)
+    {
+        lock (gate)
+        {
+            if (running) throw new InvalidOperationException("Stop time processing before plotting a course.");
+            var plan = world.PreviewTravel(destinationId, flightSeconds);
+            var trajectory = SystemLab.Present(plan);
+            var distance = trajectory.Points.Zip(trajectory.Points.Skip(1),
+                (a, b) => a.PositionKm.DistanceTo(b.PositionKm)).Sum();
+            // Bounded, disposable tokens retain solved plans, never client-provided geometry.
+            if (previews.Count >= 32) previews.Remove(previews.Keys.First());
+            var id = Guid.NewGuid().ToString();
+            previews.Add(id, (revision, plan));
+            return new(id, instanceId, revision, SystemLab.ShipId, destinationId, distance,
+                ["Impulsive transfer in one gravitational well; no finite thrust or body-radius collision model.",
+                 "Delta-v is a calculated requirement, not a verified spacecraft capability."], trajectory);
+        }
     }
 
     public SessionSnapshot Execute(LabCommand command)
@@ -74,6 +97,14 @@ public sealed class LabSession(TimeProvider timeProvider)
                     world.OrderTravel(command.DestinationId ?? "", command.FlightSeconds ?? 21600);
                     stopReason = "Course committed — ready to advance";
                     break;
+                case "commit-course":
+                    if (running) throw new InvalidOperationException("Stop before issuing an order.");
+                    if (command.PreviewId is null || !previews.TryGetValue(command.PreviewId, out var preview)
+                        || preview.Revision != revision)
+                        throw new InvalidOperationException("Course preview expired. Recalculate and review before issuing an order.");
+                    world.CommitTravel(preview.Plan);
+                    stopReason = "Course committed — ready to advance";
+                    break;
                 case "cancel-travel":
                     if (running) throw new InvalidOperationException("Stop before cancelling a course.");
                     world.CancelTravel();
@@ -82,6 +113,7 @@ public sealed class LabSession(TimeProvider timeProvider)
                 default: throw new ArgumentException("Unknown command.");
             }
             revision++;
+            previews.Clear();
             return Read();
         }
     }
@@ -123,6 +155,7 @@ public sealed class LabSession(TimeProvider timeProvider)
                 }
             }
             revision++;
+            previews.Clear();
         }
     }
 

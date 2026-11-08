@@ -5,6 +5,7 @@ import { Vector3, Color3, Color4, Matrix } from '@babylonjs/core/Maths/math'
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder'
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'
+import type { LinesMesh } from '@babylonjs/core/Meshes/linesMesh'
 import '@babylonjs/core/Culling/ray'
 import { MapGesture } from './mapGestures'
 import {
@@ -13,7 +14,12 @@ import {
   scaleCameraPan,
   stopCamera,
 } from './spaceCamera'
-import { objectColor, type MapProps } from './lab'
+import {
+  courseColor,
+  objectColor,
+  type CourseLayer,
+  type MapProps,
+} from './lab'
 import { referenceCircle, toMapPosition } from './mapCoordinates'
 
 export default function SpaceMap(props: MapProps) {
@@ -90,42 +96,62 @@ export default function SpaceMap(props: MapProps) {
         const scaled = toMapPosition(p)
         return new Vector3(scaled.x, scaled.y, scaled.z)
       }
-      for (const object of current.current.objects) {
-        const mesh =
-          object.kind === 'spacecraft'
-            ? MeshBuilder.CreateCylinder(
-                object.id,
-                {
-                  diameterTop: 0,
-                  diameterBottom: 0.12,
-                  height: 0.2,
-                  tessellation: 4,
-                },
-                scene,
-              )
-            : MeshBuilder.CreateSphere(
-                object.id,
-                {
-                  diameter: object.kind === 'star' ? 0.22 : 0.15,
-                  segments: 12,
-                },
-                scene,
-              )
-        const material = new StandardMaterial(`${object.id}-symbol`, scene)
-        material.emissiveColor = Color3.FromHexString(objectColor(object.kind))
-        material.disableLighting = true
-        mesh.material = material
-        mesh.metadata = { objectId: object.id }
-        meshes.set(object.id, mesh)
-        // Screen-space labels remain legible on phones without a GUI package or texture per name.
-        const label = document.createElement('span')
-        label.className = 'space-label'
-        label.textContent = object.name
-        label.style.color = objectColor(object.kind)
-        label.setAttribute('aria-hidden', 'true')
-        element.appendChild(label)
-        labels.set(object.id, label)
+      const syncObjects = (objects: MapProps['objects']) => {
+        const ids = new Set(objects.map((o) => o.id))
+        for (const [id, mesh] of meshes) {
+          if (!ids.has(id)) {
+            mesh.material?.dispose()
+            mesh.dispose()
+            meshes.delete(id)
+            labels.get(id)?.remove()
+            labels.delete(id)
+          }
+        }
+        for (const object of objects) {
+          if (meshes.has(object.id)) {
+            labels.get(object.id)!.textContent = object.name
+            continue
+          }
+          const mesh =
+            object.kind === 'spacecraft'
+              ? MeshBuilder.CreateCylinder(
+                  object.id,
+                  {
+                    diameterTop: 0,
+                    diameterBottom: 0.12,
+                    height: 0.2,
+                    tessellation: 4,
+                  },
+                  scene,
+                )
+              : MeshBuilder.CreateSphere(
+                  object.id,
+                  {
+                    diameter: object.kind === 'star' ? 0.22 : 0.15,
+                    segments: 12,
+                  },
+                  scene,
+                )
+          const material = new StandardMaterial(`${object.id}-symbol`, scene)
+          material.emissiveColor = Color3.FromHexString(
+            objectColor(object.kind),
+          )
+          material.disableLighting = true
+          mesh.material = material
+          mesh.metadata = { objectId: object.id }
+          meshes.set(object.id, mesh)
+          // Screen-space labels remain legible on phones without a GUI package or texture per name.
+          const label = document.createElement('span')
+          label.className = 'space-label'
+          label.textContent = object.name
+          label.style.color = objectColor(object.kind)
+          label.setAttribute('aria-hidden', 'true')
+          element.appendChild(label)
+          labels.set(object.id, label)
+        }
       }
+      syncObjects(current.current.objects)
+      let lastObjects = current.current.objects
       const guides: Mesh[] = []
       const axis = MeshBuilder.CreateLineSystem(
         'axes',
@@ -155,8 +181,13 @@ export default function SpaceMap(props: MapProps) {
         guide.isPickable = false
         guides.push(guide)
       }
-      let route: Mesh | null = null,
-        lastRoute = ''
+      let routes: Mesh[] = []
+      let lastCourses: CourseLayer[] | null = null
+      let lastLabelObjects: MapProps['objects'] | null = null
+      let lastView = -1,
+        lastProjection = -1
+      let lastWidth = 0,
+        lastHeight = 0
       controls.current = (action) => {
         if (action === 'reset') {
           focusedId = null
@@ -182,8 +213,11 @@ export default function SpaceMap(props: MapProps) {
       }
       const render = () => {
         if (document.hidden) return
-        const { objects, selectedId, trajectory, references } =
-          current.current
+        const { objects, selectedId, courses, references } = current.current
+        if (objects !== lastObjects) {
+          syncObjects(objects)
+          lastObjects = objects
+        }
         if (focusedId !== selectedId) focusedId = null
         const focused = objects.find((o) => o.id === focusedId)
         // Follow a moving focused object without changing orbit angles or zoom.
@@ -203,20 +237,79 @@ export default function SpaceMap(props: MapProps) {
           mesh.scaling.setAll(size)
         }
         for (const guide of guides) guide.setEnabled(references)
-        const routeKey = JSON.stringify(trajectory)
-        if (routeKey !== lastRoute) {
-          route?.dispose()
-          route = null
-          lastRoute = routeKey
-          if (trajectory) {
-            const line = MeshBuilder.CreateLines(
-              'movement-vector',
-              { points: trajectory.points.map((sample) => point(sample.positionKm)) },
-              scene,
+        if (courses !== lastCourses) {
+          for (const mesh of routes) {
+            mesh.material?.dispose()
+            mesh.dispose()
+          }
+          routes = []
+          lastCourses = courses
+          for (const course of courses) {
+            const points = course.trajectory.points.map((sample) =>
+              point(sample.positionKm),
             )
-            line.color = Color3.FromHexString('#87e4bd')
+            if (points.length < 2) continue
+            const line =
+              course.kind === 'preview'
+                ? MeshBuilder.CreateDashedLines(
+                    'preview-trajectory',
+                    { points, dashSize: 3, gapSize: 2, dashNb: 64 },
+                    scene,
+                  )
+                : MeshBuilder.CreateLines(
+                    'committed-trajectory',
+                    { points },
+                    scene,
+                  )
+            line.color = Color3.FromHexString(courseColor(course.kind))
             line.isPickable = false
-            route = line
+            routes.push(line)
+            for (const [phase, position] of [
+              ['departure', points[0]],
+              ['arrival', points.at(-1)!],
+            ] as const) {
+              const marker =
+                phase === 'departure'
+                  ? MeshBuilder.CreateBox(
+                      `${course.kind}-${phase}`,
+                      { size: 0.1 },
+                      scene,
+                    )
+                  : MeshBuilder.CreateLines(
+                      `${course.kind}-${phase}-future-destination`,
+                      {
+                        points: [
+                          new Vector3(0.2, 0, 0),
+                          new Vector3(0, 0.2, 0),
+                          new Vector3(-0.2, 0, 0),
+                          new Vector3(0, -0.2, 0),
+                          new Vector3(0.2, 0, 0),
+                          new Vector3(0, 0, 0.2),
+                          new Vector3(-0.2, 0, 0),
+                          new Vector3(0, 0, -0.2),
+                          new Vector3(0.2, 0, 0),
+                        ],
+                      },
+                      scene,
+                    )
+              marker.position.copyFrom(position)
+              marker.isPickable = false
+              if (phase === 'arrival') {
+                const arrivalMarker = marker as LinesMesh
+                arrivalMarker.color = line.color
+                routes.push(marker)
+                continue
+              }
+              const material = new StandardMaterial(
+                `${course.kind}-${phase}-material`,
+                scene,
+              )
+              material.emissiveColor = line.color
+              material.disableLighting = true
+              material.wireframe = true
+              marker.material = material
+              routes.push(marker)
+            }
           }
         }
         scene.render()
@@ -224,6 +317,24 @@ export default function SpaceMap(props: MapProps) {
           engine.getRenderWidth(),
           engine.getRenderHeight(),
         )
+        const viewVersion = camera.getViewMatrix().updateFlag
+        const projectionVersion = camera.getProjectionMatrix().updateFlag
+        const width = element.clientWidth,
+          height = element.clientHeight
+        if (
+          objects === lastLabelObjects &&
+          viewVersion === lastView &&
+          projectionVersion === lastProjection &&
+          width === lastWidth &&
+          height === lastHeight
+        )
+          return
+        lastLabelObjects = objects
+        lastView = viewVersion
+        lastProjection = projectionVersion
+        lastWidth = width
+        lastHeight = height
+        // Read layout once before writing labels; interleaving reads/writes per object forces repeated layout.
         for (const object of objects) {
           const projected = Vector3.Project(
             point(object.position),
@@ -232,19 +343,17 @@ export default function SpaceMap(props: MapProps) {
             viewport,
           )
           const label = labels.get(object.id)!
-          const x =
-            (projected.x * element.clientWidth) / engine.getRenderWidth()
-          const y =
-            (projected.y * element.clientHeight) / engine.getRenderHeight()
+          const x = (projected.x * width) / engine.getRenderWidth()
+          const y = (projected.y * height) / engine.getRenderHeight()
           label.hidden =
             projected.z < 0 ||
             projected.z > 1 ||
             x < 0 ||
-            x > element.clientWidth ||
+            x > width ||
             y < 0 ||
-            y > element.clientHeight
-          label.style.left = `${Math.max(4, Math.min(element.clientWidth - 110, x + 14))}px`
-          label.style.top = `${Math.max(4, Math.min(element.clientHeight - 60, y + (object.kind === 'planet' ? -26 : 16)))}px`
+            y > height
+          label.style.left = `${Math.max(4, Math.min(width - 110, x + 14))}px`
+          label.style.top = `${Math.max(4, Math.min(height - 60, y + (object.kind === 'planet' ? -26 : 16)))}px`
         }
       }
       const visibility = () => {

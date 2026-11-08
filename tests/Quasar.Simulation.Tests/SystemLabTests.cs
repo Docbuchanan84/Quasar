@@ -122,6 +122,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     {
         var session = new LabSession(new TestClock());
         int[] seconds = [1, 5, 30, 60, 3600, 86400, 432000, 1296000, 2592000];
+        var expectedShip = session.ShipStateAt(seconds.Sum(s => (long)s) * 200 * TimeSpan.TicksPerSecond);
         long expectedTicks = 0;
         for (var cycle = 0; cycle < 100; cycle++)
         {
@@ -139,7 +140,8 @@ public sealed class SystemLabTests(ITestOutputHelper output)
             }
         }
         Assert.Single(session.Snapshot().World.Events);
-        Assert.Equal(new SystemLab().Snapshot().Objects, session.Snapshot().World.Objects);
+        Assert.Equal(expectedShip.PositionKm, Ship(session.Snapshot().World).Position);
+        Assert.Equal(expectedShip.VelocityKmPerSecond, Ship(session.Snapshot().World).VelocityKmPerSecond);
     }
 
     [Fact]

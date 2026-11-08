@@ -1,5 +1,10 @@
 # Approved frontend architecture
 
+Agent 4 extends the existing maps with shared server-sampled preview/committed
+course layers, departure/future-arrival markers and explicit reviewed-plan
+confirmation. The maps retain their visualization-only role. See
+[COURSE_PLOTTING.md](COURSE_PLOTTING.md) for interaction, caching and checks.
+
 Agent 3 movement update: both maps consume server-calculated, timestamped gravity
 trajectory samples. Render loops and camera coordinates do not propagate ships.
 See SPACECRAFT_TRAJECTORIES.md for current boundaries and limits; earlier lab

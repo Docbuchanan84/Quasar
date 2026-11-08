@@ -1,6 +1,17 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { formatTime, objectColor, type Snapshot } from './lab'
 import MapBoundary from './MapBoundary'
+import CoursePanel from './CoursePanel'
+import { useCoursePreview, type PlotInputs } from './useCoursePreview'
+import type { CourseLayer } from './lab'
 
 const SystemMap = lazy(() => import('./SystemMap'))
 const SpaceMap = lazy(() => import('./SpaceMap'))
@@ -22,6 +33,7 @@ function App() {
   const [selectedId, setSelectedId] = useState('ship-pathfinder')
   const [view, setView] = useState<'2d' | '3d'>('2d')
   const [references, setReferences] = useState(true)
+  const [plotting, setPlotting] = useState<PlotInputs | null>(null)
   const [online, setOnline] = useState(false)
   const [pending, setPending] = useState(false)
   const [notice, setNotice] = useState('')
@@ -36,8 +48,25 @@ function App() {
       next.revision < previous.revision
     )
       return
-    if (previous && previous.instanceId !== next.instanceId)
+    if (
+      previous?.instanceId === next.instanceId &&
+      previous.revision === next.revision
+    ) {
+      setOnline(true)
+      return
+    }
+    if (previous && previous.instanceId !== next.instanceId) {
+      setPlotting(null)
       setNotice('Host restarted. The in-memory lab has reset.')
+    }
+    // Polling can return fresh JSON for an unchanged committed path. Compare once per snapshot,
+    // then share the stable sample array with both maps; camera/render frames never solve or hash paths.
+    if (
+      previous?.instanceId === next.instanceId &&
+      JSON.stringify(previous.world.trajectory) ===
+        JSON.stringify(next.world.trajectory)
+    )
+      next.world.trajectory = previous.world.trajectory
     latest.current = next
     setSnapshot(next)
     setOnline(true)
@@ -133,6 +162,28 @@ function App() {
   const world = snapshot?.world,
     selected = world?.objects.find((o) => o.id === selectedId)
   const disabled = !online || pending || !snapshot
+  const course = useCoursePreview(snapshot, plotting, online)
+  const committedTrajectory = world?.trajectory
+  const preview = course.preview
+  const courses = useMemo<CourseLayer[]>(
+    () => [
+      ...(committedTrajectory
+        ? [{ kind: 'committed' as const, trajectory: committedTrajectory }]
+        : []),
+      ...(preview
+        ? [{ kind: 'preview' as const, trajectory: preview.trajectory }]
+        : []),
+    ],
+    [committedTrajectory, preview],
+  )
+  const selectObject = (id: string) => {
+    setSelectedId(id)
+    if (
+      plotting &&
+      world?.objects.some((o) => o.id === id && o.kind === 'planet')
+    )
+      setPlotting({ ...plotting, destinationId: id })
+  }
   const MapView = view === '2d' ? SystemMap : SpaceMap
   return (
     <main>
@@ -242,11 +293,10 @@ function App() {
                 >
                   <MapView
                     objects={world.objects}
-                    trajectory={world.trajectory}
+                    courses={courses}
                     selectedId={selectedId}
-                    destinationId={world.ship.destinationId}
                     references={references}
-                    onSelect={setSelectedId}
+                    onSelect={selectObject}
                   />
                 </Suspense>
               </MapBoundary>
@@ -269,6 +319,10 @@ function App() {
                 : 'XYZ space · drag to rotate'}
             </span>
           </div>
+          <p className="course-legend">
+            <span>━━ Committed</span> · <span>┄┄ Preview</span> · □ Departure ·
+            ◇ Arrival / future destination
+          </p>
           <p className="map-note">
             Symbols enlarged for readability · planets stationary · orbit guides
             illustrative
@@ -278,7 +332,7 @@ function App() {
               <button
                 key={object.id}
                 aria-pressed={selectedId === object.id}
-                onClick={() => setSelectedId(object.id)}
+                onClick={() => selectObject(object.id)}
               >
                 <span
                   style={{ color: objectColor(object.kind) }}
@@ -296,6 +350,28 @@ function App() {
           </nav>
         </section>
         <aside className="inspector">
+          {plotting && world && (
+            <CoursePanel
+              inputs={plotting}
+              objects={world.objects}
+              preview={course.preview}
+              error={course.error}
+              loading={course.loading}
+              valid={course.valid}
+              disabled={disabled}
+              running={snapshot?.running ?? false}
+              onChange={setPlotting}
+              onRecalculate={course.recalculate}
+              onCancel={() => setPlotting(null)}
+              onIssue={() => {
+                if (!course.preview) return
+                void command('commit-course', {
+                  previewId: course.preview.previewId,
+                }).then(() => setPlotting(null))
+              }}
+            />
+          )}
+
           <details open>
             <summary>Object inspection & orders</summary>
             {selected && world && (
@@ -345,41 +421,30 @@ function App() {
                         </>
                       )}
                     </div>
-                    <h3>Travel orders</h3>
-                    {world.trajectory && (
-                      <p>Transfer delta-v: {world.trajectory.requiredDeltaVKmPerSecond.toFixed(3)} km/s · Fuel estimate unavailable</p>
-                    )}
-                    <div className="order-buttons">
-                      {world.objects
-                        .filter((o) => o.kind === 'planet')
-                        .map((planet) => (
-                          <button
-                            key={planet.id}
-                            disabled={
-                              disabled ||
-                              snapshot?.running ||
-                              world.ship.destinationId === planet.id ||
-                              (selected.position.x === planet.position.x &&
-                                selected.position.y === planet.position.y &&
-                                selected.position.z === planet.position.z)
-                            }
-                            onClick={() =>
-                              void command('travel', {
-                                destinationId: planet.id,
-                              })
-                            }
-                          >
-                            Travel to {planet.name}
-                          </button>
-                        ))}
-                    </div>
+                    <h3>Course orders</h3>
+                    <button
+                      disabled={disabled || snapshot?.running || !!plotting}
+                      onClick={() =>
+                        setPlotting({
+                          shipId: selected.id,
+                          destinationId: '',
+                          flightSeconds: '21600',
+                        })
+                      }
+                    >
+                      Plot Course
+                    </button>
                     {world.ship.destinationId && (
-                      <button disabled={disabled || snapshot?.running} onClick={() => void command('cancel-travel')}>
-                        Cancel course
+                      <button
+                        disabled={disabled || snapshot?.running}
+                        onClick={() => void command('cancel-travel')}
+                      >
+                        Cancel committed course
                       </button>
                     )}
                     <p className="muted">
-                      Six-hour impulsive transfer in Helios gravity. Stop time processing to replace or cancel an order. Cancellation retains momentum.
+                      Stop time processing to plot, replace or cancel an order.
+                      Cancelling a committed course retains momentum.
                     </p>
                   </>
                 ) : selected.kind === 'planet' ? (

@@ -1,5 +1,43 @@
 # Development log
 
+## 2026-11-08 — Agent 4 course plotting and map integration
+
+- Created isolated `codex/course-plotting` from navigation `a8190fe`; integration
+  commit `6a09985` merges Agent 3 `afe1ca4` (including Agent 2 `2f79207`) while
+  retaining all expanded time settings and newer gesture/camera behavior.
+- Added the ship → Plot Course → planet selection → preview/adjust → Issue Order
+  workflow. Preview cancellation is local. Explicit confirmation uses a bounded
+  server token for the exact reviewed solved plan; stale/evicted/cross-instance
+  tokens fail without movement. Existing direct API compatibility is preserved.
+- Both maps display the same sampled paths, departure markers and future arrival
+  markers with distinct preview/committed styling. The panel exposes physical
+  data actually supplied by planning, approximate sampled distance, unavailable
+  fuel and feasibility/model warnings. No client-side physical integration.
+- Improved map reuse: event-driven Pixi redraw/retained symbols, linear hit scan,
+  stable course references, Babylon object reconciliation and batched/cached DOM
+  label projection. A 1,000-object synthetic check identified layout thrashing;
+  fixing repeated layout reads reduced one two-button desktop automation sample
+  from 2,271 ms to 326 ms. This is not a sustained performance/capacity claim.
+- `scripts/Verify.ps1` passed: 99 xUnit cases, nine navigation and two coordinate
+  Node cases, locked restore/build/format, frontend lint, renderer package/bundle
+  checks and production build. The existing large lazy Babylon chunk warning
+  remains. New tests cover preview isolation, exact commit, token lifetime and
+  mapless long-jump arrival. Updated the older interval test for gravitational coast.
+- Playwright CLI passed 22 course checks and 37 existing desktop/native Chromium
+  touch navigation checks on isolated `:5094` / Vite `:5174`. Synthetic 1,000-object
+  rendering/zoom/reset passed with zero planning calls or page exceptions. Desktop
+  and 393 × 852 panel screenshots were visually reviewed; no horizontal overflow.
+  Physical-iPhone/Safari and sustained large-world measurements remain open.
+- Live **Quasar — Game Design Record** read verified on 8 November 2026; no shared
+  document edit was requested/performed and write access was not tested. Updated
+  README, decisions, plan, map/service contracts and [COURSE_PLOTTING.md](COURSE_PLOTTING.md).
+- Publication uses a focused stacked PR; no merge/force-push, private deployment,
+  live-world reset, runtime dependency, system reconfiguration or private-source
+  publication. Original OneDrive checkout remains on its navigation branch.
+- Next: owner physical iPhone 17 Pro validation of plotting/confirmation and both
+  maps, with browser/OS versions. No new product/architecture decision is pending
+  for the implemented scope; fuel/fleet/waypoint support remains future work.
+
 ## 2026-11-08 — Agent 3 spacecraft trajectories and movement
 
 - Inspected the checkout and Agent 2 working tree as well as their commits; both
