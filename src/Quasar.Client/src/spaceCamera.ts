@@ -26,13 +26,14 @@ class MapCameraPointersInput extends ArcRotateCameraPointersInput {
 export function createSpaceCamera(scene: Scene, gesture: MapGesture) {
   const camera = new ArcRotateCamera(
     'system-camera',
-    -Math.PI / 2,
+    Math.PI / 2,
     Math.PI / 3,
     8,
     Vector3.Zero(),
     scene,
   )
   // Quasar's tactical plane is XY; Z, rather than Babylon's default Y, is up.
+  // Look from negative Y so positive X points right, as in the 2D home view.
   camera.upVector = new Vector3(0, 0, 1)
   camera.lowerRadiusLimit = 0.4
   camera.upperRadiusLimit = 30
@@ -76,7 +77,7 @@ export function frameCamera(
   // The fourth argument preserves orbit angles/distance when changing pivot.
   camera.setTarget(target.clone(), false, true, true)
   if (reset) {
-    camera.alpha = -Math.PI / 2
+    camera.alpha = Math.PI / 2
     camera.beta = Math.PI / 3
     camera.radius = 8
   }

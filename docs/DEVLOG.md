@@ -201,6 +201,8 @@ the owner's shared Google Doc remains the design discussion record.
   camera input/capture/math; Pixi retains its Pointer Events path. Browser testing
   also caught Babylon's attach-time bridge overwriting a prepended middle-button
   pan entry; the corrected mapping has an attachment regression test.
+- Visual review also corrected the 3D home angle so positive X points right,
+  matching the 2D home view. A projection-direction regression assertion covers it.
 - `scripts/Verify.ps1` passed: locked restore, Release build (zero warnings/errors),
   51 xUnit cases, .NET formatting, frontend lint, renderer loading/bundling,
   **nine new Node/Babylon navigation tests**, TypeScript and production build.

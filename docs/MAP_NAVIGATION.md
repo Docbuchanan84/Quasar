@@ -37,7 +37,8 @@ Inspection found several concrete problems rather than a need for more buttons:
 
 - Babylon's camera used its default **Y-up**, while Quasar's tactical plane is
   **XY with Z depth**. The camera now uses Z-up, giving a consistent orientation
-  between views without changing any simulation coordinates.
+  between views without changing any simulation coordinates. The home view looks
+  from negative Y so positive X points right, matching the 2D map's orientation.
 - Panning had a fixed sensitivity of 150, independent of distance and viewport.
   It now uses screen-plane world units per CSS pixel at the orbit pivot. Pan has
   no inertia, so it stops with the pointer; orbit/zoom use reduced inertia (0.45).

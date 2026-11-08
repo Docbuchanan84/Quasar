@@ -76,6 +76,8 @@ test('camera maps Z-up, left orbit, right/middle/Ctrl-left pan', () =>
   fixture((c) => {
     c.attachControl(undefined, false)
     assert.deepEqual(c.upVector.asArray(), [0, 0, 1])
+  assert.ok(Vector3.TransformCoordinates(new Vector3(1, 0, 0), c.getViewMatrix(true)).x > 0,
+    'positive X points right in the home view, matching the 2D map')
     const resolve = (button, ctrl = false) =>
       c.movement.input.resolveInteraction('pointer', {
         button,
@@ -122,7 +124,7 @@ test('focus preserves orbit and zoom; reset cancels pending motion', () =>
     assert.deepEqual(c.target.asArray(), [0, 0, 0])
     assert.deepEqual(
       [c.alpha, c.beta, c.radius],
-      [-Math.PI / 2, Math.PI / 3, 8],
+    [Math.PI / 2, Math.PI / 3, 8],
     )
   }))
 
