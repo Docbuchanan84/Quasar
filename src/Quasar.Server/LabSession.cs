@@ -27,6 +27,9 @@ public sealed class LabSession(TimeProvider timeProvider)
         lock (gate) return Read();
     }
 
+    // The immutable celestial catalogue needs no session lock and cannot advance the world.
+    public CelestialState CelestialStateAt(string bodyId, long atTicks) => world.CelestialPositions.GetState(bodyId, atTicks);
+
     public SessionSnapshot Execute(LabCommand command)
     {
         lock (gate)

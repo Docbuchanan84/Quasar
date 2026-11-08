@@ -42,6 +42,12 @@ State survives refresh but resets on host restart. No extra runtime packages wer
 
 ## Run and verify
 
+The [celestial position service](docs/CELESTIAL_MECHANICS.md) supports analytical
+Keplerian position/velocity queries for hierarchical bodies at arbitrary simulation
+timestamps, derived periods and approximate spheres of influence. Both maps use
+shared presentation transforms over simulation snapshots. The accepted lab keeps
+its fixed planets and travel demo; moving-target navigation is outside this task.
+
 Use PowerShell 7:
 
 ```powershell

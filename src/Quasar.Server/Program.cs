@@ -43,6 +43,22 @@ app.MapGet("/api/health", (HttpContext context) =>
 });
 
 app.MapGet("/api/lab", (LabSession session) => session.Snapshot());
+app.MapGet("/api/lab/celestial/{bodyId}/state", (string bodyId, long atTicks, LabSession session) =>
+{
+    try
+    {
+        var state = session.CelestialStateAt(bodyId, atTicks);
+        // Strings preserve exact ticks for clients whose JSON numbers cannot represent Int64.
+        return Results.Ok(new
+        {
+            bodyId,
+            atTicks = atTicks.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            state.PositionKm,
+            state.VelocityKmPerSecond
+        });
+    }
+    catch (KeyNotFoundException) { return Results.NotFound(new { error = "Unknown celestial body." }); }
+});
 app.MapPost("/api/lab/commands", (LabCommand command, LabSession session) =>
 {
     try { return Results.Ok(session.Execute(command)); }

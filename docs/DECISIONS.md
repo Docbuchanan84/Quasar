@@ -1,5 +1,18 @@
 # Quasar decision record
 
+## Approved — celestial mechanics task scope (2026-11-08)
+
+The owner explicitly requested analytical Keplerian celestial mechanics,
+simulation-authoritative arbitrary-time position/velocity queries, hierarchical
+orbital systems, explicit units, cache invalidation and shared 2D/3D data. No
+spacecraft orders/course plotting are authorized by that request.
+
+**Implementation status: implemented and locally verified.** Reversible choices:
+immutable catalogue replacement, one-timestamp bounded cache, elliptic two-body
+propagation, GM-derived periods and approximate Laplace SOI. Fixed lab definitions
+preserve existing travel behavior. This does not approve permanent trajectory,
+scheduler, persistence or N-body architecture. See [contract](CELESTIAL_MECHANICS.md).
+
 Date: 2026-11-08. This record distinguishes user requirements, reversible setup
 choices made for Task 001, and proposals that have not received user approval.
 

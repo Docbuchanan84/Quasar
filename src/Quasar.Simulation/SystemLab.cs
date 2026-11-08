@@ -1,16 +1,7 @@
 namespace Quasar.Simulation;
 
-// Kilometres in a right-handed system-local frame. Rendering libraries never own these values.
-public readonly record struct Position3(double X, double Y, double Z)
-{
-    public double DistanceTo(Position3 other) => Math.Sqrt(
-        Math.Pow(other.X - X, 2) + Math.Pow(other.Y - Y, 2) + Math.Pow(other.Z - Z, 2));
-
-    public Position3 Interpolate(Position3 other, double fraction) => new(
-        X + (other.X - X) * fraction, Y + (other.Y - Y) * fraction, Z + (other.Z - Z) * fraction);
-}
-
-public sealed record LabObject(string Id, string Name, string Kind, Position3 Position, string? ParentId);
+public sealed record LabObject(string Id, string Name, string Kind, Position3 Position, string? ParentId,
+    Velocity3? VelocityKmPerSecond = null);
 public sealed record LabEvent(long Sequence, long AtTicks, string Kind, string ObjectId, string Message);
 public sealed record TravelPlan(string DestinationId, Position3 DeparturePosition, long DepartureTicks, long ArrivalTicks);
 public sealed record ShipStatus(string Status, double SpeedKmPerSecond, string? DestinationId,
@@ -22,12 +13,17 @@ public sealed class SystemLab
 {
     public const string ShipId = "ship-pathfinder";
     public const double ShipSpeed = 25;
-    private readonly LabObject[] bodies =
+    // Preserve the accepted fixed-body travel lab. Orbital fixtures use the same service;
+    // moving-target interception and spacecraft trajectories require their own task.
+    private readonly CelestialPositionService celestialPositions = new(
     [
-        new("star-helios", "Helios", "star", new(0, 0, 0), null),
-        new("planet-iris", "Iris", "planet", new(1_200_000, 400_000, 200_000), "star-helios"),
-        new("planet-nereid", "Nereid", "planet", new(-2_000_000, 1_300_000, -600_000), "star-helios")
-    ];
+        new("star-helios", "Helios", CelestialBodyKind.Star, 1.32712440018e11),
+        new("planet-iris", "Iris", CelestialBodyKind.Planet, 398600.435, "star-helios",
+            ReferenceState: new(new(1_200_000, 400_000, 200_000), default)),
+        new("planet-nereid", "Nereid", CelestialBodyKind.Planet, 42828.375, "star-helios",
+            ReferenceState: new(new(-2_000_000, 1_300_000, -600_000), default))
+    ]);
+    public ICelestialPositionService CelestialPositions => celestialPositions;
     private readonly List<LabEvent> events = [];
     private Position3 shipPosition = new(900_000, -200_000, 350_000);
     private TravelPlan? travel;
@@ -37,6 +33,11 @@ public sealed class SystemLab
 
     public LabSnapshot Snapshot()
     {
+        var states = celestialPositions.GetStates(ElapsedTicks);
+        var bodies = celestialPositions.Bodies.Values.Select(body => new LabObject(body.Id, body.Name,
+            body.Kind.ToString().ToLowerInvariant(), states[body.Id].PositionKm, body.ParentId,
+            states[body.Id].VelocityKmPerSecond)).OrderBy(body => body.ParentId is null ? 0 : 1)
+            .ThenBy(body => body.Id, StringComparer.Ordinal).ToArray();
         var destination = travel is null ? null : bodies.Single(body => body.Id == travel.DestinationId);
         return new(ElapsedTicks,
             [.. bodies, new(ShipId, "Pathfinder", "spacecraft", shipPosition, null)],
@@ -47,11 +48,11 @@ public sealed class SystemLab
 
     public void OrderTravel(string destinationId)
     {
-        var destination = bodies.SingleOrDefault(body => body.Id == destinationId && body.Kind == "planet")
+        var destination = celestialPositions.Bodies.Values.SingleOrDefault(body => body.Id == destinationId && body.Kind == CelestialBodyKind.Planet)
             ?? throw new ArgumentException("Choose a planet in this system.", nameof(destinationId));
         if (travel?.DestinationId == destinationId)
             throw new InvalidOperationException("Already travelling to that planet.");
-        var distance = shipPosition.DistanceTo(destination.Position);
+        var distance = shipPosition.DistanceTo(celestialPositions.GetState(destinationId, ElapsedTicks).PositionKm);
         if (distance == 0) throw new InvalidOperationException("Already at that planet.");
         var durationTicks = checked((long)Math.Ceiling(distance / ShipSpeed * TimeSpan.TicksPerSecond));
         var arrival = checked(ElapsedTicks + durationTicks);
@@ -66,17 +67,18 @@ public sealed class SystemLab
         var targetTicks = checked(ElapsedTicks + duration.Ticks); // Validate before changing any state.
         if (travel is { } plan)
         {
-            var destination = bodies.Single(body => body.Id == plan.DestinationId);
+            var destination = celestialPositions.Bodies[plan.DestinationId];
+            var destinationPosition = celestialPositions.GetState(plan.DestinationId, plan.ArrivalTicks).PositionKm;
             if (plan.ArrivalTicks <= targetTicks)
             {
                 ElapsedTicks = plan.ArrivalTicks;
-                shipPosition = destination.Position;
+                shipPosition = destinationPosition;
                 travel = null;
                 Record("arrival", ShipId, $"Pathfinder arrived at {destination.Name}. Awaiting orders.");
                 return true;
             }
             // Always derive from the original departure, never accumulate per-step position errors.
-            shipPosition = plan.DeparturePosition.Interpolate(destination.Position,
+            shipPosition = plan.DeparturePosition.Interpolate(destinationPosition,
                 (double)(targetTicks - plan.DepartureTicks) / (plan.ArrivalTicks - plan.DepartureTicks));
         }
         ElapsedTicks = targetTicks;

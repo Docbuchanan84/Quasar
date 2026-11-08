@@ -28,6 +28,14 @@ the active destination, and an already-occupied destination are rejected atomica
 
 ## HTTP and execution
 
+The [celestial mechanics extension](CELESTIAL_MECHANICS.md) routes celestial
+snapshots through the simulation-owned query service and adds
+`GET /api/lab/celestial/{bodyId}/state?atTicks=<signed Int64>` without changing
+clock/revision/history. Fixed-body lab definitions preserve the travel demo.
+Shared client coordinate/reference-guide helpers preserve both projections.
+Original Task 002 validation below remains historical; extension checks and
+model limits are in the linked contract.
+
 - `GET /api/health`: readiness and `stage: system-lab`.
 - `GET /api/lab`: instance/revision, run state/reason, interval/mode, world objects,
   ship status/ETA/distance, and chronological timestamped events. No-store.

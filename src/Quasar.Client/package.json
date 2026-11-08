@@ -14,6 +14,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "check:renderers": "node scripts/check-renderers.mjs",
+    "test:coordinates": "node --test scripts/map-coordinates.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

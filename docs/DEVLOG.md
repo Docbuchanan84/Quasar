@@ -1,5 +1,33 @@
 # Development log
 
+## 2026-11-08 — Agent 2 celestial mechanics and position service
+
+- Added immutable celestial definitions/state vectors, pure elliptic Keplerian
+  propagation and simulation-owned hierarchical queries. Explicit km, km/s,
+  radians, GM and signed ticks; analytical velocity, derived periods and
+  approximate Laplace SOI. No runtime packages, per-second motion loop or UI
+  authority. Catalogue replacement invalidates descendants/derived metadata.
+- Integrated lab snapshots and a read-only arbitrary-time HTTP query. Kept fixed
+  lab planets/travel behavior; moving-target orders/course plotting remain outside
+  scope. Both maps share scaling/projection/reference geometry.
+- Used an isolated worktree from `8c1a722` to preserve simultaneous unrelated
+  time-control/map work. Branch `codex/celestial-mechanics`; no hosted session
+  restarted or republished.
+- Verification: 48 xUnit cases passed, including 27 new celestial cases; full
+  `scripts/Verify.ps1` build/format/lint/renderers, two coordinate tests and
+  frontend build passed. New celestial and existing System Lab HTTP smoke passed
+  on isolated loopback 5091. A first coordinate assertion exposed ordinary
+  multiplication/division rounding and was corrected to use a tolerance.
+- Measured 10,001 bodies across 20 uncached extreme-time bulk queries at
+  133.035 ms total in a warmed Release run here; tested a 10,000-level hierarchy
+  without recursion. Synthetic headless results, not phone/rendering capacity.
+- Read live Game Design Record on 8 November 2026 (revision prefix `AHj4eMQHPFgN`).
+  Early pre-production prose is historical relative to its Task 002 update.
+  Write tools present; write access untested and external record unchanged.
+- DECISIONS distinguishes requested scope from reversible choices;
+  [CELESTIAL_MECHANICS.md](CELESTIAL_MECHANICS.md) documents interfaces and limits.
+- Next task: recoverable versioned save/load including celestial elements/epochs.
+
 Keep concise entries for completed work. Include the date, result, validation,
 decisions/pending questions, and one next step. Commit the entry with the related
 change so Git history and notes remain connected. This is an implementation log;

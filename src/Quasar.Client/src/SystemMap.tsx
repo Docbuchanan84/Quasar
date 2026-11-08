@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Application, Container, Graphics, Text } from 'pixi.js'
-import { mapScale, objectColor, type MapProps } from './lab'
+import { objectColor, type MapProps } from './lab'
+import { referenceCircle, toTacticalPosition } from './mapCoordinates'
 
 export default function SystemMap(props: MapProps) {
   const host = useRef<HTMLDivElement>(null)
@@ -44,10 +45,13 @@ export default function SystemMap(props: MapProps) {
       const pointers = new Map<number, { x: number; y: number }>()
       let start = { x: 0, y: 0 },
         moved = false
-      const screen = (x: number, y: number) => ({
-        x: app.screen.width / 2 + panX + x * mapScale * zoom,
-        y: app.screen.height / 2 + panY - y * mapScale * zoom,
-      })
+      const screen = (x: number, y: number) => {
+        const point = toTacticalPosition({ x, y, z: 0 })
+        return {
+          x: app.screen.width / 2 + panX + point.x * zoom,
+          y: app.screen.height / 2 + panY + point.y * zoom,
+        }
+      }
       function draw() {
         const key = JSON.stringify([
           current.current.objects,
@@ -83,20 +87,8 @@ export default function SystemMap(props: MapProps) {
           }
           const origin = screen(0, 0)
           for (const planet of objects.filter((o) => o.kind === 'planet')) {
-            // Project a circle in the body's inclined reference plane, not an invented simulated orbit.
-            const p = planet.position,
-              radial = Math.hypot(p.x, p.y),
-              radius = Math.hypot(radial, p.z)
-            const ux = p.x / radius,
-              uy = p.y / radius,
-              vx = -p.y / radial,
-              vy = p.x / radial
-            for (let i = 0; i <= 96; i++) {
-              const a = (i / 96) * Math.PI * 2
-              const q = screen(
-                radius * (ux * Math.cos(a) + vx * Math.sin(a)),
-                radius * (uy * Math.cos(a) + vy * Math.sin(a)),
-              )
+            for (const [i, point] of referenceCircle(planet.position).entries()) {
+              const q = screen(point.x, point.y)
               if (i === 0) lines.moveTo(q.x, q.y)
               else lines.lineTo(q.x, q.y)
             }

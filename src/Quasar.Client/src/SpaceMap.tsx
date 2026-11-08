@@ -8,7 +8,8 @@ import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
 import { PointerEventTypes } from '@babylonjs/core/Events/pointerEvents'
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'
 import '@babylonjs/core/Culling/ray'
-import { mapScale, objectColor, type MapProps } from './lab'
+import { objectColor, type MapProps } from './lab'
+import { referenceCircle, toMapPosition } from './mapCoordinates'
 
 export default function SpaceMap(props: MapProps) {
   const host = useRef<HTMLDivElement>(null),
@@ -52,8 +53,10 @@ export default function SpaceMap(props: MapProps) {
       camera.minZ = 0.01
       const meshes = new Map<string, Mesh>(),
         labels = new Map<string, HTMLSpanElement>()
-      const point = (p: { x: number; y: number; z: number }) =>
-        new Vector3(p.x * mapScale, p.y * mapScale, p.z * mapScale)
+      const point = (p: { x: number; y: number; z: number }) => {
+        const scaled = toMapPosition(p)
+        return new Vector3(scaled.x, scaled.y, scaled.z)
+      }
       for (const object of current.current.objects) {
         const mesh =
           object.kind === 'spacecraft'
@@ -108,16 +111,8 @@ export default function SpaceMap(props: MapProps) {
       for (const planet of current.current.objects.filter(
         (o) => o.kind === 'planet',
       )) {
-        const u = point(planet.position),
-          radius = u.length(),
-          unit = u.normalizeToNew(),
-          v = Vector3.Cross(unit, new Vector3(0, 0, 1)).normalize()
-        const points = Array.from({ length: 97 }, (_, i) => {
-          const a = (i / 96) * Math.PI * 2
-          return unit
-            .scale(radius * Math.cos(a))
-            .add(v.scale(radius * Math.sin(a)))
-        })
+        const points = referenceCircle(planet.position).map(point)
+        if (points.length === 0) continue
         const guide = MeshBuilder.CreateLines(
           `${planet.id}-reference`,
           { points },

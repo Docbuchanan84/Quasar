@@ -45,13 +45,22 @@ See [development log](DEVLOG.md) for actual checks and remaining device validati
 
 ## Next task
 
+The separately requested **Agent 2 celestial mechanics/position service** is
+implemented and locally verified: analytical elliptic hierarchy queries, velocity,
+period/SOI, bounded caching and shared map transforms. The fixed-body travel lab
+remains. See [contract and limits](CELESTIAL_MECHANICS.md). This explicit owner
+request extends the historical Task 002 baseline without selecting a permanent
+scheduler, save format or spacecraft navigation model.
+
 Implement a small versioned save/load feature with atomic writes, recoverable
 backups, stable identities, history, and stopped-on-load behavior. Select its exact
 format and migration policy in that task; no database has been selected.
 
 ## Still open
 
-- Real orbital/propulsion models, physical size/time scales, collision and docking.
+- N-body/escaping trajectories, moving-target navigation, propulsion, physical
+  size/time scales, collision and docking. Analytical bound celestial orbits are
+  implemented; the visible travel lab still uses fixed-body definitions.
 - Permanent scheduling, variable fidelity, look-ahead, and cross-platform determinism.
 - Save schema, history retention, large-world performance budgets, and terrain data.
 - Physical-phone 3D, full gesture/order/arrival/lifecycle checks, landscape,
