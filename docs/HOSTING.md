@@ -16,7 +16,8 @@ Tailscale Serve on private HTTPS port **9443** proxies to
 `http://127.0.0.1:5080`. ASP.NET serves the built React System Lab, health,
 and authoritative snapshot/command API under one origin. The lab includes 2D/3D
 maps, spacecraft orders, time controls, inspection, and event history. See
-[System Lab contracts](SYSTEM_LAB.md). State is in-memory: a restart resets it.
+[System Lab contracts](SYSTEM_LAB.md). Campaign checkpoints persist in SQLite
+and restore paused after a restart. See [campaign lifecycle](CAMPAIGN_LIFECYCLE.md).
 
 Existing Serve routes were compared before/after and preserved:
 
@@ -33,7 +34,12 @@ per-user authentication remains a future design question.
 
 ## Current release and process lifetime
 
-Gameplay release `a3a052f` (PR #8) was deployed on 8 November 2026. The host
+The current private release is `f86ffd2` (PR #17), deployed on 8 November
+2026. The Tailscale page, browser bundle, campaign endpoints, and first-run
+New Game screen were checked. The previous release and read-only snapshots
+were archived privately. New campaigns use the default five-minute autosave.
+
+The previous gameplay release was `a3a052f` (PR #8). Its host
 serves the merged System Lab, including the nine time intervals, gravitational
 movement, updated navigation, and course plotting. Private HTTPS returned the
 new client and a 65-point Iris course preview. The deployment retained the prior
@@ -106,8 +112,9 @@ The campaign release keeps data in `%LOCALAPPDATA%\Quasar\saves` by default,
 separate from the release and deployment metadata. Development uses
 `%LOCALAPPDATA%\Quasar\dev-saves`. Check any configured data-root override
 before publishing and keep it outside the checkout and the release directory.
-The existing deployed course release holds its world in memory. Its state
-cannot be imported by the campaign release.
+The previous course release held its world in memory. Its public API snapshots
+serve as reference records. The campaign release requires a versioned checkpoint
+to restore a playable world.
 
 1. Record the active release and copy `deployment.json` to a separate file
    before publishing. If a persistence-enabled host is already running, make a

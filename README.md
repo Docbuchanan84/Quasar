@@ -4,8 +4,8 @@
 
 Quasar is a simulation-first 4X and grand strategy project inspired by Aurora C#.
 The playable System Lab runs in the owner's private browser preview. The current
-gameplay release is `a3a052f`, with [the integrated baseline](https://github.com/Docbuchanan84/Quasar/pull/7)
-and [course plotting](https://github.com/Docbuchanan84/Quasar/pull/8) merged into main.
+gameplay release is `f86ffd2`, which adds [campaign save and recovery controls](https://github.com/Docbuchanan84/Quasar/pull/17)
+to the [course plotting release](https://github.com/Docbuchanan84/Quasar/pull/8).
 
 ## Play the System Lab
 
@@ -34,8 +34,7 @@ transfers, impulsive departure/arrival, and analytical coasts. The reusable
 simulation also supports hierarchical celestial queries, moving targets, and
 explicit sphere-of-influence patches. The browser currently exposes one ship
 and fixed planet destinations. Fuel estimates await propulsion and mass data.
-The lab is shared across browsers. The deployed course release keeps state
-in memory. The persistence-enabled development host restores SQLite checkpoints
+The lab is shared across browsers. The host restores SQLite checkpoints
 and exposes **New Game**, **Save Game**, **Named Save**, and **Load Game**.
 Choose **Continue** inside Load Game to recover the latest readable save.
 See the [campaign workflow](docs/CAMPAIGN_LIFECYCLE.md) for first run,
@@ -56,9 +55,9 @@ Use PowerShell 7:
 Port 5080 must be free before starting the development server. The scripts select
 the pinned user-local .NET SDK. Verification covers xUnit, Node navigation and
 coordinate checks, formatting, lint, TypeScript, and renderer package/bundle
-checks. The current release passed 99 xUnit, 11 Node, and 60 Chromium workflow
-and navigation checks. See [development setup](docs/DEVELOPMENT_SETUP.md) and
-[release verification](docs/COURSE_PLOTTING.md).
+checks. The campaign release passed 187 xUnit and 11 Node tests, and six
+Chromium campaign scenarios. See [development setup](docs/DEVELOPMENT_SETUP.md)
+and [campaign verification](docs/CAMPAIGN_LIFECYCLE.md).
 
 ## Project records
 

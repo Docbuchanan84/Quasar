@@ -2,8 +2,8 @@
 
 ## Current status — 8 November 2026
 
-The deployed course release is `a3a052f`. Desktop Chromium verified the course
-workflow and navigation, including emulated touch. The physical-phone evidence
+The deployed campaign release is `f86ffd2`. Desktop Chromium verified the
+course workflow and navigation, including emulated touch. The physical-phone evidence
 below comes from the original System Lab release. The current course workflow,
 3D and lifecycle still need physical iPhone validation.
 
@@ -28,7 +28,8 @@ The campaign controls passed Chromium iPhone emulation at 402 px portrait,
 320 px narrow portrait, and 874 px landscape, plus desktop Chromium. The
 regression covers touch creation, named save, Continue, replacement
 confirmation, earlier-checkpoint recovery, and operation of both map views.
-Physical Safari, keyboard and safe-area behavior, and reconnect on the iPhone
+The private Tailscale endpoint also served the first-run screen to Chromium
+with iPhone 17 Pro emulation. Physical Safari, keyboard and safe-area behavior, and reconnect on the iPhone
 17 Pro remain to be verified for this workflow.
 
 ## Owner-supplied screenshot evidence
@@ -105,13 +106,13 @@ iPhone browser + Tailscale
 The existing 443/8443 routes were preserved. No public Funnel, router forwarding,
 Docker reconfiguration, new login service, or unattended startup was added.
 Commands require same-origin JSON and instance/revision validation. This is one
-shared in-memory lab; per-user authorization remains a future design question.
+shared lab with host-side campaign saves. Per-user authorization remains a
+future design question.
 
-The PC, network, and managed foreground host must stay available. Restarting the
-host resets clock, orders, positions, and history to the fixture; refreshing a page
-does not. See [hosting](HOSTING.md) for restart/rollback and [System Lab](SYSTEM_LAB.md)
-for time/command contracts. Durable save/load is the recommended next development
-task, followed by deliberate hosting and remaining device-validation work as scoped.
+The PC, network, and managed host must stay available. Restarting the host
+restores the latest readable campaign checkpoint and pauses simulation time.
+See [hosting](HOSTING.md) for restart and rollback, [campaign lifecycle](CAMPAIGN_LIFECYCLE.md)
+for save and recovery, and [System Lab](SYSTEM_LAB.md) for time and commands.
 
 References: [Tailscale Serve](https://tailscale.com/docs/reference/tailscale-cli/serve),
 [Page visibility](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API),

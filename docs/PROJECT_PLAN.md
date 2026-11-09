@@ -2,8 +2,8 @@
 
 ## Current milestone
 
-The private System Lab is playable at release `a3a052f`, deployed on 8 November
-2026. [PR #7](https://github.com/Docbuchanan84/Quasar/pull/7) consolidated the
+The private System Lab is playable at campaign release `f86ffd2`, deployed on
+8 November 2026. [PR #7](https://github.com/Docbuchanan84/Quasar/pull/7) consolidated the
 initial lab with time controls, celestial queries, spacecraft movement, and map
 navigation. [PR #8](https://github.com/Docbuchanan84/Quasar/pull/8) added reviewed
 course planning and shared map overlays.
@@ -42,7 +42,7 @@ background/reconnect, and cellular-only access separately.
 - [Issue #13](https://github.com/Docbuchanan84/Quasar/issues/13) adds the
   player-facing New Game, Continue, Save, and Load workflow. Chromium and
   disposable-host regressions cover restart and recovery. Physical iPhone
-  campaign validation and release deployment remain pending.
+  campaign validation remains pending.
 
 ## Open implementation and design work
 
