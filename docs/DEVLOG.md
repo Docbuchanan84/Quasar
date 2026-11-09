@@ -12,6 +12,10 @@
   emulation checked the hierarchy, tap and keyboard toggles, selection, course
   destination updates, and tree widths from 320 to 1024 CSS pixels. Physical
   iPhone validation remains open.
+- Deployed [PR #23](https://github.com/Docbuchanan84/Quasar/pull/23) from
+  `58c8a6b` to the private preview. Verified the pre-release database backup,
+  exact paused campaign restoration, and Earth branch expansion, station
+  selection, and collapse through private HTTPS in the emulated browser.
 
 ## 2026-11-09 — Course planning release and documentation
 
