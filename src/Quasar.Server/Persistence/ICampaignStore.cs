@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Quasar.Simulation;
 
 namespace Quasar.Server.Persistence;
@@ -9,12 +10,17 @@ public enum CheckpointKind
 }
 
 public sealed record CampaignInfo(Guid Id, string DisplayName, DateTimeOffset CreatedUtc,
-    DateTimeOffset UpdatedUtc, long HeadSequence);
+    DateTimeOffset UpdatedUtc,
+    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long HeadSequence);
 
 public sealed record CampaignDiscovery(Guid Id, CampaignInfo? Campaign, string? Error);
 
-public sealed record CheckpointInfo(Guid Id, long Sequence, CheckpointKind Kind, string? Label,
-    DateTimeOffset CreatedUtc, string GameBuild, long SimulationTicks, int StateFormatVersion, string Sha256);
+public sealed record CheckpointInfo(Guid Id,
+    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long Sequence, CheckpointKind Kind, string? Label,
+    DateTimeOffset CreatedUtc, string GameBuild,
+    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long SimulationTicks, int StateFormatVersion, string Sha256);
+
+public sealed record CheckpointDiscovery(IReadOnlyList<CheckpointInfo> Checkpoints, int RejectedMetadata);
 
 public sealed record LoadedCheckpoint(CheckpointInfo Info, SystemLabState State, SystemLab World);
 
@@ -32,11 +38,13 @@ public sealed class CheckpointConflictException(long expected, long actual)
 public interface ICampaignStore
 {
     CampaignInfo CreateCampaign(string displayName);
+    CampaignInfo CreateCampaign(string displayName, string gameBuild, SystemLabState initialState);
     IReadOnlyList<CampaignDiscovery> ListCampaigns();
     CampaignInfo GetCampaign(Guid campaignId);
     void MigrateCampaign(Guid campaignId);
 
     IReadOnlyList<CheckpointInfo> ListCheckpoints(Guid campaignId);
+    CheckpointDiscovery DiscoverCheckpoints(Guid campaignId);
     CheckpointInfo SaveNamed(Guid campaignId, long expectedHead, string label, string gameBuild, SystemLabState state);
     CheckpointInfo SaveRecovery(Guid campaignId, long expectedHead, string gameBuild, SystemLabState state);
     LoadedCheckpoint LoadCheckpoint(Guid campaignId, Guid checkpointId);

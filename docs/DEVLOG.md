@@ -1,5 +1,24 @@
 # Development log
 
+## 2026-11-08 — Campaign lifecycle and crash recovery
+
+- Implemented [issue #12](https://github.com/Docbuchanan84/Quasar/issues/12)
+  from `72290c3` after PR #15 merged. The System Lab host restores the last-played
+  campaign, creates separate campaigns, and supports manual saves, listing,
+  explicit load, and Continue. A replacement always pauses and invalidates the
+  previous session, preview plans, and controller lease.
+- The default is one dirty recovery autosave per 300 seconds of real time.
+  Captures are detached before disk I/O, and SQLite checks the observed head on
+  every commit. Verified older checkpoints and independent backups support
+  recovery. Failed recovery leaves an explicit error and the original data.
+- `scripts/Verify.ps1` passed 186 xUnit tests, including 24 new lifecycle and HTTP
+  tests, plus 11 Node tests, formatting, lint, and renderer/build checks.
+  `scripts/Test-SystemLabApi.ps1` passed against a separate disposable server.
+  Tests used temporary storage and included killing an isolated server process.
+  Campaign validation ran entirely on disposable servers.
+- Next is the [issue #13](https://github.com/Docbuchanan84/Quasar/issues/13)
+  save/load UI using the [campaign API contract](CAMPAIGN_LIFECYCLE.md).
+
 ## 2026-11-08 — SQLite campaign checkpoint storage
 
 - Implemented [issue #11](https://github.com/Docbuchanan84/Quasar/issues/11)

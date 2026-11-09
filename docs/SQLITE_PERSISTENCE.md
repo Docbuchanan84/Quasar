@@ -11,7 +11,7 @@ session.
 - The hosted desktop factory uses `%LOCALAPPDATA%\Quasar\saves`, alongside the
   `Quasar\host` directory. Publishing writes releases and deployment metadata
   under `host`. Development and tests must explicitly pass a separate absolute
-  root to the constructor. Issue #12 owns environment selection and registration.
+  root to the constructor. See [host environment selection](CAMPAIGN_LIFECYCLE.md).
 - Each active campaign is a lowercase, 32-digit GUID file with a `.db` suffix.
   Its internal ID must match. Display names and save labels are SQL parameters.
   The API takes typed IDs and accepts the data directory only as trusted host
@@ -62,14 +62,14 @@ within the recovered campaign. The original campaign and backup stay available
 for inspection. Backup files are independent of campaign files on the same
 storage device, so whole-device loss requires copies on another device.
 
-## Issue #12 integration
+## Host integration
 
 | Operation | API |
 | --- | --- |
-| Create and discover | `CreateCampaign(displayName)`, `ListCampaigns()`, `GetCampaign(campaignId)` |
+| Create and discover | `CreateCampaign(displayName, gameBuild, initialState)`, `ListCampaigns()`, `GetCampaign(campaignId)` |
 | Upgrade explicitly | `MigrateCampaign(campaignId)` |
 | Save | `SaveNamed(campaignId, expectedHead, label, gameBuild, state)`, `SaveRecovery(campaignId, expectedHead, gameBuild, state)` |
-| List and load | `ListCheckpoints(campaignId)`, `LoadCheckpoint(campaignId, checkpointId)` |
+| List and load | `ListCheckpoints(campaignId)`, `DiscoverCheckpoints(campaignId)`, `LoadCheckpoint(campaignId, checkpointId)` |
 | Recover | `LoadLatestValidCheckpoint(campaignId)`, `ListBackups(campaignId)`, `CreateBackup(campaignId)`, `RestoreBackup(campaignId, backupId, displayName)` |
 
 Capture `lab.ExportState()` under the session gate. Order and discard stale
@@ -91,5 +91,5 @@ campaigns. A missing file or checkpoint is distinct from invalid data.
 candidate before adoption. When recovery uses a backup, track the returned
 campaign ID as the active campaign and load its head through the same API.
 
-The lifecycle work owns last-played selection, backup timing, autosave cadence,
-HTTP error mapping, and installing the detached world in a stopped session.
+See [campaign lifecycle](CAMPAIGN_LIFECYCLE.md) for last-played selection,
+autosave cadence, HTTP errors, and the paused world exchange.
