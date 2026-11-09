@@ -1,5 +1,17 @@
 # Quasar decision record
 
+## Approved — authoritative simulation checkpoint (issue #10)
+
+The owner requested explicit, versioned export and detached restore of
+authoritative C# state. Version 1 persists the solved conics and consumed
+boundary cursor alongside celestial definitions, the clock, and lab history.
+Restore validates the checkpoint and reconstructs the event queue from the
+remaining segment ends. See [the format and handoff](SIMULATION_STATE.md).
+
+SQLite and Microsoft.Data.Sqlite are approved for the separately scoped
+[issue #11](https://github.com/Docbuchanan84/Quasar/issues/11), after #10 merges.
+Campaign schema, migration details, and recovery policy belong to that work.
+
 ## Approved — Agent 4 course plotting and map integration (2026-11-08)
 
 **Status: Approved by the owner's explicit Agent 4 task; implemented.** Both maps

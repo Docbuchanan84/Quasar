@@ -1,0 +1,75 @@
+# Authoritative simulation checkpoints
+
+[Issue #10](https://github.com/Docbuchanan84/Quasar/issues/10) adds a headless
+checkpoint boundary in `Quasar.Simulation`. The format describes the current
+physics model and the current single-ship System Lab.
+
+## Capture, encode, and restore
+
+```csharp
+SystemLabState state = lab.ExportState(); // Under the simulation writer or session gate.
+byte[] payload = SimulationStateJson.Serialize(state);
+
+SystemLabState decoded = SimulationStateJson.Deserialize(payload);
+SystemLab candidate = SystemLab.RestoreState(decoded);
+```
+
+- `SystemLabState` contains `Simulation`, `LastEventSequence`, and ordered
+  `History` entries. `SimulationState` contains `FormatVersion`,
+  `ElapsedTicks`, `Bodies`, and `Spacecraft`. The nested
+  `Simulation.FormatVersion` versions the entire checkpoint. The current version
+  is `SimulationState.CurrentFormatVersion` (1).
+- `CelestialBodyState` and `OrbitState` carry stable IDs, hierarchy, GM,
+  reference state and epoch, and orbital elements and epoch. `SpacecraftState`
+  carries the ship ID, gravity primary (last primary while in rendezvous), and
+  exactly one of `CoastState`, `CommittedTrajectoryState`, or
+  `RendezvousState`.
+- A coast stores its epoch and initial primary-relative position and velocity.
+  A committed plan stores its departure state, target, ordered conic segments,
+  impulses, fuel estimate, and zero-based `NextBoundaryIndex`. The segment
+  end ticks at and after that index are the pending patch and arrival
+  boundaries. An arrived ship stores the target ephemeris or inertial waypoint
+  and arrival tick, and follows the target's motion.
+- Export is a detached immutable capture. Bodies and ships are exported in
+  ordinal ID order. History, segments, and burns retain their execution order.
+  Use the same single-writer synchronization as for world commands. Encoding can
+  run after releasing that synchronization.
+- Use `SimulationStateJson` for UTF-8 JSON. Fields use camel case, every signed
+  64-bit field uses an invariant decimal string (including ticks and event
+  sequence), and celestial kinds use camel-case enum names. Nullable fields
+  are present with JSON null when unused. The decoder rejects missing,
+  unknown, or duplicate fields, invalid tick strings, and unsupported versions.
+  It checks the format and shape. The restore factory checks the relationships
+  and physics. Malformed payloads and invalid state throw `InvalidDataException`.
+- `MovementExecution.ExportState()` and
+  `MovementExecution.RestoreState(SimulationState)` also support standalone
+  headless multi-ship worlds. The lab factory additionally checks its Pathfinder
+  and Helios identities and verifies history against the saved motion.
+- Restore constructs a separate catalogue and execution owner, checks the solved
+  conics and burn continuity, and enqueues only the next live boundary per
+  ship. Later boundaries are scheduled as they are reached. It reconstructs
+  conic coefficients from their saved initial conditions and GM. A Lambert solve
+  is unnecessary. Planner/ephemeris caches and display samples are derived.
+  Preview tokens, leases, and browser state are outside the payload.
+
+## Storage handoff for issue #11
+
+After #10 merges, persist the UTF-8 bytes produced by `SimulationStateJson`.
+Store `state.Simulation.FormatVersion` and `state.Simulation.ElapsedTicks`
+with checkpoint metadata. Keep the tick column signed 64-bit and hash the exact
+payload bytes. Verify size, hash, and checkpoint metadata on load, then decode
+and require a successful detached `SystemLab.RestoreState` before returning a
+loadable checkpoint. Compare the decoded version and clock to the metadata.
+Treat storage schema version and simulation format version as separate fields.
+This version supports version 1 only. Campaign/save IDs, backup policy,
+transactions, and storage migrations belong to the host-side storage work.
+The eventual session integration owns installing the validated candidate and
+starting it stopped.
+
+## Verification
+
+`scripts/Verify.ps1` covers the checkpoint regression cases and existing suites.
+Checkpoint cases cover midflight JSON round trips, exact 15-day arrival
+interruptions, checkpoints before and at a patch, stable simultaneous events,
+cancelled free coasts, moving rendezvous, history sequence and ordering, signed
+64-bit tick limits, and invalid state/JSON rejection without active-world mutation.

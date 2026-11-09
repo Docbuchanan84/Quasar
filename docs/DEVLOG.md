@@ -1,5 +1,21 @@
 # Development log
 
+## 2026-11-08 — Versioned headless simulation state
+
+- Implemented issue #10 on `codex/save-state-contracts`. The immutable version
+  1 checkpoint retains catalogue definitions and epochs, spacecraft motion,
+  solved conics and burns, exact pending boundaries, and ordered lab history.
+  The UTF-8 codec writes Int64 values as decimal strings.
+- Restore validates a detached world and rebuilds the live boundary queue. It
+  preserves midflight and cancelled-coast physics and prevents consumed
+  patches and arrivals from firing again. The private host and shared design
+  record were outside the change.
+- Verified with `scripts/Verify.ps1` (138 xUnit cases, including 39 checkpoint
+  cases, plus 11 Node cases, format, lint, and production/renderer build checks).
+- Next is [issue #11](https://github.com/Docbuchanan84/Quasar/issues/11) after
+  merge. See [simulation state](SIMULATION_STATE.md) for the version 1 API and
+  the SQLite checkpoint handoff.
+
 ## 2026-11-08 — Course release deployment and documentation
 
 - PR #8 merged as `a3a052f` after passing CI and was published through the

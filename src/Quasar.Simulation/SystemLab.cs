@@ -12,11 +12,11 @@ public sealed record TrajectoryDisplay(string DepartureTicks, string ArrivalTick
     double RequiredDeltaVKmPerSecond, TransferFuelEstimate Fuel, TrajectoryDisplayPoint[] Points);
 
 /// <summary>Headless fixture using the planner/execution contracts available to future fleet systems.</summary>
-public sealed class SystemLab
+public sealed partial class SystemLab
 {
     public const string ShipId = "ship-pathfinder";
     private const string PrimaryId = "star-helios";
-    private readonly CelestialPositionService celestialPositions = new(
+    private static CelestialPositionService CreateDefaultCatalogue() => new(
     [
         new(PrimaryId, "Helios", CelestialBodyKind.Star, 1.32712440018e11),
         new("planet-iris", "Iris", CelestialBodyKind.Planet, 398600.435, PrimaryId,
@@ -24,6 +24,7 @@ public sealed class SystemLab
         new("planet-nereid", "Nereid", CelestialBodyKind.Planet, 42828.375, PrimaryId,
             ReferenceState: new(new(-2_000_000, 1_300_000, -600_000), default))
     ]);
+    private readonly CelestialPositionService celestialPositions;
     private readonly MovementExecution movement;
     private readonly TrajectoryPlanner planner;
     private readonly List<LabEvent> events = [];
@@ -31,15 +32,21 @@ public sealed class SystemLab
     public ICelestialPositionService CelestialPositions => celestialPositions;
     public long ElapsedTicks => movement.ElapsedTicks;
 
-    public SystemLab()
+    public SystemLab() : this(new MovementExecution(CreateDefaultCatalogue()))
     {
-        planner = new(celestialPositions); movement = new(celestialPositions);
         var position = new Position3(900_000, -200_000, 350_000);
         var r = Vector3d.From(position);
         var transverse = Vector3d.Cross(new(0, 0, 1), r);
         var speed = Math.Sqrt(celestialPositions.GetEnvironment(PrimaryId).GravitationalParameterKm3PerSecond2 / r.Length);
         movement.AddSpacecraft(ShipId, new(position, (transverse / transverse.Length * speed).Velocity), PrimaryId);
         Record("created", "System Lab initialized. Pathfinder coasting in Helios gravity.");
+    }
+
+    private SystemLab(MovementExecution movement)
+    {
+        this.movement = movement;
+        celestialPositions = movement.Catalogue;
+        planner = new(celestialPositions);
     }
 
     public LabSnapshot Snapshot()
@@ -50,6 +57,7 @@ public sealed class SystemLab
             states[body.Id].VelocityKmPerSecond)).OrderBy(body => body.ParentId is null ? 0 : 1)
             .ThenBy(body => body.Id, StringComparer.Ordinal).ToArray();
         var ship = movement.View(ShipId);
+        if (display is null && movement.CommittedPlan(ShipId) is { } plan) display = Present(plan);
         var distance = ship.DestinationId is null ? 0 : ship.State.PositionKm.DistanceTo(states[ship.DestinationId].PositionKm);
         return new(ElapsedTicks,
             [.. bodies, new(ShipId, "Pathfinder", "spacecraft", ship.State.PositionKm, null, ship.State.VelocityKmPerSecond)],
@@ -113,5 +121,9 @@ public sealed class SystemLab
     }
 
     private static string Ticks(long ticks) => ticks.ToString(System.Globalization.CultureInfo.InvariantCulture);
-    private void Record(string kind, string message) => events.Add(new(events.Count + 1L, ElapsedTicks, kind, ShipId, message));
+    private void Record(string kind, string message)
+    {
+        lastEventSequence = checked(lastEventSequence + 1);
+        events.Add(new(lastEventSequence, ElapsedTicks, kind, ShipId, message));
+    }
 }

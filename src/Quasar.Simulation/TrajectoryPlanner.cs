@@ -145,7 +145,7 @@ public sealed class TrajectoryPlanner(CelestialPositionService catalogue, ITrans
             var mu = catalogue.GetEnvironment(leg.PrimaryBodyId).GravitationalParameterKm3PerSecond2;
             if (mu <= 0) throw new ArgumentException("The selected primary has no positive gravitational parameter.");
             if (segments.Count > 0 && segments[^1].PrimaryBodyId != leg.PrimaryBodyId)
-                ValidatePatch(segments[^1].PrimaryBodyId, leg.PrimaryBodyId, state.PositionKm, start);
+                ValidatePatch(catalogue, segments[^1].PrimaryBodyId, leg.PrimaryBodyId, state.PositionKm, start);
             var primaryStart = catalogue.GetState(leg.PrimaryBodyId, start);
             var primaryEnd = catalogue.GetState(leg.PrimaryBodyId, leg.ArrivalTicks);
             var target = leg.Destination.StateAt(catalogue, leg.ArrivalTicks);
@@ -176,7 +176,8 @@ public sealed class TrajectoryPlanner(CelestialPositionService catalogue, ITrans
             fuelEstimator?.Estimate(deltaV) ?? new(null, "No implemented propulsion, spacecraft mass or propellant inventory model."));
     }
 
-    private void ValidatePatch(string oldPrimary, string newPrimary, Position3 position, long atTicks)
+    internal static void ValidatePatch(CelestialPositionService catalogue, string oldPrimary, string newPrimary,
+        Position3 position, long atTicks)
     {
         var oldBody = catalogue.Bodies[oldPrimary]; var newBody = catalogue.Bodies[newPrimary];
         var child = oldBody.ParentId == newPrimary ? oldBody : newBody.ParentId == oldPrimary ? newBody : null;
