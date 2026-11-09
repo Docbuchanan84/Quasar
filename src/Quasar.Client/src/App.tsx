@@ -1,13 +1,7 @@
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { formatTime, objectColor, type Snapshot } from './lab'
+import CampaignPanel from './CampaignPanel'
+import { useLabSession } from './useLabSession'
 import MapBoundary from './MapBoundary'
 import CoursePanel from './CoursePanel'
 import { useCoursePreview, type PlotInputs } from './useCoursePreview'
@@ -28,136 +22,26 @@ const durations = [
 ] as const
 
 function App() {
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
-  const latest = useRef<Snapshot | null>(null)
   const [selectedId, setSelectedId] = useState('ship-pathfinder')
   const [view, setView] = useState<'2d' | '3d'>('2d')
   const [references, setReferences] = useState(true)
   const [plotting, setPlotting] = useState<PlotInputs | null>(null)
-  const [online, setOnline] = useState(false)
-  const [pending, setPending] = useState(false)
-  const [notice, setNotice] = useState('')
-  const [clientId] = useState(() => crypto.randomUUID())
-  const mounted = useRef(true),
-    fetching = useRef(false)
-  const accept = useCallback((next: Snapshot) => {
-    if (!mounted.current) return
-    const previous = latest.current
-    if (
-      previous?.instanceId === next.instanceId &&
-      next.revision < previous.revision
-    )
-      return
-    if (
-      previous?.instanceId === next.instanceId &&
-      previous.revision === next.revision
-    ) {
-      setOnline(true)
-      return
-    }
-    if (previous && previous.instanceId !== next.instanceId) {
-      setPlotting(null)
-      setNotice('Host restarted. The in-memory lab has reset.')
-    }
-    // Polling can return fresh JSON for an unchanged committed path. Compare once per snapshot,
-    // then share the stable sample array with both maps; camera/render frames never solve or hash paths.
-    if (
-      previous?.instanceId === next.instanceId &&
-      JSON.stringify(previous.world.trajectory) ===
-        JSON.stringify(next.world.trajectory)
-    )
-      next.world.trajectory = previous.world.trajectory
-    latest.current = next
-    setSnapshot(next)
-    setOnline(true)
-  }, [])
-  const refresh = useCallback(async () => {
-    if (fetching.current) return
-    fetching.current = true
-    try {
-      const response = await fetch('/api/lab', {
-        cache: 'no-store',
-        signal: AbortSignal.timeout(5000),
-      })
-      if (!response.ok) throw new Error('Host unavailable')
-      accept(await response.json())
-    } catch {
-      if (mounted.current) setOnline(false)
-    } finally {
-      fetching.current = false
-    }
-  }, [accept])
-  useEffect(() => {
-    mounted.current = true
-    const resume = () => {
-      if (!document.hidden) void refresh()
-    }
-    const offline = () => setOnline(false)
-    const timer = window.setInterval(() => {
-      if (!document.hidden) void refresh()
-    }, 500)
-    const initial = window.setTimeout(() => void refresh(), 0)
-    // A reload gets a new client ID and cannot silently renew the previous browser's run.
-    const heartbeat = window.setInterval(() => {
-      const state = latest.current
-      if (!document.hidden && state?.running)
-        void fetch('/api/lab/lease', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ instanceId: state.instanceId, clientId }),
-          signal: AbortSignal.timeout(3000),
-        }).catch(() => {})
-    }, 1000)
-    document.addEventListener('visibilitychange', resume)
-    window.addEventListener('online', resume)
-    window.addEventListener('offline', offline)
-    return () => {
-      mounted.current = false
-      clearTimeout(initial)
-      clearInterval(timer)
-      clearInterval(heartbeat)
-      document.removeEventListener('visibilitychange', resume)
-      window.removeEventListener('online', resume)
-      window.removeEventListener('offline', offline)
-    }
-  }, [clientId, refresh])
-
-  async function command(
-    operation: string,
-    extra: Record<string, unknown> = {},
-  ) {
-    const state = latest.current
-    if (!state || pending) return
-    setPending(true)
-    setNotice('')
-    try {
-      const response = await fetch('/api/lab/commands', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          instanceId: state.instanceId,
-          revision: state.revision,
-          clientId,
-          operation,
-          ...extra,
-        }),
-        signal: AbortSignal.timeout(5000),
-      })
-      const result = await response.json()
-      if (!response.ok) {
-        setNotice(result.error ?? 'Command rejected.')
-        await refresh()
-      } else accept(result)
-    } catch {
-      setNotice(
-        'Command outcome uncertain. Refreshing state; the command will not be resent.',
+  const onInstanceChange = useCallback((next: Snapshot | null) => {
+    setPlotting(null)
+    if (next) {
+      setSelectedId((id) =>
+        next.world.objects.some((object) => object.id === id)
+          ? id
+          : (next.world.objects.find((object) => object.kind === 'spacecraft')?.id ??
+            next.world.objects[0]?.id ??
+            ''),
       )
-      setOnline(false)
-      await refresh()
-    } finally {
-      setPending(false)
     }
-  }
+  }, [])
+  const {
+    snapshot, status, online, pending, notice, campaignMessage, refresh,
+    command, campaignAction,
+  } = useLabSession(onInstanceChange)
 
   const world = snapshot?.world,
     selected = world?.objects.find((o) => o.id === selectedId)
@@ -185,8 +69,8 @@ function App() {
       setPlotting({ ...plotting, destinationId: id })
   }
   const MapView = view === '2d' ? SystemMap : SpaceMap
-  return (
-    <main>
+  const campaignControls = (
+    <>
       <header className="masthead">
         <div>
           <span className="brand">QUASAR</span>
@@ -199,6 +83,26 @@ function App() {
           {online ? 'HOST CONNECTED' : 'CONNECTING / OFFLINE'}
         </span>
       </header>
+      <CampaignPanel
+        status={status}
+        online={online}
+        pending={pending}
+        message={campaignMessage}
+        onAction={campaignAction}
+      />
+      {(notice || !online) && (
+        <div className="notice" role="alert">
+          {notice || 'Waiting for the authoritative host. Orders are disabled.'}
+          <button onClick={() => void refresh()}>Refresh state</button>
+        </div>
+      )}
+    </>
+  )
+
+  if (!world || !snapshot) return <main>{campaignControls}</main>
+  return (
+    <main>
+      {campaignControls}
       <section className="time-console" aria-label="Simulation time controls">
         <div className="clock">
           <span className="eyebrow">SIMULATION ELAPSED</span>
@@ -254,12 +158,6 @@ function App() {
           </button>
         </div>
       </section>
-      {(notice || !online) && (
-        <div className="notice" role="alert">
-          {notice || 'Waiting for the authoritative host. Orders are disabled.'}
-          <button onClick={() => void refresh()}>Refresh state</button>
-        </div>
-      )}
       <div className="workspace">
         <section className="map-panel" aria-label="System display">
           <div className="panel-heading">
@@ -282,27 +180,23 @@ function App() {
             </div>
           </div>
           <div className="map-viewport">
-            {world ? (
-              <MapBoundary key={view}>
-                <Suspense
-                  fallback={
-                    <p className="loading">
-                      Loading {view.toUpperCase()} display…
-                    </p>
-                  }
-                >
-                  <MapView
-                    objects={world.objects}
-                    courses={courses}
-                    selectedId={selectedId}
-                    references={references}
-                    onSelect={selectObject}
-                  />
-                </Suspense>
-              </MapBoundary>
-            ) : (
-              <p className="loading">Acquiring system state…</p>
-            )}
+            <MapBoundary key={`${view}:${snapshot.instanceId}`}>
+              <Suspense
+                fallback={
+                  <p className="loading">
+                    Loading {view.toUpperCase()} display…
+                  </p>
+                }
+              >
+                <MapView
+                  objects={world.objects}
+                  courses={courses}
+                  selectedId={selectedId}
+                  references={references}
+                  onSelect={selectObject}
+                />
+              </Suspense>
+            </MapBoundary>
           </div>
           <div className="map-footer">
             <label>
@@ -328,7 +222,7 @@ function App() {
             illustrative
           </p>
           <nav className="object-list" aria-label="System objects">
-            {world?.objects.map((object) => (
+            {world.objects.map((object) => (
               <button
                 key={object.id}
                 aria-pressed={selectedId === object.id}
@@ -479,10 +373,10 @@ function App() {
       </div>
       <details className="history" open>
         <summary>
-          Event history <span>{world?.events.length ?? 0} records</span>
+          Event history <span>{world.events.length} records</span>
         </summary>
         <ol>
-          {world?.events
+          {world.events
             .slice()
             .reverse()
             .map((event) => (
@@ -495,9 +389,7 @@ function App() {
         </ol>
       </details>
       <footer>
-        IN-MEMORY TEST ENVIRONMENT · Refresh retains state. Host restart resets
-        the lab. Continuous processing stops on arrival or controller lease
-        expiry.
+        Continuous processing stops on arrival or controller lease expiry.
       </footer>
     </main>
   )

@@ -3,11 +3,29 @@
 [Issue #12](https://github.com/Docbuchanan84/Quasar/issues/12) integrates the
 [checkpoint contract](SIMULATION_STATE.md) and [SQLite store](SQLITE_PERSISTENCE.md)
 with the ASP.NET host. [Issue #13](https://github.com/Docbuchanan84/Quasar/issues/13)
-owns the player-facing controls.
+adds the player-facing controls.
+
+## Player workflow
+
+- Select **New Game**, enter a campaign name, and create the campaign. The
+  System Lab appears when the host has committed its first checkpoint.
+- **Save Game** makes a retained manual checkpoint. **Named Save** lets you
+  choose its label. The campaign bar shows unsaved progress, the last saved
+  state's local date and simulated elapsed time, and the host's autosave status.
+- **Load Game** shows saved campaigns, retained manual saves, and rotating
+  recovery checkpoints. Select **Continue** for the latest readable state or
+  **Load** beside a specific checkpoint. The host also tries to continue the last
+  campaign automatically at startup. Restored time is paused.
+- If a campaign is active, confirm New Game, Continue, or Load before it can
+  replace the live world. Save first if you want to keep unsaved changes.
+- If a save fails to load, select an earlier checkpoint or use **Continue** to
+  attempt automatic recovery. The current world stays available after a rejected
+  load. If a request's outcome is uncertain, check the refreshed campaign status
+  and save list before trying again.
 
 ## Startup, saves, and recovery
 
-- A new installation waits for **New Campaign**. Creation publishes a new
+- A new installation waits for **New Game**. Creation publishes a new
   campaign ID and its initial recovery checkpoint together. Each campaign has
   its own database, even when two campaigns have the same display name.
 - Startup uses the last-played campaign ID recorded alongside the databases.
@@ -40,7 +58,7 @@ owns the player-facing controls.
   reload. Explicitly loading an older checkpoint leaves it clean, and a
   subsequent save commits a new head. Restart always selects the latest
   valid committed checkpoint for the last-played campaign.
-- **Save Now** and **Create Named Save** write retained named checkpoints.
+- **Save Game** and **Named Save** write retained named checkpoints.
   Autosave and graceful shutdown write rotating recovery checkpoints. Shutdown
   pauses the session and allows up to seven seconds for the persistence service.
   Abrupt termination can lose changes made since the last committed checkpoint.
@@ -143,17 +161,6 @@ Continue restores a paused world. Play remains a separate lab command.
 Refresh after a conflict or uncertain network response before deciding whether
 to issue another mutation.
 
-Until issue #13 adds the UI, use the API to initialize a fresh disposable host.
-These commands target a disposable host at `http://127.0.0.1:5090`.
-
-```powershell
-$base = 'http://127.0.0.1:5090'
-$status = Invoke-RestMethod "$base/api/campaigns/status"
-$body = @{ instanceId = $status.instanceId; revision = $status.revision; displayName = 'Disposable lab' }
-Invoke-RestMethod "$base/api/campaigns/new" -Method Post -ContentType 'application/json' `
-    -Headers @{ Origin = $base } -Body ($body | ConvertTo-Json)
-```
-
 ## Verification
 
 Run `./scripts/Verify.ps1` or filter xUnit by `CampaignHttpTests` and
@@ -164,3 +171,21 @@ real-time cadence and retention, stale sessions and previews, concurrent
 writes and transaction rollback, malformed settings, corrupt heads and backup
 recovery, graceful shutdown saves, and abrupt process exit. The
 existing hosted preview is a separate release.
+
+For the browser regression, run the following after setup and verification.
+It requires `sqlite3.exe` on PATH and Playwright CLI 0.1.23 with Chromium
+installed. The script starts and stops its own ephemeral loopback hosts and
+prints the temporary fixture and log directory.
+
+```powershell
+.\scripts\Test-CampaignBrowser.ps1
+# Optional release compatibility check using a separately published previous build
+.\scripts\Test-CampaignBrowser.ps1 -PreviousServerAssembly C:\path\to\Quasar.Server.dll
+```
+
+The browser run exercises touch input, 320/402 px portrait and 874 px landscape,
+desktop and both map views, exact halfway restore, preview invalidation,
+cancellation and arrival, an explicit failed load, a lost save response,
+recovery, and rejection of a newer database schema. See [hosting](HOSTING.md#campaign-release-and-rollback)
+for operator recovery and [mobile validation](MOBILE_AND_REMOTE_ACCESS.md) for
+physical-device coverage.

@@ -39,8 +39,10 @@ background/reconnect, and cellular-only access separately.
 - [Issue #12](https://github.com/Docbuchanan84/Quasar/issues/12) integrates
   startup recovery, autosave, and campaign operations with the System Lab.
   See the [HTTP and lifecycle contract](CAMPAIGN_LIFECYCLE.md).
-- [Issue #13](https://github.com/Docbuchanan84/Quasar/issues/13) owns the
-  player-facing New Game, Continue, Save, and Load workflow.
+- [Issue #13](https://github.com/Docbuchanan84/Quasar/issues/13) adds the
+  player-facing New Game, Continue, Save, and Load workflow. Chromium and
+  disposable-host regressions cover restart and recovery. Physical iPhone
+  campaign validation and release deployment remain pending.
 
 ## Open implementation and design work
 

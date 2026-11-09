@@ -22,6 +22,15 @@ baseline, not a claim about which browser produced these screenshots.
 This is a successful first real-device gameplay check. It is not a completed
 qualification of both renderers, every gesture, lifecycle behavior, or performance.
 
+## Campaign workflow validation
+
+The campaign controls passed Chromium iPhone emulation at 402 px portrait,
+320 px narrow portrait, and 874 px landscape, plus desktop Chromium. The
+regression covers touch creation, named save, Continue, replacement
+confirmation, earlier-checkpoint recovery, and operation of both map views.
+Physical Safari, keyboard and safe-area behavior, and reconnect on the iPhone
+17 Pro remain to be verified for this workflow.
+
 ## Owner-supplied screenshot evidence
 
 | Evidence | Visible result | What it establishes |

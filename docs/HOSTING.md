@@ -100,6 +100,43 @@ tailscale serve --https=9443 off
 
 Do not run `tailscale serve reset`; that would affect the other services.
 
+## Campaign release and rollback
+
+The campaign release keeps data in `%LOCALAPPDATA%\Quasar\saves` by default,
+separate from the release and deployment metadata. Development uses
+`%LOCALAPPDATA%\Quasar\dev-saves`. Check any configured data-root override
+before publishing and keep it outside the checkout and the release directory.
+The existing deployed course release holds its world in memory. Its state
+cannot be imported by the campaign release.
+
+1. Record the active release and copy `deployment.json` to a separate file
+   before publishing. If a persistence-enabled host is already running, make a
+   named save and allow a graceful stop. With the host stopped, copy the full
+   save directory including `last-played`, backups, and any SQLite sidecars to a
+   separate location. An operator can also use the store's verified SQLite
+   backup operation for a standalone database.
+2. Publish the merged build and start it with the same account and data root.
+   Check `/api/health`, `/api/campaigns/status`, and the browser. Confirm the
+   expected campaign/checkpoint and paused state before advancing or issuing
+   orders. A fresh persistence installation starts at New Game.
+3. If a checkpoint fails, use **Load Game** to pick an earlier save or
+   **Continue** to attempt recovery from an earlier checkpoint or a verified
+   backup. Keep a copy of damaged files for diagnosis. If recovery fails,
+   test a known-good backup in a disposable data root before restoring service.
+4. To roll back, stop Quasar, archive the current release metadata and save
+   directory, then restore the earlier deployment metadata. Use a copy of the
+   pre-update save directory if compatibility is uncertain or a forward
+   migration occurred. Keep post-update saves separately for recovery with a
+   compatible build. Rolling back to the in-memory course release starts its
+   original fixture.
+
+SQLite schema and simulation checkpoint versions are checked independently.
+Known SQLite migrations run forward inside transactions on writes. Releases
+reject newer or unsupported data. Before shipping a format change, verify a
+backup, exercise migration and restore with disposable copies from the prior
+release, and document rollback compatibility. See
+[storage policy](SQLITE_PERSISTENCE.md#schema-and-backup-policy).
+
 ## Historical skeleton validation (before Task 002)
 
 - Same-origin page, built JS/CSS, and backend health returned 200 over private
