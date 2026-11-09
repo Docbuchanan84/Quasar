@@ -16,6 +16,10 @@ output/playwright/
 /docs/sources/
 
 # User state, secrets, and local simulation data
+/saves/
+/dev-saves/
+last-played
+.last-played-*
 *.user
 *.suo
 .env

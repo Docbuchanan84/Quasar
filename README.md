@@ -36,7 +36,10 @@ explicit sphere-of-influence patches. The browser currently exposes one ship
 and fixed planet destinations. Fuel estimates await propulsion and mass data.
 The lab is shared across browsers. The deployed course release keeps state
 in memory. The persistence-enabled development host restores SQLite checkpoints
-and uses the [campaign API](docs/CAMPAIGN_LIFECYCLE.md) for first-run creation.
+and exposes **New Game**, **Save Game**, **Named Save**, and **Load Game**.
+Choose **Continue** inside Load Game to recover the latest readable save.
+See the [campaign workflow](docs/CAMPAIGN_LIFECYCLE.md) for first run,
+confirmation, and recovery.
 
 ## Run and verify
 

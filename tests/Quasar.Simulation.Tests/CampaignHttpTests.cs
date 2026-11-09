@@ -212,6 +212,55 @@ public sealed class CampaignHttpTests : IDisposable
     }
 
     [Fact]
+    public async Task StandaloneCampaignCopyOpensInAnotherRootAndFutureSchemaRemainsIntact()
+    {
+        Guid id;
+        JsonElement world;
+        await using (var host = await Start())
+        {
+            var created = await host.Create("Portable");
+            id = created.GetProperty("campaign").GetProperty("id").GetGuid();
+            await host.Advance(30);
+            var before = await host.Get(Lab);
+            world = before.GetProperty("world");
+            await host.Post("/api/campaigns/save-named", before, new { label = "Portable checkpoint" },
+                HttpStatusCode.Created);
+        }
+
+        var store = new SqliteCampaignStore(root);
+        var backup = store.CreateBackup(id);
+        var copyRoot = Directory.CreateDirectory(Path.Combine(root, "portable")).FullName;
+        var copiedDatabase = Database(id, copyRoot);
+        File.Copy(Path.Combine(root, "backups", $"{id:N}-{backup.Id:N}.db"), copiedDatabase);
+        await using (var copied = await Start(dataRoot: copyRoot))
+        {
+            var status = await copied.Get(Status);
+            Assert.Equal(id, status.GetProperty("campaign").GetProperty("id").GetGuid());
+            Assert.False(status.GetProperty("running").GetBoolean());
+            Assert.Equal("Portable checkpoint", status.GetProperty("lastCheckpoint").GetProperty("label").GetString());
+            Assert.Equal(world.GetRawText(), (await copied.Get(Lab)).GetProperty("world").GetRawText());
+        }
+
+        Sql(id, "PRAGMA user_version = 999;", copyRoot);
+        var beforeBytes = File.ReadAllBytes(copiedDatabase);
+        await using (var incompatible = await Start(dataRoot: copyRoot))
+        {
+            var status = await incompatible.Get(Status);
+            Assert.Equal(JsonValueKind.Null, status.GetProperty("campaign").ValueKind);
+            Assert.Equal(JsonValueKind.String, status.GetProperty("recoveryError").ValueKind);
+            var entry = Assert.Single((await incompatible.Get("/api/campaigns")).EnumerateArray());
+            Assert.Equal(id, entry.GetProperty("id").GetGuid());
+            Assert.Equal(JsonValueKind.String, entry.GetProperty("error").ValueKind);
+            var failure = await incompatible.Post("/api/campaigns/continue", status, new { campaignId = id },
+                HttpStatusCode.UnprocessableEntity);
+            Assert.Equal("invalid_campaign_data", failure.GetProperty("code").GetString());
+        }
+
+        Assert.Equal(beforeBytes, File.ReadAllBytes(copiedDatabase));
+        Assert.Equal("Portable checkpoint", store.LoadLatestValidCheckpoint(id).Checkpoint!.Info.Label);
+    }
+
+    [Fact]
     public async Task CompetingSavesAndFailedTransactionsCannotClobberTheCommittedHead()
     {
         await using var host = await Start();
@@ -351,20 +400,21 @@ public sealed class CampaignHttpTests : IDisposable
         Assert.Empty((await host.Get("/api/campaigns")).EnumerateArray());
     }
 
-    private async Task<Host> Start(bool saveOnShutdown = false)
+    private async Task<Host> Start(bool saveOnShutdown = false, string? dataRoot = null)
     {
-        var settings = Path.Combine(root, "persistence.json");
+        dataRoot ??= root;
+        var settings = Path.Combine(dataRoot, "persistence.json");
         File.WriteAllText(settings, JsonSerializer.Serialize(new { autosave = new { enabled = false }, saveOnShutdown }));
-        return await Host.Start(root, settings);
+        return await Host.Start(dataRoot, settings);
     }
 
-    private string Database(Guid id) => Path.Combine(root, id.ToString("N") + ".db");
+    private string Database(Guid id, string? dataRoot = null) => Path.Combine(dataRoot ?? root, id.ToString("N") + ".db");
 
-    private void Sql(Guid campaign, string commandText)
+    private void Sql(Guid campaign, string commandText, string? dataRoot = null)
     {
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
         {
-            DataSource = Database(campaign),
+            DataSource = Database(campaign, dataRoot),
             Mode = SqliteOpenMode.ReadWrite,
             Pooling = false
         }.ToString());

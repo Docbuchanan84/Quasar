@@ -1,5 +1,23 @@
 # Development log
 
+## 2026-11-08 — Campaign controls and restart verification
+
+- [Issue #13](https://github.com/Docbuchanan84/Quasar/issues/13) adds New Game,
+  Continue, retained manual saves, and checkpoint selection. The browser
+  requires confirmation before replacing the active world, reports durable
+  saves and recovery failures, and refreshes the authoritative map and
+  controller state after a campaign switch.
+- Disposable Chromium and SQLite regressions cover exact halfway restore,
+  subsequent orders, cancellation, completed arrival, corrupt checkpoint
+  recovery, and incompatible schema rejection. See the
+  [campaign lifecycle](CAMPAIGN_LIFECYCLE.md) for commands and the
+  [hosting guide](HOSTING.md) for release and rollback.
+- Full verification passed 187 xUnit and 11 Node tests, formatting, lint,
+  and the renderer/build checks. A disposable release publication preserved
+  the hashes of all four save artifacts. Git ignores campaign databases,
+  sidecars, and last-played markers.
+- Physical iPhone campaign validation and private deployment remain pending.
+
 ## 2026-11-08 — Campaign lifecycle and crash recovery
 
 - Implemented [issue #12](https://github.com/Docbuchanan84/Quasar/issues/12)

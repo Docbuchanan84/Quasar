@@ -579,3 +579,101 @@ footer {
 .course-legend span:nth-child(2) {
   color: #efc46b;
 }
+
+.campaign-panel button {
+  min-width: 44px;
+}
+.campaign-panel {
+  background: #101c26;
+  border: 1px solid #2b404f;
+  border-radius: 5px;
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 12px;
+  overflow-wrap: anywhere;
+}
+.campaign-panel h1 {
+  font-size: 1.125rem;
+}
+.campaign-panel h2 {
+  font-size: 1rem;
+}
+.campaign-bar,
+.campaign-actions,
+.campaign-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+.campaign-bar {
+  justify-content: space-between;
+  align-items: center;
+}
+.campaign-meta,
+.save-details {
+  color: #a7becb;
+  font-size: 0.875rem;
+}
+.campaign-warning {
+  color: #efc46b;
+}
+.campaign-result {
+  color: #87e4bd;
+}
+.campaign-editor {
+  border-top: 1px solid #2b404f;
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 10px;
+}
+.campaign-editor[hidden] {
+  display: none;
+}
+.campaign-confirm {
+  border-color: #efc46b;
+}
+.campaign-field {
+  display: grid;
+  gap: 4px;
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+.campaign-field input,
+.campaign-field select {
+  font: inherit;
+  font-size: 16px;
+  color: inherit;
+  background: #152633;
+  border: 1px solid #385062;
+  border-radius: 4px;
+  min-height: 44px;
+  width: 100%;
+  padding: 8px 12px;
+}
+.checkpoint-choices {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  min-width: 0;
+}
+.save-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+.save-list li {
+  border-top: 1px solid #2b404f;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+.save-list li .campaign-meta,
+.save-list li .save-details {
+  display: block;
+}
