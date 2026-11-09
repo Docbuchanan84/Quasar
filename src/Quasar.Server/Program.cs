@@ -67,9 +67,18 @@ public static class QuasarHost
         });
 
         app.MapGet("/api/lab", (LabSession session) => session.Snapshot());
-        app.MapGet("/api/lab/course-preview", (string destinationId, int? flightSeconds, double? maneuverBudget, LabSession session) =>
+        app.MapGet("/api/lab/course-preview", (string destinationId, int? flightSeconds, double? maneuverBudget,
+            string? mode, LabSession session, CancellationToken cancellationToken) =>
         {
-            try { return Results.Ok(session.PreviewCourse(destinationId, flightSeconds ?? 21600, maneuverBudget)); }
+            try
+            {
+                return mode switch
+                {
+                    null => Results.Ok(session.PreviewCourse(destinationId, flightSeconds ?? 21600, maneuverBudget)),
+                    "auto" when flightSeconds is null => Results.Ok(session.PreviewAutomaticCourse(destinationId, maneuverBudget, cancellationToken)),
+                    _ => Results.BadRequest(new { error = "Use automatic mode without specifying a flight duration." })
+                };
+            }
             catch (InvalidOperationException error) { return Results.Conflict(new { error = error.Message }); }
             catch (Exception error) when (error is ArgumentException or OverflowException)
             { return Results.BadRequest(new { error = error.Message }); }

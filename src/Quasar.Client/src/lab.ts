@@ -28,6 +28,9 @@ export type LabObject = {
     argumentOfPeriapsisRadians: number
   } | null
 }
+export const isCourseDestination = (object: LabObject) =>
+  object.kind === 'planet' || object.kind === 'moon'
+
 export type Snapshot = {
   instanceId: string
   revision: number
@@ -73,6 +76,11 @@ export type CoursePreview = {
   warnings: string[]
   trajectory: Trajectory
 }
+export type AutomaticCoursePreview = {
+  fastest: CoursePreview | null
+  lowestManeuverCost: CoursePreview | null
+}
+
 export type CourseLayer = {
   kind: 'preview' | 'committed'
   trajectory: Trajectory

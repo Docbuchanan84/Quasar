@@ -556,6 +556,19 @@ footer {
   font: inherit;
   font-size: 16px;
 }
+.course-options {
+  display: grid;
+  gap: 8px;
+}
+.course-options button {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  text-align: left;
+}
+.course-options button[aria-pressed='true'] {
+  border-color: #efc46b;
+}
 .course-panel dl > div {
   flex-wrap: wrap;
   gap: 4px;

@@ -15,7 +15,7 @@ course planning and shared map overlays.
 | Celestial mechanics | Analytical hierarchical position and velocity queries and sphere-of-influence data |
 | Spacecraft movement | Lambert transfers, analytical coasting, impulses, and headless event execution |
 | Navigation | Gesture-safe selection, pan/orbit/zoom, Reset View, and 3D Focus Selected |
-| Course plotting | Planet and duration selection, shared path and markers, revision-bound preview and commit, and delta-v display |
+| Course plotting | Planet and moon destinations, automatic fastest and lowest maneuver-cost routes, shared map preview, and revision-bound commit |
 
 The [System Lab guide](SYSTEM_LAB.md), [integration record](AGENT_INTEGRATION.md),
 and [development log](DEVLOG.md) document contracts, source branches, and test

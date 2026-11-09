@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
-import type { CoursePreview, Snapshot } from './lab'
+import { useEffect, useMemo, useState } from 'react'
+import type { AutomaticCoursePreview, Snapshot } from './lab'
 
 export type PlotInputs = {
   shipId: string
   destinationId: string
-  flightSeconds: string
   maneuverBudget?: number
 }
 
@@ -16,30 +15,19 @@ export function useCoursePreview(
 ) {
   const [attempt, setAttempt] = useState(0)
   const [result, setResult] = useState<{
-    key: string
-    preview?: CoursePreview
+    key: object
+    routes?: AutomaticCoursePreview
     error?: string
   } | null>(null)
   const maneuverBudget = inputs?.maneuverBudget
-  const seconds = Number(inputs?.flightSeconds)
-  const valid =
-    Number.isInteger(seconds) && seconds >= 1 && seconds <= 315576000
-  const ready =
-    !!snapshot &&
-    !snapshot.running &&
-    online &&
-    !!inputs?.destinationId &&
-    valid
-  const key = ready
-    ? JSON.stringify([
-        snapshot!.instanceId,
-        snapshot!.revision,
-        inputs,
-        attempt,
-      ])
-    : ''
   const instanceId = snapshot?.instanceId,
     revision = snapshot?.revision
+  const ready = !!snapshot && !snapshot.running && online && !!inputs?.destinationId
+  // A return to earlier inputs still needs a fresh preview token.
+  const key = useMemo(
+    () => ready ? { instanceId, revision, inputs, attempt } : null,
+    [ready, instanceId, revision, inputs, attempt],
+  )
   const destinationId = inputs?.destinationId,
     shipId = inputs?.shipId
   useEffect(() => {
@@ -51,7 +39,7 @@ export function useCoursePreview(
           const response = await fetch(
             `/api/lab/course-preview?${new URLSearchParams({
               destinationId: destinationId!,
-              flightSeconds: String(seconds),
+              mode: 'auto',
               ...(maneuverBudget === undefined ? {} : { maneuverBudget: String(maneuverBudget) }),
             })}`,
             {
@@ -65,17 +53,20 @@ export function useCoursePreview(
           const data = await response.json()
           if (!response.ok)
             throw new Error(data.error ?? 'Course planning failed.')
-          const preview = data as CoursePreview
-          if (
-            preview.instanceId !== instanceId ||
-            preview.revision !== revision ||
-            preview.shipId !== shipId ||
-            preview.destinationId !== destinationId
+          const routes = data as AutomaticCoursePreview
+          const stale = [routes.fastest, routes.lowestManeuverCost].some(
+            (preview) => preview && (
+              preview.instanceId !== instanceId ||
+              preview.revision !== revision ||
+              preview.shipId !== shipId ||
+              preview.destinationId !== destinationId
+            ),
           )
+          if (stale)
             throw new Error(
               'State changed during planning. Refresh state and recalculate.',
             )
-          if (!controller.signal.aborted) setResult({ key, preview })
+          if (!controller.signal.aborted) setResult({ key, routes })
         } catch (error) {
           if (!controller.signal.aborted)
             setResult({
@@ -92,13 +83,12 @@ export function useCoursePreview(
       clearTimeout(timer)
       controller.abort()
     }
-  }, [key, destinationId, seconds, instanceId, revision, shipId, maneuverBudget])
+  }, [key, destinationId, instanceId, revision, shipId, maneuverBudget])
   const current = result?.key === key ? result : null
   return {
-    preview: current?.preview ?? null,
+    routes: current?.routes ?? null,
     error: current?.error,
     loading: ready && !current,
-    valid,
     recalculate: () => setAttempt((value) => value + 1),
   }
 }
