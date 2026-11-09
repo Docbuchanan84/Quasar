@@ -1,5 +1,17 @@
 # Development log
 
+## 2026-11-08 — Private campaign release
+
+- PR #17 merged as `f86ffd2` and passed main Verify. Published the merged
+  build to the existing private Tailscale route. The prior release, deployment
+  metadata, and read-only snapshots of the in-memory lab were retained privately.
+- A disposable preflight created a paused campaign and confirmed the exact
+  build ID. On the live route, the homepage, JS bundle, campaign status, and
+  first-run screen loaded. The campaign library started empty and autosave
+  was enabled. The Tailscale routing configuration was preserved.
+- Physical iPhone Safari gameplay feedback is pending. See the
+  [campaign workflow](CAMPAIGN_LIFECYCLE.md) and [rollback guide](HOSTING.md).
+
 ## 2026-11-08 — Campaign controls and restart verification
 
 - [Issue #13](https://github.com/Docbuchanan84/Quasar/issues/13) adds New Game,
@@ -16,7 +28,7 @@
   and the renderer/build checks. A disposable release publication preserved
   the hashes of all four save artifacts. Git ignores campaign databases,
   sidecars, and last-played markers.
-- Physical iPhone campaign validation and private deployment remain pending.
+- Physical iPhone campaign validation remained pending at implementation handoff.
 
 ## 2026-11-08 — Campaign lifecycle and crash recovery
 
