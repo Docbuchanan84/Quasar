@@ -2,20 +2,19 @@
 
 ## Current milestone
 
-The private System Lab is playable at campaign release `f86ffd2`, deployed on
-8 November 2026. [PR #7](https://github.com/Docbuchanan84/Quasar/pull/7) consolidated the
-initial lab with time controls, celestial queries, spacecraft movement, and map
-navigation. [PR #8](https://github.com/Docbuchanan84/Quasar/pull/8) added reviewed
-course planning and shared map overlays.
+The playable System Lab brings together the Solar System starter campaign,
+automatic course planning, interactive maps, and persistent campaigns. The
+[development log](DEVLOG.md) records when features landed and were deployed.
 
 | Delivered | Scope |
 | --- | --- |
-| System Lab | Helios, two fixed planets, Pathfinder, inspectable XYZ, shared 2D/3D selection, and event history |
+| System Lab | Solar System starter, Pathfinder, inspectable XYZ, shared 2D/3D selection, and event history |
 | Clock | Nine intervals, Once/Continuous, Stop, exact event interruption, and browser lease |
 | Celestial mechanics | Analytical hierarchical position and velocity queries and sphere-of-influence data |
 | Spacecraft movement | Lambert transfers, analytical coasting, impulses, and headless event execution |
-| Navigation | Gesture-safe selection, pan/orbit/zoom, Reset View, and 3D Focus Selected |
+| Navigation | Gesture-safe selection, pan/orbit/zoom, Reset View, and Focus Selected in both maps |
 | Course plotting | Planet and moon destinations, automatic fastest and lowest maneuver-cost routes, shared map preview, and revision-bound commit |
+| Campaigns | SQLite checkpoints, autosave, startup restore, and player-facing New Game, Save Game, Named Save, and Load Game |
 
 The [System Lab guide](SYSTEM_LAB.md), [integration record](AGENT_INTEGRATION.md),
 and [development log](DEVLOG.md) document contracts, source branches, and test
@@ -26,14 +25,13 @@ recorded in [mobile validation](MOBILE_AND_REMOTE_ACCESS.md).
 
 New campaigns use the [Solar System fixture](SOLAR_SYSTEM.md), with analytical
 planet and satellite motion, two fictional stations, and automatic single-flyby
-course tests. Helios campaigns remain loadable. Propulsion is the next requested
-development task after the Solar System preview is verified on the physical phone.
+course tests. Existing Helios campaigns retain their original world when loaded.
 
 ## Next validation
 
-Exercise the current course workflow, arrival, and both maps on the owner's
-iPhone 17 Pro and record iOS/browser versions. Cover gestures, landscape,
-background/reconnect, and cellular-only access separately.
+Extend the initial phone play check to an end-to-end course order and arrival,
+both maps, and campaign save/load. Record iOS/browser versions. Cover gestures,
+landscape, background/reconnect, and cellular-only access separately.
 
 ## Persistence sequence
 

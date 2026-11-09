@@ -57,6 +57,6 @@ in the working session; automatic loading in a fresh session was not separately
 tested. The project-specific no-Obsidian rule overrides general guidance only
 for Quasar. Existing global integrations were not changed.
 
-The private hosted skeleton works on the owner's phone, but unattended process
-startup is not enabled. See [HOSTING.md](HOSTING.md). The simulation clock and
-behavior tests remain the next implementation milestone.
+The private System Lab is available for phone play. See [hosting](HOSTING.md)
+for startup and recovery and the [project plan](PROJECT_PLAN.md) for current
+validation and implementation work.

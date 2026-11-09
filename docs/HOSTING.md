@@ -34,17 +34,9 @@ per-user authentication remains a future design question.
 
 ## Current release and process lifetime
 
-The current private release is `f86ffd2` (PR #17), deployed on 8 November
-2026. The Tailscale page, browser bundle, campaign endpoints, and first-run
-New Game screen were checked. The previous release and read-only snapshots
-were archived privately. New campaigns use the default five-minute autosave.
-
-The previous gameplay release was `a3a052f` (PR #8). Its host
-serves the merged System Lab, including the nine time intervals, gravitational
-movement, updated navigation, and course plotting. Private HTTPS returned the
-new client and a 65-point Iris course preview. The deployment retained the prior
-release and a `deployment-before-course-*.json` metadata backup. The restart
-began a new shared in-memory lab with Pathfinder coasting at elapsed zero.
+The private host serves a published build of the game. See the
+[development log](DEVLOG.md) for deployment history. New campaigns start
+in the Solar System and use the default five-minute dirty-only autosave.
 
 The current launcher is a separate PowerShell process that runs the foreground
 `Run-HostedApp.ps1` wrapper independently of the tool command session. Keep the
@@ -57,9 +49,11 @@ The current deployment uses the existing runner.
 
 ## Start or update from the PC
 
-Use PowerShell in the checkout. Setup/build requires PowerShell 7; the foreground
-runtime wrapper also works with Windows PowerShell. All paths resolve from the
-scripts, so no permanent PATH change is required.
+Use PowerShell in the checkout. For an update, follow the backup procedure
+under [Campaign release and rollback](#campaign-release-and-rollback) before
+running the publication and restart commands. Setup and builds require
+PowerShell 7. The runtime wrapper also works with Windows PowerShell. The
+scripts resolve paths from their own location.
 
 ```powershell
 Set-Location 'C:\path\to\Quasar'
@@ -90,9 +84,11 @@ Invoke-RestMethod 'https://quasar.example.invalid:9443/api/health'
 tailscale serve status
 ```
 
-Expect `application: Quasar`, `status: ready`, `stage: system-lab`. For the course
-release, check the Plot Course control and the read-only course preview endpoint
-while time processing is stopped. The page and health response use
+Expect `application: Quasar`, `status: ready`, `stage: system-lab`. Check
+`/api/campaigns/status` for the expected paused checkpoint. Open the page in a
+fresh browser tab and check **Plot Course** or the read-only automatic preview
+endpoint while time processing is stopped. Route availability depends on the
+current departure state and maneuver budget. The page and health response use
 `Cache-Control: no-store`. Built JS/CSS/favicon assets return
 200; unknown API paths return 404 rather than the HTML page.
 
@@ -108,21 +104,21 @@ Do not run `tailscale serve reset`; that would affect the other services.
 
 ## Campaign release and rollback
 
-The campaign release keeps data in `%LOCALAPPDATA%\Quasar\saves` by default,
+The hosted game keeps data in `%LOCALAPPDATA%\Quasar\saves` by default,
 separate from the release and deployment metadata. Development uses
 `%LOCALAPPDATA%\Quasar\dev-saves`. Check any configured data-root override
 before publishing and keep it outside the checkout and the release directory.
-The previous course release held its world in memory. Its public API snapshots
-serve as reference records. The campaign release requires a versioned checkpoint
-to restore a playable world.
 
 1. Record the active release and copy `deployment.json` to a separate file
-   before publishing. If a persistence-enabled host is already running, make a
-   named save and allow a graceful stop. With the host stopped, copy the full
-   save directory including `last-played`, backups, and any SQLite sidecars to a
-   separate location. An operator can also use the store's verified SQLite
+   before publishing. Check that time is stopped and the latest checkpoint
+   covers the current progress. Save any pending progress before stopping the
+   host. With the host stopped, copy the full save directory, including
+   `last-played`, backups, and any SQLite sidecars, to a separate location and
+   verify the copy. An operator can also use the store's verified SQLite
    backup operation for a standalone database.
-2. Publish the merged build and start it with the same account and data root.
+2. Test changed save or restore behavior against a disposable copy when
+   applicable. Publish the merged build and start it with the same account
+   and data root.
    Check `/api/health`, `/api/campaigns/status`, and the browser. Confirm the
    expected campaign/checkpoint and paused state before advancing or issuing
    orders. A fresh persistence installation starts at New Game.
@@ -134,8 +130,7 @@ to restore a playable world.
    directory, then restore the earlier deployment metadata. Use a copy of the
    pre-update save directory if compatibility is uncertain or a forward
    migration occurred. Keep post-update saves separately for recovery with a
-   compatible build. Rolling back to the in-memory course release starts its
-   original fixture.
+   compatible build.
 
 SQLite schema and simulation checkpoint versions are checked independently.
 Known SQLite migrations run forward inside transactions on writes. Releases
@@ -170,12 +165,10 @@ deployment metadata was copied to `deployment-before-task002.json` in the host
 directory, alongside a before-change Serve configuration. No Serve configuration
 change is needed to update gameplay.
 
-If rollback is needed, stop only Quasar, preserve the current deployment metadata,
-restore the earlier metadata to `deployment.json`, then run Start-HostedApp.ps1.
-Old releases are retained; verify health after restart. All in-memory lab progress
-is lost on either update or rollback. Existing browser pages should reload after
-deployment; a failed lazy map load leaves the controls/inspector available and
-offers Reload display.
+The Task 002 host predated campaign checkpoints, so restarts reset its in-memory
+world. Use the campaign rollback procedure above for current releases. Existing
+browser pages should reload after deployment. A failed lazy map load leaves
+the controls and inspector available and offers **Reload display**.
 
 The app's continuous runner is active only after Play. It processes at most four
 selected intervals per second and stops on arrival or controller lease expiry
@@ -191,9 +184,7 @@ Serve route and added no reset endpoint/button. Subsequent owner play advanced t
 world again; those later screenshots are historical evidence, not its current state.
 
 The owner then accepted the phone look and behavior and supplied the two portrait
-screenshots described in MOBILE_AND_REMOTE_ACCESS.md. This documentation update
-requires no release publication, host restart, live-world mutation, or network
-reconfiguration. Do not reset ongoing play to match a screenshot or old test result.
+screenshots described in [mobile validation](MOBILE_AND_REMOTE_ACCESS.md).
 
 ## White/empty page triage
 
@@ -208,10 +199,9 @@ release; publishing and changing Serve are unnecessary. Verify page/assets and
 snapshot responses, then inspect browser errors if the host is healthy but the
 page remains empty. Never use a tailnet-wide Serve reset to recover this app.
 
-A host that has already exited has lost this lab's in-memory state. Starting it
-creates a fresh fixture; it is not saved-game recovery. A remaining blank page
-may require a browser refresh after the endpoint recovers. Durable process
-supervision and recoverable save/load remain separate follow-up work.
+The current host restores the last readable campaign checkpoint when it starts.
+If the page remains blank after the endpoint recovers, refresh the browser.
+Durable process supervision remains open.
 
 ### Download prompt after an empty page
 

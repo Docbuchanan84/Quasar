@@ -116,7 +116,7 @@ performance. CI does not assert a wall-clock threshold.
 
 The timestamp string preserves all 64 bits in JavaScript. Missing/malformed or
 out-of-range timestamps return 400; unknown bodies return 404. Responses retain
-no-store. Queries use the current fixed-body lab catalogue without UI updates or
+no-store. Queries use the active campaign's catalogue without UI updates or
 time advancement. Spacecraft IDs are outside this service. `/api/lab` snapshots
 get celestial positions and velocities from this service. Since Agent 3, the
 same snapshots also include spacecraft velocity from movement execution. Use
@@ -124,9 +124,9 @@ the spacecraft state endpoint for Pathfinder forecasts.
 
 Both maps consume the same snapshot positions. `mapCoordinates.ts` scales km by
 1/1,000,000 for Babylon's right-handed XYZ and Pixi's XY with inverted screen Y.
-No map extrapolates or writes physical state. Shared reference circles remain
-**illustrative lab geometry**, not physical elliptical orbits. Orbit-path
-presentation remains a future task.
+No map extrapolates or writes physical state. Both Solar System maps draw orbit
+guides from the same catalogued elements. The legacy fixture uses illustrative
+reference circles.
 
 ## Verification and limits
 

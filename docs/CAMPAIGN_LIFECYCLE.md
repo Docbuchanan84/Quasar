@@ -8,7 +8,8 @@ adds the player-facing controls.
 ## Player workflow
 
 - Select **New Game**, enter a campaign name, and create the campaign. The
-  System Lab appears when the host has committed its first checkpoint.
+  [Solar System starter](SOLAR_SYSTEM.md) appears paused after the host commits
+  its first checkpoint.
 - **Save Game** makes a retained manual checkpoint. **Named Save** lets you
   choose its label. The campaign bar shows unsaved progress, the last saved
   state's local date and simulated elapsed time, and the host's autosave status.

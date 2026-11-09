@@ -1,36 +1,38 @@
 # System Lab
 
-The playable private release includes the original Task 002 lab and the later
-clock, celestial, movement, navigation, and course plotting work. Release
-`a3a052f` was deployed on 8 November 2026. For operating instructions, see the
-[README](../README.md) and [course plotting guide](COURSE_PLOTTING.md).
+The System Lab is Quasar's playable single-system, single-ship sandbox. For
+operating instructions, see the [README](../README.md) and
+[course plotting guide](COURSE_PLOTTING.md).
 
 ## Simulation and presentation
 
-The headless C# fixture contains Helios, fixed planets Iris and Nereid, and
-Pathfinder. Objects have stable IDs, positions in double-precision kilometres,
-and velocities in kilometres per second. The system-local frame is right-handed.
+New campaigns use the [Solar System catalogue](SOLAR_SYSTEM.md), fictional
+Earth installations, and Pathfinder. The original Helios fixture remains
+available for headless tests and older checkpoints. Objects have stable IDs,
+positions in double-precision kilometres, and velocities in kilometres per
+second. The system-local frame is right-handed.
 Pixi shows XY and labels Z. Babylon shows XYZ with a Z-up camera. Both scale
 coordinates by 1/1,000,000 and draw illustrative reference circles and enlarged
 symbols. React shares selection, inspection, orders, and event history across
 views. Rendering and camera controls operate on snapshots.
 
-Pathfinder starts coasting under Helios gravity. The planner solves a Lambert
-transfer from the current state to a selected fixture planet. A committed plan
-applies impulsive departure and arrival changes with analytical coasting in
+Pathfinder starts coasting under stellar gravity. The planner searches Lambert
+transfers from the current state to a selected planet or moon and can evaluate
+single-planet flybys in the Solar System. A committed plan applies impulsive
+departure and arrival changes with analytical coasting in
 between. Arrival interrupts at the exact event tick, records an event, and
 discards the unused advance time. Cancelling a committed course retains position
 and velocity and starts an unforced coast. The reusable
 [celestial service](CELESTIAL_MECHANICS.md) and
 [trajectory engine](SPACECRAFT_TRAJECTORIES.md) also support moving targets and
-explicit gravity patches. The player workflow exposes single-well transfers to
-the fixed planets.
+explicit gravity patches.
 
 Select Pathfinder, choose **Plot Course**, select a planet or moon, and review
-the calculated fastest and lowest maneuver-cost routes. **Issue Order** commits the exact reviewed plan while the
-host instance and revision match. Previewing and cancelling a preview preserve
-the simulation and any existing course. Both views draw the same sampled preview
-or committed path. Departure and arrival markers use the planned positions.
+the fastest and lowest maneuver-cost routes found. **Issue Order** commits the
+exact reviewed plan while the host instance and revision match. Previewing or
+cancelling a preview preserves the simulation and any existing course. Both
+views draw the same sampled preview or committed path. Departure and arrival
+markers use the planned positions.
 Fuel estimates remain unavailable until propulsion and mass data exist.
 
 ## Clock and execution
@@ -46,11 +48,10 @@ expiry of the initiating browser's five-second lease. The visible client polls
 every 500 ms and renews its run lease every second. A refreshed browser gets a
 new controller ID. Another connected browser can inspect or Stop the shared run.
 
-The persistence-enabled host restores the last valid checkpoint on restart.
-First run requires creating a campaign through the [campaign API](CAMPAIGN_LIFECYCLE.md)
-until the save/load UI is available. The currently deployed course release
-holds its lab in memory.
-**Reset View** changes the camera only.
+The host restores the last valid checkpoint paused on restart. Use **New Game**
+on first run, or use **Load Game** and **Continue** to restore a campaign. See
+the [campaign workflow](CAMPAIGN_LIFECYCLE.md). **Reset View** changes only
+the camera.
 
 ## HTTP contract
 
@@ -58,7 +59,8 @@ holds its lab in memory.
 | --- | --- |
 | `GET /api/health` | Readiness and the `system-lab` stage |
 | `GET /api/lab` | Instance/revision, run controls, objects and velocities, ship status, events, and any committed trajectory |
-| `GET /api/lab/course-preview?destinationId=…&flightSeconds=…` | Solve a stopped-world course and return a revision-bound preview ID, sampled path, summary, and warnings |
+| `GET /api/lab/course-preview?mode=auto&destinationId=…` | Search a stopped-world departure for the fastest and lowest maneuver-cost routes and return revision-bound previews |
+| `GET /api/lab/course-preview?destinationId=…&flightSeconds=…` | Solve a single fixed-duration course for existing callers |
 | `GET /api/lab/trajectory-preview?destinationId=…&flightSeconds=…` | Compatibility query for an advisory trajectory without a confirmation ID |
 | `GET /api/lab/celestial/{bodyId}/state?atTicks=…` | Read celestial state at a signed Int64 timestamp |
 | `GET /api/lab/spacecraft/state?atTicks=…` | Read Pathfinder's current or predicted future state |
@@ -73,7 +75,8 @@ and `cancel-travel`. The compatible direct `travel` operation accepts
 requires course review before issuing an order.
 
 The host retains up to 32 solved preview plans. A successful command or clock
-tick invalidates them. The session gate serializes reads and writes. The server
+tick invalidates them. Automatic searches use a captured departure outside the
+session gate and recheck the instance and revision before issuing previews. The server
 returns 409 for stale instances, stale revisions, or expired course previews, and
 400 for invalid command arguments. Stop accepts an older revision for the same
 instance. POST requests require JSON and an Origin authority matching the Host.
@@ -82,14 +85,14 @@ the browser refreshes state without automatically replaying the command.
 
 ## Verification and open work
 
-The merged release passed 99 xUnit and 11 Node cases, 22 Chromium course checks,
-38 navigation/lifecycle checks, and isolated HTTP suites. Run
-`scripts/Verify.ps1` for the repository suite. Run `scripts/Test-SystemLabApi.ps1`
+Run `scripts/Verify.ps1` for simulation, session, and client checks. Run
+`scripts/Test-SystemLabApi.ps1`
 against an isolated stopped lab because the script advances time. Live deployment
-verification covered private HTTPS, the new client, and the course preview
-endpoint. See [course plotting](COURSE_PLOTTING.md) for browser test reproduction.
+verification covers HTTPS, the browser assets, campaign restore, and read-only
+course previews. See [course plotting](COURSE_PLOTTING.md) for browser test reproduction.
 
-Initial physical-phone portrait 2D play is confirmed. The current course workflow,
-physical-phone 3D, lifecycle behavior, and measured performance remain open.
-Player-facing save controls, finite thrust and propellant use, collision and docking, fleets,
-and wider simulation domains are future work. See the [project plan](PROJECT_PLAN.md).
+Initial phone play and owner feedback are recorded in
+[mobile validation](MOBILE_AND_REMOTE_ACCESS.md). End-to-end course and campaign
+checks on the physical phone, 3D, lifecycle behavior, and measured performance
+remain open. Finite thrust, propellant use, collision, docking, and fleets are
+future work. See the [project plan](PROJECT_PLAN.md).

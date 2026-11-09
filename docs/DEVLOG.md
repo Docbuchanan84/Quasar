@@ -1,5 +1,16 @@
 # Development log
 
+## 2026-11-09 — Course planning release and documentation
+
+- Automatic course planning merged into `main` through
+  [PR #21](https://github.com/Docbuchanan84/Quasar/pull/21). The published
+  build and the merge use the same gameplay source.
+- The private HTTPS preview served the updated client and restored the active
+  campaign from the same checkpoint. A portrait browser check verified route
+  selection and the maneuver budget control. The owner gave positive feedback.
+- Reconciled the public gameplay, checkpoint, hosting, and validation guides
+  with the current implementation. Historical results remain in the log.
+
 ## 2026-11-09 — Automatic course planning
 
 - Plot Course accepts planets and moons and compares the fastest and lowest
