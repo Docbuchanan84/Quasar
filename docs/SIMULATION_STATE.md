@@ -52,18 +52,14 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   is unnecessary. Planner/ephemeris caches and display samples are derived.
   Preview tokens, leases, and browser state are outside the payload.
 
-## Storage handoff for issue #11
+## Storage handoff
 
-After #10 merges, persist the UTF-8 bytes produced by `SimulationStateJson`.
-Store `state.Simulation.FormatVersion` and `state.Simulation.ElapsedTicks`
-with checkpoint metadata. Keep the tick column signed 64-bit and hash the exact
-payload bytes. Verify size, hash, and checkpoint metadata on load, then decode
-and require a successful detached `SystemLab.RestoreState` before returning a
-loadable checkpoint. Compare the decoded version and clock to the metadata.
-Treat storage schema version and simulation format version as separate fields.
-This version supports version 1 only. Campaign/save IDs, backup policy,
-transactions, and storage migrations belong to the host-side storage work.
-The eventual session integration owns installing the validated candidate and
+The [host-side SQLite store](SQLITE_PERSISTENCE.md) persists the exact UTF-8
+bytes produced by `SimulationStateJson` alongside a signed 64-bit clock, a
+simulation format version, and a SHA-256 digest. It checks the size, digest,
+metadata, decoded format and clock, and detached `SystemLab.RestoreState`
+before returning a checkpoint. Storage schema and simulation format have
+separate versions. Issue #12 owns installing the validated candidate and
 starting it stopped.
 
 ## Verification

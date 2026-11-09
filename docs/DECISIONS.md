@@ -8,9 +8,15 @@ boundary cursor alongside celestial definitions, the clock, and lab history.
 Restore validates the checkpoint and reconstructs the event queue from the
 remaining segment ends. See [the format and handoff](SIMULATION_STATE.md).
 
-SQLite and Microsoft.Data.Sqlite are approved for the separately scoped
-[issue #11](https://github.com/Docbuchanan84/Quasar/issues/11), after #10 merges.
-Campaign schema, migration details, and recovery policy belong to that work.
+## Approved — SQLite campaign storage (issue #11)
+
+[Issue #11](https://github.com/Docbuchanan84/Quasar/issues/11) approves SQLite
+and Microsoft.Data.Sqlite for local campaign storage. The host-side store uses
+one active database per campaign, transactional checkpoint rotation, forward
+schema migrations, and verified standalone backups. Database schema versions
+are independent of simulation checkpoint versions. The five-checkpoint
+recovery default is provisional. See [storage and recovery policy](SQLITE_PERSISTENCE.md).
+Server lifecycle integration follows in issue #12.
 
 ## Approved — Agent 4 course plotting and map integration (2026-11-08)
 
