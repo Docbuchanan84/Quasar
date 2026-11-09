@@ -14,7 +14,7 @@ public sealed class SimulationStateTests
     [Fact]
     public void LabMidflightJsonRoundTripRetainsSolvedPlanAndExactFifteenDayInterruption()
     {
-        var original = new SystemLab();
+        var original = SystemLab.CreateLegacyFixture();
         original.OrderTravel("planet-iris");
         original.Advance(TimeSpan.FromHours(2));
 
@@ -107,7 +107,7 @@ public sealed class SimulationStateTests
     [Fact]
     public void CancelledLabKeepsHistoryAndDoesNotRescheduleOldArrival()
     {
-        var lab = new SystemLab();
+        var lab = SystemLab.CreateLegacyFixture();
         lab.OrderTravel("planet-iris");
         lab.Advance(TimeSpan.FromMinutes(5));
         lab.CancelTravel();
@@ -127,7 +127,7 @@ public sealed class SimulationStateTests
     [InlineData(long.MaxValue)]
     public void SignedTickStringsAndCelestialEpochsSurviveJsonExactly(long ticks)
     {
-        var state = new SystemLab().ExportState();
+        var state = SystemLab.CreateLegacyFixture().ExportState();
         var ship = state.Simulation.Spacecraft[0];
         var bodies = state.Simulation.Bodies.Add(new("moon-λ", "Test moon", CelestialBodyKind.Moon, 0, "planet-iris",
             new(12000, .1, .2, .3, .4, 1, long.MinValue),
@@ -181,7 +181,7 @@ public sealed class SimulationStateTests
     [InlineData("mismatched history")]
     public void InvalidRestoreLeavesOriginalLabUntouched(string corruption)
     {
-        var lab = new SystemLab();
+        var lab = SystemLab.CreateLegacyFixture();
         lab.OrderTravel("planet-iris");
         lab.Advance(TimeSpan.FromHours(1));
         var state = lab.ExportState();
@@ -266,7 +266,7 @@ public sealed class SimulationStateTests
     [InlineData("truncated")]
     public void JsonDecoderRejectsMalformedPayloads(string corruption)
     {
-        var payload = Encoding.UTF8.GetString(SimulationStateJson.Serialize(new SystemLab().ExportState()));
+        var payload = Encoding.UTF8.GetString(SimulationStateJson.Serialize(SystemLab.CreateLegacyFixture().ExportState()));
         var badPayload = corruption switch
         {
             "numeric ticks" => payload.Replace("\"elapsedTicks\":\"0\"", "\"elapsedTicks\":0"),
@@ -275,7 +275,7 @@ public sealed class SimulationStateTests
             "missing nullable field" => payload.Replace(",\"rendezvous\":null", ""),
             "duplicate property" => payload.Replace("\"elapsedTicks\":\"0\"", "\"elapsedTicks\":\"0\",\"elapsedTicks\":\"0\""),
             "unknown property" => payload.Replace("\"elapsedTicks\":\"0\"", "\"elapsedTicks\":\"0\",\"preview\":0"),
-            "unsupported version" => payload.Replace("\"formatVersion\":1", "\"formatVersion\":2"),
+            "unsupported version" => payload.Replace("\"formatVersion\":2", "\"formatVersion\":999"),
             "truncated" => payload[..^1],
             _ => throw new ArgumentOutOfRangeException(nameof(corruption))
         };
@@ -289,7 +289,7 @@ public sealed class SimulationStateTests
         var catalogue = PatchedCatalogue();
         var movement = new MovementExecution(catalogue);
         movement.AddSpacecraft(SystemLab.ShipId, PatchedInitial, Helios);
-        var seed = new SystemLab().ExportState() with { Simulation = movement.ExportState() };
+        var seed = SystemLab.CreateLegacyFixture().ExportState() with { Simulation = movement.ExportState() };
         var lab = SystemLab.RestoreState(seed);
         lab.CommitTravel(PatchedPlan((CelestialPositionService)lab.CelestialPositions, new("target")));
         Assert.True(lab.Advance(TimeSpan.FromDays(15)));

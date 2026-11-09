@@ -24,7 +24,7 @@ public readonly record struct CelestialState(Position3 PositionKm, Velocity3 Vel
     }
 }
 
-public enum CelestialBodyKind { Star, Planet, Moon, Asteroid, Other }
+public enum CelestialBodyKind { Star, Planet, Moon, Asteroid, Other, DwarfPlanet, Comet, Station }
 
 /// <summary>
 /// Immutable simulation data. Without an orbit, ReferenceState is a linear parent-relative
@@ -33,7 +33,7 @@ public enum CelestialBodyKind { Star, Planet, Moon, Asteroid, Other }
 /// </summary>
 public sealed record CelestialBody(string Id, string Name, CelestialBodyKind Kind,
     double GravitationalParameterKm3PerSecond2, string? ParentId = null,
-    KeplerianOrbit? Orbit = null, CelestialState ReferenceState = default, long ReferenceEpochTicks = 0);
+    KeplerianOrbit? Orbit = null, CelestialState ReferenceState = default, long ReferenceEpochTicks = 0, double RadiusKm = 0);
 
 /// <summary>Elliptic elements relative to the parent's focus; all angles are radians.</summary>
 public sealed record KeplerianOrbit(double SemiMajorAxisKm, double Eccentricity,

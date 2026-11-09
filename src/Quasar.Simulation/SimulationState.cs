@@ -6,11 +6,11 @@ namespace Quasar.Simulation;
 public sealed record SimulationState(int FormatVersion, long ElapsedTicks,
     ImmutableArray<CelestialBodyState> Bodies, ImmutableArray<SpacecraftState> Spacecraft)
 {
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2;
 
     internal void RequireSupportedVersion()
     {
-        if (FormatVersion != CurrentFormatVersion)
+        if (FormatVersion is not (1 or CurrentFormatVersion))
             throw new InvalidDataException($"Unsupported simulation state version {FormatVersion}.");
     }
 }
@@ -21,7 +21,7 @@ public sealed record LabHistoryEntry(long Sequence, long AtTicks, string Kind, s
 
 public sealed record CelestialBodyState(string Id, string Name, CelestialBodyKind Kind,
     double GravitationalParameterKm3PerSecond2, string? ParentId, OrbitState? Orbit,
-    KinematicState ReferenceState, long ReferenceEpochTicks);
+    KinematicState ReferenceState, long ReferenceEpochTicks, double RadiusKm = 0);
 public sealed record OrbitState(double SemiMajorAxisKm, double Eccentricity, double InclinationRadians,
     double LongitudeOfAscendingNodeRadians, double ArgumentOfPeriapsisRadians,
     double MeanAnomalyAtEpochRadians, long EpochTicks);
@@ -31,7 +31,7 @@ public sealed record SpacecraftState(string Id, string PrimaryBodyId, CoastState
 public sealed record CoastState(long EpochTicks, KinematicState InitialRelativeState);
 public sealed record CommittedTrajectoryState(KinematicState InitialState, DestinationState Destination,
     ImmutableArray<TrajectorySegmentState> Segments, ImmutableArray<TrajectoryBurnState> Burns,
-    FuelEstimateState Fuel, int NextBoundaryIndex);
+    FuelEstimateState Fuel, int NextBoundaryIndex, FlybyEncounter? Flyby = null);
 public sealed record TrajectorySegmentState(string PrimaryBodyId, CoastState Coast, long EndTicks);
 public sealed record TrajectoryBurnState(long AtTicks, string Phase, CartesianState DeltaVelocityKmPerSecond);
 public sealed record DestinationState(string? BodyId, KinematicState ReferenceState, long EpochTicks);

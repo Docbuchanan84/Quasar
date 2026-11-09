@@ -73,12 +73,26 @@ function Read-Json([string]$Path) {
     Invoke-RestMethod -Uri "$address$Path" -TimeoutSec 5
 }
 
+function ConvertTo-ComparableWorld($World) {
+    # The Solar System release adds optional snapshot fields to older catalogues.
+    $json = $World | ConvertTo-Json -Depth 30 -Compress | ConvertFrom-Json -AsHashtable
+    if (!$json.referenceEpoch) {
+        $json.Remove('referenceEpoch')
+        foreach ($body in $json.objects) {
+            if (!$body.orbit) { $body.Remove('orbit') }
+            if (!$body.radiusKm) { $body.Remove('radiusKm') }
+        }
+        if ($json.trajectory -and !$json.trajectory.flyby) { $json.trajectory.Remove('flyby') }
+    }
+    $json | ConvertTo-Json -Depth 30 -Compress
+}
+
 function Assert-Midflight($Before, $BeforeShip) {
     $after = Read-Json '/api/lab'
     $ship = Read-Json ('/api/lab/spacecraft/state?atTicks=' + $after.world.elapsedTicks)
     if ($after.running -or $after.instanceId -eq $Before.instanceId -or
-        ($after.world | ConvertTo-Json -Depth 30 -Compress) -cne
-        ($Before.world | ConvertTo-Json -Depth 30 -Compress) -or
+        (ConvertTo-ComparableWorld $after.world) -cne
+        (ConvertTo-ComparableWorld $Before.world) -or
         ($ship | ConvertTo-Json -Depth 30 -Compress) -cne
         ($BeforeShip | ConvertTo-Json -Depth 30 -Compress)) {
         throw 'Exact paused world and trajectory were not restored under a new instance.'
@@ -97,7 +111,7 @@ try {
     if ($before.world.elapsedTicks -ne '108000000000' -or
         $before.world.trajectory.arrivalTicks -ne '216000000000' -or
         $beforeStatus.lastCheckpoint.label -ne 'Midflight' -or $beforeStatus.dirty) {
-        throw 'Expected a committed named save exactly halfway to Iris.'
+        throw 'Expected a committed named save three hours into the six-hour test course.'
     }
     Stop-DisposableHost
 

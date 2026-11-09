@@ -14,4 +14,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Quasar.Simulation.Tests" />
+  </ItemGroup>
 </Project>

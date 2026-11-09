@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { formatTime, objectColor, type Snapshot } from './lab'
 import CampaignPanel from './CampaignPanel'
@@ -218,11 +219,14 @@ function App() {
             ◇ Arrival / future destination
           </p>
           <p className="map-note">
-            Symbols enlarged for readability · planets stationary · orbit guides
-            illustrative
+            Symbols enlarged for readability · {world.referenceEpoch ? `Orbital epoch ${world.referenceEpoch}` : 'Legacy reference guides'}
           </p>
           <nav className="object-list" aria-label="System objects">
-            {world.objects.map((object) => (
+            {[...world.objects].sort((a, b) => (a.parentId ?? '').localeCompare(b.parentId ?? '')).map((object, index, sorted) => (
+              <Fragment key={object.id}>
+                {index > 0 && sorted[index - 1].parentId !== object.parentId && (
+                  <span className="object-group">{world.objects.find((parent) => parent.id === object.parentId)?.name ?? 'System'}</span>
+                )}
               <button
                 key={object.id}
                 aria-pressed={selectedId === object.id}
@@ -240,6 +244,7 @@ function App() {
                 </span>{' '}
                 {object.name}
               </button>
+              </Fragment>
             ))}
           </nav>
         </section>
@@ -273,6 +278,8 @@ function App() {
                 <p className="eyebrow">{selected.kind.toUpperCase()}</p>
                 <h2>{selected.name}</h2>
                 <p className="object-id">{selected.id}</p>
+                {selected.parentId && <p className="muted">Orbits {world.objects.find((o) => o.id === selected.parentId)?.name}</p>}
+                {!!selected.radiusKm && <p className="muted">Reference radius {selected.radiusKm.toLocaleString()} km</p>}
                 <dl>
                   {(['x', 'y', 'z'] as const).map((axis) => (
                     <div key={axis}>
@@ -322,7 +329,8 @@ function App() {
                         setPlotting({
                           shipId: selected.id,
                           destinationId: '',
-                          flightSeconds: '21600',
+                          flightSeconds: world.referenceEpoch ? '25920000' : '21600',
+                          maneuverBudget: world.referenceEpoch ? 25 : undefined,
                         })
                       }
                     >
@@ -343,9 +351,6 @@ function App() {
                   </>
                 ) : selected.kind === 'planet' ? (
                   <>
-                    <p className="muted">
-                      Stationary lab body · parent: Helios
-                    </p>
                     <div
                       className="surface-inset"
                       role="img"
@@ -363,7 +368,7 @@ function App() {
                   </>
                 ) : (
                   <p className="muted">
-                    System reference origin and gravitational primary.
+                    {selected.kind === 'star' ? 'System reference origin and gravitational primary.' : selected.kind === 'station' ? 'Fictional orbital installation.' : 'Natural orbital body.'}
                   </p>
                 )}
               </div>

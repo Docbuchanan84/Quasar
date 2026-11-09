@@ -9,15 +9,14 @@ to the [course plotting release](https://github.com/Docbuchanan84/Quasar/pull/8)
 
 ## Play the System Lab
 
-Helios, Iris, Nereid, and Pathfinder share a right-handed XYZ coordinate frame.
-The fixture planets are fixed. Pathfinder starts coasting in Helios gravity.
-PixiJS shows the tactical XY projection and Babylon.js shows the same scene in
-3D. The planet inspector includes an illustrative surface inset.
+New campaigns start with the Sun, eight planets, selected moons and small bodies,
+two fictional Earth stations, and Pathfinder. C# advances their 3D positions on
+the simulation clock. Select Earth and use **Focus Selected** in either map for
+the local view. See the [Solar System guide](docs/SOLAR_SYSTEM.md).
 
 1. Select Pathfinder in either map or the object list. Stop time processing before plotting.
-2. Choose **Plot Course**, select Iris or Nereid, and review the trajectory. Adjust
-   the flight duration or recalculate as needed. The panel shows departure, ETA,
-   travel time, approximate path length, delta-v, and feasibility warnings.
+2. Choose **Plot Course**, select a destination planet, and adjust flight duration
+   or the test maneuver budget. Quasar checks direct courses and single flybys.
 3. Select **Issue Order** to commit the reviewed course. **Cancel preview** keeps
    the existing movement state. Gold dashes show previews and green shows
    committed paths. Both views show departure and future arrival markers.
@@ -27,13 +26,13 @@ PixiJS shows the tactical XY projection and Babylon.js shows the same scene in
 
 Drag or swipe to pan in 2D. In 3D, drag to orbit and use right/middle/Ctrl-drag or
 two fingers to pan. Both views support wheel/pinch zoom and **Reset View**.
-**Focus Selected** in 3D tracks the selected object.
+**Focus Selected** tracks the selected object in either view.
 
 C# owns the simulation clock and movement. The lab uses gravitational Lambert
 transfers, impulsive departure/arrival, and analytical coasts. The reusable
 simulation also supports hierarchical celestial queries, moving targets, and
-explicit sphere-of-influence patches. The browser currently exposes one ship
-and fixed planet destinations. Fuel estimates await propulsion and mass data.
+automatic single-flyby transfers to moving planet destinations. The browser
+exposes one ship. Fuel estimates await propulsion and mass data.
 The lab is shared across browsers. The host restores SQLite checkpoints
 and exposes **New Game**, **Save Game**, **Named Save**, and **Load Game**.
 Choose **Continue** inside Load Game to recover the latest readable save.

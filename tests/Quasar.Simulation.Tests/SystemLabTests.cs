@@ -10,8 +10,8 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [Fact]
     public void FixtureHasStableIdentitiesAndThreeDimensionalPositions()
     {
-        var first = new SystemLab().Snapshot();
-        var second = new SystemLab().Snapshot();
+        var first = SystemLab.CreateLegacyFixture().Snapshot();
+        var second = SystemLab.CreateLegacyFixture().Snapshot();
         Assert.Equal(4, first.Objects.Length);
         Assert.Equal(4, first.Objects.Select(o => o.Id).Distinct().Count());
         Assert.Equal(first.Objects, second.Objects);
@@ -24,7 +24,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [Fact]
     public void ClockHandlesZeroNegativeAndOverflowAtomically()
     {
-        var lab = new SystemLab();
+        var lab = SystemLab.CreateLegacyFixture();
         Assert.False(lab.Advance(TimeSpan.Zero));
         Assert.Throws<ArgumentOutOfRangeException>(() => lab.Advance(TimeSpan.FromTicks(-1)));
         lab.Advance(TimeSpan.MaxValue);
@@ -47,7 +47,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [InlineData(2592000)]
     public void IdleClockAdvancesExactly(int seconds)
     {
-        var lab = new SystemLab();
+        var lab = SystemLab.CreateLegacyFixture();
         lab.Advance(TimeSpan.FromSeconds(seconds));
         Assert.Equal(seconds * TimeSpan.TicksPerSecond, lab.ElapsedTicks);
     }
@@ -55,8 +55,8 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [Fact]
     public void MovementUsesAllAxesAndEquivalentIncrementsAgree()
     {
-        var large = new SystemLab();
-        var small = new SystemLab();
+        var large = SystemLab.CreateLegacyFixture();
+        var small = SystemLab.CreateLegacyFixture();
         large.OrderTravel("planet-iris"); small.OrderTravel("planet-iris");
         large.Advance(TimeSpan.FromHours(1));
         for (var i = 0; i < 3600; i++) small.Advance(TimeSpan.FromSeconds(1));
@@ -76,7 +76,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [InlineData(2592000)]
     public void LongAdvanceAndMinuteAdvancesStopAtSameExactArrival(int seconds)
     {
-        var large = new SystemLab(); var small = new SystemLab();
+        var large = SystemLab.CreateLegacyFixture(); var small = SystemLab.CreateLegacyFixture();
         large.OrderTravel("planet-nereid"); small.OrderTravel("planet-nereid");
         var arrival = large.Snapshot().Ship.ArrivalTicks;
         while (!large.Advance(TimeSpan.FromSeconds(seconds))) { }
@@ -95,7 +95,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [InlineData(30)]
     public void ShortIntervalStopsAtArrivalInsideItsDeadline(int seconds)
     {
-        var lab = new SystemLab(); lab.OrderTravel("planet-iris");
+        var lab = SystemLab.CreateLegacyFixture(); lab.OrderTravel("planet-iris");
         var arrival = lab.Snapshot().Ship.ArrivalTicks!.Value;
         Assert.False(lab.Advance(TimeSpan.FromTicks(arrival - seconds * TimeSpan.TicksPerSecond + 1)));
         Assert.True(lab.Advance(TimeSpan.FromSeconds(seconds)));
@@ -106,7 +106,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [Fact]
     public void SwitchingShortIntervalsPreservesExactMovementAndHistory()
     {
-        var mixed = new SystemLab(); var single = new SystemLab();
+        var mixed = SystemLab.CreateLegacyFixture(); var single = SystemLab.CreateLegacyFixture();
         mixed.OrderTravel("planet-iris"); single.OrderTravel("planet-iris");
         int[] seconds = [1, 5, 30, 60, 3600, 30, 5, 1];
         foreach (var duration in seconds) Assert.False(mixed.Advance(TimeSpan.FromSeconds(duration)));
@@ -120,7 +120,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [Fact]
     public void RepeatedIntervalChangesHaveNoClockDrift()
     {
-        var session = new LabSession(new TestClock());
+        var session = new LabSession(new TestClock(), SystemLab.CreateLegacyFixture());
         int[] seconds = [1, 5, 30, 60, 3600, 86400, 432000, 1296000, 2592000];
         var expectedShip = session.ShipStateAt(seconds.Sum(s => (long)s) * 200 * TimeSpan.TicksPerSecond);
         long expectedTicks = 0;
@@ -147,7 +147,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [Fact]
     public void ArrivalBoundaryAndRetargetingAreExact()
     {
-        var lab = new SystemLab(); lab.OrderTravel("planet-iris");
+        var lab = SystemLab.CreateLegacyFixture(); lab.OrderTravel("planet-iris");
         lab.Advance(TimeSpan.FromHours(1));
         var departure = Ship(lab.Snapshot()).Position;
         lab.OrderTravel("planet-nereid");
@@ -163,7 +163,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [Fact]
     public void InvalidAndDuplicateOrdersPreserveState()
     {
-        var lab = new SystemLab();
+        var lab = SystemLab.CreateLegacyFixture();
         Assert.Throws<ArgumentException>(() => lab.OrderTravel("star-helios"));
         Assert.Throws<ArgumentException>(() => lab.OrderTravel("missing"));
         lab.OrderTravel("planet-iris");
@@ -176,7 +176,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [Fact]
     public void SnapshotsCannotMutateTheWorld()
     {
-        var lab = new SystemLab(); var snapshot = lab.Snapshot();
+        var lab = SystemLab.CreateLegacyFixture(); var snapshot = lab.Snapshot();
         snapshot.Objects[0] = snapshot.Objects[0] with { Name = "Tampered" };
         snapshot.Events[0] = snapshot.Events[0] with { Message = "Tampered" };
         Assert.Equal("Helios", lab.Snapshot().Objects[0].Name);
@@ -186,7 +186,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [Fact]
     public void LargeAdvancesHaveNoPerSecondLoop()
     {
-        var lab = new SystemLab(); lab.Advance(TimeSpan.Zero);
+        var lab = SystemLab.CreateLegacyFixture(); lab.Advance(TimeSpan.Zero);
         var timer = Stopwatch.StartNew();
         for (var i = 0; i < 100_000; i++) lab.Advance(TimeSpan.FromDays(30));
         timer.Stop();
@@ -197,7 +197,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [Fact]
     public void OnceStopsAndContinuousProcessesChosenIntervals()
     {
-        var session = new LabSession(new TestClock());
+        var session = new LabSession(new TestClock(), SystemLab.CreateLegacyFixture());
         Send(session, "play"); session.Tick();
         Assert.False(session.Snapshot().Running);
         Assert.Equal(TimeSpan.TicksPerHour, session.Snapshot().World.ElapsedTicks);
@@ -221,7 +221,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [InlineData(2592000)]
     public void EveryIntervalSupportsOnceContinuousStopAndResume(int seconds)
     {
-        var clock = new TestClock(); var session = new LabSession(clock);
+        var clock = new TestClock(); var session = new LabSession(clock, SystemLab.CreateLegacyFixture());
         Send(session, "configure", seconds, "once"); Send(session, "play"); session.Tick();
         Assert.False(session.Snapshot().Running);
         Assert.Equal(seconds * TimeSpan.TicksPerSecond, session.Snapshot().World.ElapsedTicks);
@@ -253,7 +253,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [InlineData(2592000, "continuous")]
     public void ArrivalInterruptDiscardsRemainderAndResumeUsesFullInterval(int seconds, string mode)
     {
-        var session = new LabSession(new TestClock());
+        var session = new LabSession(new TestClock(), SystemLab.CreateLegacyFixture());
         Send(session, "travel", destination: "planet-iris");
         var arrival = session.Snapshot().World.Ship.ArrivalTicks;
         Send(session, "configure", seconds, mode); Send(session, "play"); session.Tick();
@@ -275,7 +275,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [InlineData(1296000)]
     public void LeaseExpiresAndOnlyItsOwnerCanRenewIt(int seconds)
     {
-        var clock = new TestClock(); var session = new LabSession(clock);
+        var clock = new TestClock(); var session = new LabSession(clock, SystemLab.CreateLegacyFixture());
         Send(session, "configure", seconds, "continuous");
         var play = Send(session, "play");
         clock.Now = clock.Now.AddSeconds(4);
@@ -291,7 +291,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [Fact]
     public void StaleCommandsAndOtherInstancesAreRejectedButStopCannotLoseToATick()
     {
-        var session = new LabSession(new TestClock()); var old = session.Snapshot();
+        var session = new LabSession(new TestClock(), SystemLab.CreateLegacyFixture()); var old = session.Snapshot();
         Send(session, "configure", 1, "continuous"); Send(session, "play"); session.Tick();
         Assert.Throws<InvalidOperationException>(() => session.Execute(new(old.InstanceId, old.Revision, Client, "travel", DestinationId: "planet-iris")));
         Assert.Throws<InvalidOperationException>(() => session.Execute(new("another-instance", old.Revision, Client, "stop")));
@@ -307,7 +307,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [InlineData("unknown", 3600, "once")]
     public void InvalidSessionCommandsAreAtomic(string operation, int duration, string mode)
     {
-        var session = new LabSession(new TestClock()); var before = session.Snapshot();
+        var session = new LabSession(new TestClock(), SystemLab.CreateLegacyFixture()); var before = session.Snapshot();
         Assert.Throws<ArgumentException>(() => Send(session, operation, duration, mode));
         Assert.Equal(before.Revision, session.Snapshot().Revision);
         Assert.Equal(before.DurationSeconds, session.Snapshot().DurationSeconds);
@@ -316,7 +316,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [Fact]
     public void ConcurrentCommandsHaveOneWriterAndRejectObsoleteRevision()
     {
-        var session = new LabSession(new TestClock()); var state = session.Snapshot(); var accepted = 0;
+        var session = new LabSession(new TestClock(), SystemLab.CreateLegacyFixture()); var state = session.Snapshot(); var accepted = 0;
         Parallel.For(0, 20, _ =>
         {
             try { session.Execute(new(state.InstanceId, state.Revision, Client, "travel", DestinationId: "planet-iris")); Interlocked.Increment(ref accepted); }

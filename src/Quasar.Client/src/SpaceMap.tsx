@@ -20,7 +20,7 @@ import {
   type CourseLayer,
   type MapProps,
 } from './lab'
-import { referenceCircle, toMapPosition } from './mapCoordinates'
+import { focusRadius, mapScale, orbitPath, showObject, toMapPosition } from './mapCoordinates'
 
 export default function SpaceMap(props: MapProps) {
   const host = useRef<HTMLDivElement>(null),
@@ -51,6 +51,15 @@ export default function SpaceMap(props: MapProps) {
       const gesture = new MapGesture()
       const camera = createSpaceCamera(scene, gesture)
       let focusedId: string | null = null
+      let origin = Vector3.Zero()
+      const configureRange = () => {
+        const solar = current.current.objects.some((o) => o.orbit)
+        camera.lowerRadiusLimit = solar ? .015 : .4
+        camera.upperRadiusLimit = solar ? 30000 : 30
+        camera.minZ = solar ? .0001 : .01
+        camera.maxZ = solar ? 50000 : 10000
+        return solar
+      }
       const down = (e: PointerEvent) => {
         if (e.button > 2) return
         gesture.down(e.pointerId, e.clientX, e.clientY)
@@ -94,7 +103,7 @@ export default function SpaceMap(props: MapProps) {
         labels = new Map<string, HTMLSpanElement>()
       const point = (p: { x: number; y: number; z: number }) => {
         const scaled = toMapPosition(p)
-        return new Vector3(scaled.x, scaled.y, scaled.z)
+        return new Vector3(scaled.x, scaled.y, scaled.z).subtractInPlace(origin)
       }
       const syncObjects = (objects: MapProps['objects']) => {
         const ids = new Set(objects.map((o) => o.id))
@@ -124,7 +133,9 @@ export default function SpaceMap(props: MapProps) {
                   },
                   scene,
                 )
-              : MeshBuilder.CreateSphere(
+              : object.kind === 'station'
+                ? MeshBuilder.CreateBox(object.id, { size: .12 }, scene)
+                : MeshBuilder.CreateSphere(
                   object.id,
                   {
                     diameter: object.kind === 'star' ? 0.22 : 0.15,
@@ -152,34 +163,23 @@ export default function SpaceMap(props: MapProps) {
       }
       syncObjects(current.current.objects)
       let lastObjects = current.current.objects
-      const guides: Mesh[] = []
-      const axis = MeshBuilder.CreateLineSystem(
-        'axes',
-        {
-          lines: [
-            [new Vector3(-3, 0, 0), new Vector3(3, 0, 0)],
-            [new Vector3(0, -3, 0), new Vector3(0, 3, 0)],
-            [new Vector3(0, 0, -3), new Vector3(0, 0, 3)],
-          ],
-        },
-        scene,
-      )
-      axis.color = Color3.FromHexString('#345065')
-      axis.isPickable = false
-      guides.push(axis)
-      for (const planet of current.current.objects.filter(
-        (o) => o.kind === 'planet',
-      )) {
-        const points = referenceCircle(planet.position).map(point)
-        if (points.length === 0) continue
-        const guide = MeshBuilder.CreateLines(
-          `${planet.id}-reference`,
-          { points },
-          scene,
-        )
-        guide.color = Color3.FromHexString('#345065')
-        guide.isPickable = false
-        guides.push(guide)
+      const guides = new Map<string, LinesMesh>()
+      let lastGuideCatalogue = ''
+      let lastRouteOrigin = Vector3.Zero()
+      const syncGuides = (objects: MapProps['objects']) => {
+        const key = JSON.stringify(objects.map((o) => [o.id, o.orbit]))
+        if (key === lastGuideCatalogue) return
+        lastGuideCatalogue = key
+        for (const guide of guides.values()) guide.dispose()
+        guides.clear()
+        for (const object of objects) {
+          const points = orbitPath(object).map((p) => new Vector3(p.x * mapScale, p.y * mapScale, p.z * mapScale))
+          if (!points.length) continue
+          const guide = MeshBuilder.CreateLines(`${object.id}-orbit`, { points }, scene)
+          guide.color = Color3.FromHexString('#345065')
+          guide.isPickable = false
+          guides.set(object.id, guide)
+        }
       }
       let routes: Mesh[] = []
       let lastCourses: CourseLayer[] | null = null
@@ -191,14 +191,23 @@ export default function SpaceMap(props: MapProps) {
       controls.current = (action) => {
         if (action === 'reset') {
           focusedId = null
+          origin = Vector3.Zero()
           frameCamera(camera, Vector3.Zero(), true)
+          if (configureRange()) camera.radius = 5400 / Math.tan(camera.fov / 2) *
+            Math.max(1, element.clientHeight / Math.max(1, element.clientWidth))
         } else if (action === 'focus') {
           const selected = current.current.objects.find(
             (o) => o.id === current.current.selectedId,
           )
           if (selected) {
             focusedId = selected.id
-            frameCamera(camera, point(selected.position))
+            const p = toMapPosition(selected.position)
+            origin = new Vector3(p.x, p.y, p.z)
+            frameCamera(camera, Vector3.Zero())
+            if (configureRange()) camera.radius = Math.min(camera.upperRadiusLimit!,
+              Math.max(camera.lowerRadiusLimit!, focusRadius(current.current.objects, selected.id) *
+              mapScale * 1.2 / Math.tan(camera.fov / 2) *
+              Math.max(1, element.clientHeight / Math.max(1, element.clientWidth))))
           }
         } else if (action === 'in' || action === 'out') {
           stopCamera(camera)
@@ -211,33 +220,50 @@ export default function SpaceMap(props: MapProps) {
           )
         }
       }
+      controls.current('reset')
       const render = () => {
         if (document.hidden) return
         const { objects, selectedId, courses, references } = current.current
         if (objects !== lastObjects) {
           syncObjects(objects)
+          if (objects.find((o) => o.kind === 'star')?.id !== lastObjects.find((o) => o.kind === 'star')?.id)
+            controls.current('reset')
           lastObjects = objects
         }
-        if (focusedId !== selectedId) focusedId = null
         const focused = objects.find((o) => o.id === focusedId)
         // Follow a moving focused object without changing orbit angles or zoom.
         // Pan/two-finger navigation releases follow; selection never moves the view.
-        if (focused) camera.target.copyFrom(point(focused.position))
+        if (focused) {
+          const p = toMapPosition(focused.position)
+          origin.set(p.x, p.y, p.z)
+          camera.target.setAll(0)
+        }
+        const span = camera.radius * Math.tan(camera.fov / 2) * 2 / mapScale
+        const visible = (object: MapProps['objects'][number]) => showObject(object, selectedId, focusedId, span)
+        if (lastGuideCatalogue === '' || objects !== lastLabelObjects) syncGuides(objects)
         scaleCameraPan(camera, element.clientHeight)
         for (const object of objects) {
           const mesh = meshes.get(object.id)!
           mesh.position.copyFrom(point(object.position))
+          mesh.setEnabled(visible(object))
           mesh.showBoundingBox = object.id === selectedId
           // Maintain readable symbols as the camera moves; sizes are presentation only.
           const size = Math.max(
-            0.7,
+            0.001,
             ((Vector3.Distance(camera.position, mesh.position) / 8) * 600) /
               element.clientHeight,
           )
           mesh.scaling.setAll(size)
         }
-        for (const guide of guides) guide.setEnabled(references)
-        if (courses !== lastCourses) {
+        for (const object of objects) {
+          const guide = guides.get(object.id)
+          if (!guide) continue
+          const parent = objects.find((o) => o.id === object.parentId)
+          guide.position.copyFrom(point(parent?.position ?? { x: 0, y: 0, z: 0 }))
+          guide.setEnabled(references && visible(object))
+        }
+        if (courses !== lastCourses || !lastRouteOrigin.equals(origin)) {
+          lastRouteOrigin = origin.clone()
           for (const mesh of routes) {
             mesh.material?.dispose()
             mesh.dispose()
@@ -267,9 +293,11 @@ export default function SpaceMap(props: MapProps) {
             for (const [phase, position] of [
               ['departure', points[0]],
               ['arrival', points.at(-1)!],
+              ['flyby', points[course.trajectory.points.findIndex((sample) => sample.atTicks === course.trajectory.flyby?.atTicks)]],
             ] as const) {
+              if (!position) continue
               const marker =
-                phase === 'departure'
+                phase !== 'arrival'
                   ? MeshBuilder.CreateBox(
                       `${course.kind}-${phase}`,
                       { size: 0.1 },
@@ -346,6 +374,7 @@ export default function SpaceMap(props: MapProps) {
           const x = (projected.x * width) / engine.getRenderWidth()
           const y = (projected.y * height) / engine.getRenderHeight()
           label.hidden =
+            !visible(object) ||
             projected.z < 0 ||
             projected.z > 1 ||
             x < 0 ||

@@ -35,7 +35,7 @@ public sealed class CampaignHttpTests : IDisposable
             var created = await host.Create("Pathfinder");
             campaignId = created.GetProperty("campaign").GetProperty("id").GetGuid();
             instanceId = created.GetProperty("instanceId").GetString()!;
-            var preview = await host.Get(Lab + "/course-preview?destinationId=planet-iris");
+            var preview = await host.Get(Lab + "/course-preview?destinationId=planet-earth");
             await host.Command("commit-course", previewId: preview.GetProperty("previewId").GetString());
             if (scenario == "arrived")
             {
@@ -90,7 +90,7 @@ public sealed class CampaignHttpTests : IDisposable
         var second = await host.Create("Second campaign");
         var campaignId = first.GetProperty("campaign").GetProperty("id").GetGuid();
         var checkpointId = first.GetProperty("lastCheckpoint").GetProperty("id").GetGuid();
-        var preview = await host.Get(Lab + "/course-preview?destinationId=planet-iris");
+        var preview = await host.Get(Lab + "/course-preview?destinationId=planet-earth");
         await host.Command("configure", duration: 1, mode: "continuous");
         await host.Command("play");
 

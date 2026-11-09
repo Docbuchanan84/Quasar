@@ -201,7 +201,7 @@ public sealed class TrajectoryTests(ITestOutputHelper output)
     [Fact]
     public void LabPresentationAndSessionPreviewAreReadOnlyAndMatchAuthoritativeState()
     {
-        var session = new LabSession(TimeProvider.System); var before = session.Snapshot();
+        var session = new LabSession(TimeProvider.System, SystemLab.CreateLegacyFixture()); var before = session.Snapshot();
         var preview = session.PreviewTravel("planet-iris", 21600);
         var after = session.Snapshot();
         Assert.Equal(before.Revision, after.Revision); Assert.Equal(before.World.Objects, after.World.Objects);

@@ -46,7 +46,7 @@ public sealed partial class MovementExecution
         body.GravitationalParameterKm3PerSecond2, body.ParentId,
         body.Orbit is { } orbit ? new(orbit.SemiMajorAxisKm, orbit.Eccentricity, orbit.InclinationRadians,
             orbit.LongitudeOfAscendingNodeRadians, orbit.ArgumentOfPeriapsisRadians, orbit.MeanAnomalyAtEpochRadians,
-            orbit.EpochTicks) : null, KinematicState.From(body.ReferenceState), body.ReferenceEpochTicks);
+            orbit.EpochTicks) : null, KinematicState.From(body.ReferenceState), body.ReferenceEpochTicks, body.RadiusKm);
 
     private static CelestialBody RestoreBody(CelestialBodyState body)
     {
@@ -54,7 +54,7 @@ public sealed partial class MovementExecution
         return new(body.Id, body.Name, body.Kind, body.GravitationalParameterKm3PerSecond2, body.ParentId,
             body.Orbit is { } orbit ? new(orbit.SemiMajorAxisKm, orbit.Eccentricity, orbit.InclinationRadians,
                 orbit.LongitudeOfAscendingNodeRadians, orbit.ArgumentOfPeriapsisRadians, orbit.MeanAnomalyAtEpochRadians,
-                orbit.EpochTicks) : null, body.ReferenceState.ToRuntime(), body.ReferenceEpochTicks);
+                orbit.EpochTicks) : null, body.ReferenceState.ToRuntime(), body.ReferenceEpochTicks, body.RadiusKm);
     }
 
     private static SpacecraftState ExportShip(string id, Spacecraft ship) => new(id, ship.Primary,
@@ -74,7 +74,7 @@ public sealed partial class MovementExecution
             ExportCoast(segment.Coast), segment.EndTicks))],
         [.. plan.Burns.Select(burn => new TrajectoryBurnState(burn.AtTicks, burn.Phase,
             CartesianState.From(burn.DeltaVelocityKmPerSecond)))],
-        new(plan.Fuel.PropellantMassKg, plan.Fuel.UnavailableReason), nextBoundary);
+        new(plan.Fuel.PropellantMassKg, plan.Fuel.UnavailableReason), nextBoundary, plan.Flyby);
 
     private void RestoreShip(SpacecraftState state)
     {
@@ -169,8 +169,10 @@ public sealed partial class MovementExecution
             target.PositionKm.DistanceTo(before.PositionKm), "Trajectory misses its destination.");
         burns[^1] = RestoreBurn(state.Burns[^1], last.EndTicks, "arrival",
             Vector3d.From(target.VelocityKmPerSecond) - Vector3d.From(before.VelocityKmPerSecond));
+        Require(state.Flyby is null || TrajectoryPlanner.IsValidFlyby(catalogue, state.Flyby, segments),
+            "Invalid saved gravity assist.");
         var plan = new TrajectoryPlan(catalogue, initial, destination, segments, burns,
-            new(state.Fuel.PropellantMassKg, state.Fuel.UnavailableReason));
+            new(state.Fuel.PropellantMassKg, state.Fuel.UnavailableReason), state.Flyby);
         Require(double.IsFinite(plan.RequiredDeltaVKmPerSecond), "Nonfinite total delta-v.");
         return plan;
     }

@@ -22,6 +22,13 @@ and [development log](DEVLOG.md) document contracts, source branches, and test
 evidence. The original lab's physical-phone portrait 2D acceptance remains
 recorded in [mobile validation](MOBILE_AND_REMOTE_ACCESS.md).
 
+## Solar System starter
+
+New campaigns use the [Solar System fixture](SOLAR_SYSTEM.md), with analytical
+planet and satellite motion, two fictional stations, and automatic single-flyby
+course tests. Helios campaigns remain loadable. Propulsion is the next requested
+development task after the Solar System preview is verified on the physical phone.
+
 ## Next validation
 
 Exercise the current course workflow, arrival, and both maps on the owner's

@@ -173,7 +173,7 @@ public sealed class CelestialPositionTests(ITestOutputHelper output)
     [Fact]
     public void LabSnapshotAndQueriesShareAuthorityWithoutAdvancingClockHistoryOrRevision()
     {
-        var lab = new SystemLab();
+        var lab = SystemLab.CreateLegacyFixture();
         lab.Advance(TimeSpan.FromDays(365));
         foreach (var body in lab.Snapshot().Objects.Where(o => o.Kind != "spacecraft"))
         {
@@ -181,7 +181,7 @@ public sealed class CelestialPositionTests(ITestOutputHelper output)
             Assert.Equal(body.Position, state.PositionKm);
             Assert.Equal(body.VelocityKmPerSecond, state.VelocityKmPerSecond);
         }
-        var session = new LabSession(TimeProvider.System);
+        var session = new LabSession(TimeProvider.System, SystemLab.CreateLegacyFixture());
         var before = session.Snapshot();
         session.CelestialStateAt("planet-iris", long.MaxValue);
         session.CelestialStateAt("planet-iris", long.MinValue);

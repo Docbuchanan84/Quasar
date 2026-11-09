@@ -35,6 +35,14 @@ async function campaignBrowserScenario(page) {
   }
   const phase = new URL(page.url()).hash.slice(1)
 
+  const selectTestCourse = async () => {
+    const world = (await lab()).world
+    const solar = world.objects.some((body) => body.id === 'star-sun')
+    await page.getByLabel('Course destination').selectOption(solar ? 'planet-earth' : 'planet-iris')
+    await page.getByLabel('Flight duration (seconds)').fill('21600')
+    if (solar) await page.getByLabel('Test maneuver budget').press('End')
+  }
+
   if (phase === 'create') {
     await show(text('No saved campaigns found.'))
     await hide(button('▶ Play'))
@@ -44,8 +52,23 @@ async function campaignBrowserScenario(page) {
     await show(text('Campaign created. Time is paused.'))
     await show(page.locator('.map-viewport canvas'))
     await show(text('Autosave off'))
+    const start = await lab()
+    if (start.world.objects.some((body) => body.id === 'star-sun')) {
+      if (start.world.objects.filter((body) => body.kind === 'planet').length !== 8)
+        throw new Error('New campaign did not start with eight planets')
+      await click('Earth')
+      await click('Focus Selected')
+      await click('Earth Staryard')
+      await show(page.getByRole('heading', { name: 'Earth Staryard', exact: true }))
+      await click('3D')
+      await click('Earth')
+      await click('Focus Selected Object')
+      await show(page.locator('.space-label').filter({ hasText: 'Earth Staryard' }))
+      await click('2D')
+      await click('Pathfinder')
+    }
     await click('Plot Course')
-    await page.getByLabel('Course destination').selectOption('planet-iris')
+    await selectTestCourse()
     await show(text('PREVIEW · NOT ORDERED'))
     await click('Issue Order')
     for (const time of ['01:00:00', '02:00:00', '03:00:00']) {
@@ -81,7 +104,7 @@ async function campaignBrowserScenario(page) {
     await show(clock('04:00:00'))
     await click('Close')
     await click('Plot Course')
-    await page.getByLabel('Course destination').selectOption('planet-iris')
+    await selectTestCourse()
     await show(text('PREVIEW · NOT ORDERED'))
     await click('Load Game')
     await load('Continue')
@@ -89,7 +112,7 @@ async function campaignBrowserScenario(page) {
     await hide(text('PREVIEW · NOT ORDERED'))
     await show(clock('03:00:00'))
     await show(button('▶ Play'))
-    await show(text('Destination: Iris'))
+    await show(page.getByText(/^Destination: (Earth|Iris)$/))
   } else if (phase === 'arrival') {
     await noOverflow(1440, 900)
     await show(clock('03:00:00'))

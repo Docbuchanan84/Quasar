@@ -30,6 +30,7 @@ public sealed class CelestialPositionService : ICelestialPositionService
         foreach (var body in bodies.Values)
         {
             if (string.IsNullOrWhiteSpace(body.Id) || string.IsNullOrWhiteSpace(body.Name) || !Enum.IsDefined(body.Kind)
+                || !double.IsFinite(body.RadiusKm) || body.RadiusKm < 0
                 || !double.IsFinite(body.GravitationalParameterKm3PerSecond2) || body.GravitationalParameterKm3PerSecond2 < 0)
                 throw new ArgumentException("Bodies require an identity, name, kind, and finite nonnegative GM.", nameof(definitions));
             body.ReferenceState.RequireFinite();
