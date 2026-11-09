@@ -67,9 +67,9 @@ public static class QuasarHost
         });
 
         app.MapGet("/api/lab", (LabSession session) => session.Snapshot());
-        app.MapGet("/api/lab/course-preview", (string destinationId, int? flightSeconds, LabSession session) =>
+        app.MapGet("/api/lab/course-preview", (string destinationId, int? flightSeconds, double? maneuverBudget, LabSession session) =>
         {
-            try { return Results.Ok(session.PreviewCourse(destinationId, flightSeconds ?? 21600)); }
+            try { return Results.Ok(session.PreviewCourse(destinationId, flightSeconds ?? 21600, maneuverBudget)); }
             catch (InvalidOperationException error) { return Results.Conflict(new { error = error.Message }); }
             catch (Exception error) when (error is ArgumentException or OverflowException)
             { return Results.BadRequest(new { error = error.Message }); }

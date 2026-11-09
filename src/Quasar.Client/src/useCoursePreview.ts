@@ -5,6 +5,7 @@ export type PlotInputs = {
   shipId: string
   destinationId: string
   flightSeconds: string
+  maneuverBudget?: number
 }
 
 // Preview requests are reads. Input/state changes hide old results immediately and abort late responses.
@@ -19,6 +20,7 @@ export function useCoursePreview(
     preview?: CoursePreview
     error?: string
   } | null>(null)
+  const maneuverBudget = inputs?.maneuverBudget
   const seconds = Number(inputs?.flightSeconds)
   const valid =
     Number.isInteger(seconds) && seconds >= 1 && seconds <= 315576000
@@ -50,6 +52,7 @@ export function useCoursePreview(
             `/api/lab/course-preview?${new URLSearchParams({
               destinationId: destinationId!,
               flightSeconds: String(seconds),
+              ...(maneuverBudget === undefined ? {} : { maneuverBudget: String(maneuverBudget) }),
             })}`,
             {
               cache: 'no-store',
@@ -89,7 +92,7 @@ export function useCoursePreview(
       clearTimeout(timer)
       controller.abort()
     }
-  }, [key, destinationId, seconds, instanceId, revision, shipId])
+  }, [key, destinationId, seconds, instanceId, revision, shipId, maneuverBudget])
   const current = result?.key === key ? result : null
   return {
     preview: current?.preview ?? null,

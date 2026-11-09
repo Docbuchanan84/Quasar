@@ -17,9 +17,10 @@ public sealed partial class SystemLab
         var movement = MovementExecution.RestoreState(state.Simulation);
         if (state.Simulation.Spacecraft.Length != 1 || state.Simulation.Spacecraft[0].Id != ShipId
             || movement.Catalogue.Bodies.ContainsKey(ShipId)
-            || !movement.Catalogue.Bodies.TryGetValue(PrimaryId, out var primary)
+            || !movement.Catalogue.Bodies.TryGetValue(
+                movement.Catalogue.Bodies.ContainsKey(SolarSystem.Sun) ? SolarSystem.Sun : LegacyPrimaryId, out var primary)
             || primary.GravitationalParameterKm3PerSecond2 <= 0)
-            throw new InvalidDataException("The System Lab requires Pathfinder and the Helios gravity primary.");
+            throw new InvalidDataException("The System Lab requires Pathfinder and a supported gravity primary.");
 
         ValidateHistory(state);
         var restored = new SystemLab(movement) { lastEventSequence = state.LastEventSequence };

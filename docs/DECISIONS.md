@@ -296,3 +296,11 @@ bounded proportional/natural zoom, reduced orbit inertia, tap/drag intent tracki
 and explicit focus without recentering on ordinary selection. Details and checks
 are in MAP_NAVIGATION.md. No rendering stack, simulation, storage or scheduler
 decision changed. Actual-phone validation of these changed controls remains open.
+
+
+## Approved — Solar System test campaign (2026-11-09)
+
+The owner requested the real Solar System, an O’Neill-style habitat and a
+staryard, a single test ship, and automatically selected gravity assists.
+The [fixture and course guide](SOLAR_SYSTEM.md) records the implementation
+choices for this test campaign. Permanent propulsion remains open.

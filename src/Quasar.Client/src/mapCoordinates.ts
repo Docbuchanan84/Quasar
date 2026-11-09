@@ -25,3 +25,36 @@ export function referenceCircle(position: Position): Position[] {
     return { x: position.x * c + tangent.x * s, y: position.y * c + tangent.y * s, z: position.z * c }
   })
 }
+
+
+export function orbitPath(object: import('./lab').LabObject): Position[] {
+  const orbit = object.orbit
+  if (!orbit) return object.kind === 'planet' ? referenceCircle(object.position) : []
+  const { semiMajorAxisKm: a, eccentricity: e, inclinationRadians: i,
+    longitudeOfAscendingNodeRadians: node, argumentOfPeriapsisRadians: peri } = orbit
+  return Array.from({ length: 97 }, (_, n) => {
+    const anomaly = n / 96 * Math.PI * 2
+    const x = a * (Math.cos(anomaly) - e)
+    const y = a * Math.sqrt(1 - e * e) * Math.sin(anomaly)
+    const u = x * Math.cos(peri) - y * Math.sin(peri)
+    const v = x * Math.sin(peri) + y * Math.cos(peri)
+    return {
+      x: u * Math.cos(node) - v * Math.cos(i) * Math.sin(node),
+      y: u * Math.sin(node) + v * Math.cos(i) * Math.cos(node),
+      z: v * Math.sin(i),
+    }
+  })
+}
+
+export function focusRadius(objects: import('./lab').LabObject[], id: string) {
+  return Math.max(20000, ...objects.filter((o) => o.parentId === id)
+    .map((o) => o.orbit ? o.orbit.semiMajorAxisKm * (1 + o.orbit.eccentricity) : 0))
+}
+
+export function showObject(object: import('./lab').LabObject, selected: string, focused: string | null, spanKm: number) {
+  if (object.id === selected || object.id === focused || object.kind === 'spacecraft' || !object.orbit) return true
+  if (object.parentId === focused) return true
+  return object.parentId === 'star-sun'
+    ? object.kind === 'planet' || spanKm < 2e9
+    : object.orbit.semiMajorAxisKm >= spanKm * .035
+}

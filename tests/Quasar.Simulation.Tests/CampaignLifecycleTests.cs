@@ -29,7 +29,7 @@ public sealed class CampaignLifecycleTests : IDisposable
         Assert.Equal(initial.HeadSequence + 1, store.GetCampaign(campaign.Id).HeadSequence);
         Assert.False(session.CampaignStatus().Dirty);
 
-        session.PreviewCourse("planet-nereid", 21600);
+        session.PreviewCourse("planet-earth", 21600);
         Command(session, "configure", duration: 1);
         clock.Advance(TimeSpan.FromHours(1));
         lifecycle.CheckAutosave();
@@ -73,7 +73,7 @@ public sealed class CampaignLifecycleTests : IDisposable
         };
         var (session, lifecycle, store) = Start(settings);
         var campaign = lifecycle.Create(Version(session), "Triggered").Campaign!;
-        Command(session, "travel", destination: "planet-iris");
+        Command(session, "travel", destination: "planet-earth");
         Command(session, "cancel-travel");
         lifecycle.CheckAutosave();
         Assert.Equal(1, store.GetCampaign(campaign.Id).HeadSequence);
@@ -154,7 +154,7 @@ public sealed class CampaignLifecycleTests : IDisposable
         var (session, lifecycle, _) = Start(new());
         var active = lifecycle.Create(Version(session), "Lease").Campaign!;
         var original = session.Snapshot();
-        var oldPreview = session.PreviewCourse("planet-iris", 21600);
+        var oldPreview = session.PreviewCourse("planet-earth", 21600);
 
         Command(session, "play");
         var loaded = lifecycle.Continue(Version(session), active.Id);

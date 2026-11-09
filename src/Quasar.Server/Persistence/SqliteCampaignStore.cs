@@ -265,7 +265,7 @@ public sealed partial class SqliteCampaignStore : ICampaignStore
     private static LoadedCheckpoint ReadCheckpoint(SqliteDataReader reader, CampaignInfo campaign)
     {
         var info = ReadCheckpointInfo(reader, campaign);
-        if (info.StateFormatVersion != SimulationState.CurrentFormatVersion)
+        if (info.StateFormatVersion is not (1 or SimulationState.CurrentFormatVersion))
             throw new InvalidDataException("Unsupported checkpoint state format.");
         if (reader.GetValue(9) is not byte[] payload
             || !CryptographicOperations.FixedTimeEquals(SHA256.HashData(payload), Convert.FromHexString(info.Sha256)))

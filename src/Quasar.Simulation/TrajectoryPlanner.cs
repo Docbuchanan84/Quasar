@@ -25,6 +25,7 @@ public sealed record TrajectoryBurn(long AtTicks, string Phase, Velocity3 DeltaV
 {
     public double DeltaVKmPerSecond => Vector3d.From(DeltaVelocityKmPerSecond).Length;
 }
+public sealed record FlybyEncounter(string BodyId, double ClosestApproachKm);
 public sealed record TrajectoryPoint(long AtTicks, CelestialState State);
 public sealed record TransferFuelEstimate(double? PropellantMassKg, string? UnavailableReason);
 
@@ -58,11 +59,12 @@ public sealed class TrajectoryPlan
 {
     internal TrajectoryPlan(CelestialPositionService catalogue, CelestialState initial,
         TrajectoryDestination destination, TrajectorySegment[] segments, TrajectoryBurn[] burns,
-        TransferFuelEstimate fuel)
+        TransferFuelEstimate fuel, FlybyEncounter? flyby = null)
     {
         Catalogue = catalogue; InitialState = initial; Destination = destination;
         Segments = Array.AsReadOnly(segments); Burns = Array.AsReadOnly(burns); Fuel = fuel;
-        RequiredDeltaVKmPerSecond = burns.Sum(b => b.DeltaVKmPerSecond);
+        Flyby = flyby;
+        RequiredDeltaVKmPerSecond = burns.Where(b => flyby is null || b.Phase != "patch").Sum(b => b.DeltaVKmPerSecond);
     }
     internal CelestialPositionService Catalogue { get; }
     public CelestialState InitialState { get; }
@@ -70,6 +72,7 @@ public sealed class TrajectoryPlan
     public ReadOnlyCollection<TrajectorySegment> Segments { get; }
     public ReadOnlyCollection<TrajectoryBurn> Burns { get; }
     public TransferFuelEstimate Fuel { get; }
+    public FlybyEncounter? Flyby { get; }
     public long DepartureTicks => Segments[0].StartTicks;
     public long ArrivalTicks => Segments[^1].EndTicks;
     public double TravelSeconds => (double)(((decimal)ArrivalTicks - DepartureTicks) / TimeSpan.TicksPerSecond);
@@ -101,7 +104,7 @@ public sealed class TrajectoryPlan
 }
 
 /// <summary>Pure boundary-value solving plus a bounded memo scoped to one immutable celestial catalogue.</summary>
-public sealed class TrajectoryPlanner(CelestialPositionService catalogue, ITransferFuelEstimator? fuelEstimator = null)
+public sealed partial class TrajectoryPlanner(CelestialPositionService catalogue, ITransferFuelEstimator? fuelEstimator = null)
 {
     private readonly Dictionary<TransferRequest, TrajectoryPlan> cache = [];
     private readonly object gate = new();

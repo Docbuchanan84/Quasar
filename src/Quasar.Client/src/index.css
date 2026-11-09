@@ -677,3 +677,5 @@ footer {
 .save-list li .save-details {
   display: block;
 }
+
+.object-group { flex-basis: 100%; color: #a0b4c4; font-size: .8rem; }

@@ -23,7 +23,7 @@ public sealed class SqliteCampaignStoreTests : IDisposable
         Assert.Equal(campaign, store.GetCampaign(campaign.Id));
         Assert.Equal(2, store.ListCampaigns().Count);
 
-        var lab = new SystemLab();
+        var lab = SystemLab.CreateLegacyFixture();
         lab.OrderTravel("planet-iris");
         lab.Advance(TimeSpan.FromHours(2));
         var state = lab.ExportState();
@@ -64,7 +64,7 @@ public sealed class SqliteCampaignStoreTests : IDisposable
     {
         var store = Store();
         var campaign = store.CreateCampaign("Signed epochs");
-        var state = new SystemLab().ExportState();
+        var state = SystemLab.CreateLegacyFixture().ExportState();
         var ship = state.Simulation.Spacecraft[0];
         state = state with
         {
@@ -90,7 +90,7 @@ public sealed class SqliteCampaignStoreTests : IDisposable
     {
         var store = Store();
         var campaign = store.CreateCampaign("Rotation");
-        var state = new SystemLab().ExportState();
+        var state = SystemLab.CreateLegacyFixture().ExportState();
         var named = store.SaveNamed(campaign.Id, 0, "Keep", Build, state);
         for (var head = 1; head <= 6; head++)
             store.SaveRecovery(campaign.Id, head, Build, state);
@@ -111,7 +111,7 @@ public sealed class SqliteCampaignStoreTests : IDisposable
     {
         var store = Store(1);
         var campaign = store.CreateCampaign("Atomic");
-        var state = new SystemLab().ExportState();
+        var state = SystemLab.CreateLegacyFixture().ExportState();
         var original = store.SaveRecovery(campaign.Id, 0, Build, state);
         var before = store.GetCampaign(campaign.Id);
         Execute(campaign.Id, """
@@ -133,7 +133,7 @@ public sealed class SqliteCampaignStoreTests : IDisposable
     public async Task SeparateStoreInstancesCannotCommitTheSameExpectedHead()
     {
         var campaign = Store().CreateCampaign("Concurrent");
-        var state = new SystemLab().ExportState();
+        var state = SystemLab.CreateLegacyFixture().ExportState();
         var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var first = TrySave();
         var second = TrySave();
@@ -164,13 +164,13 @@ public sealed class SqliteCampaignStoreTests : IDisposable
     [InlineData("sha256 = zeroblob(32)")]
     [InlineData("payload = zeroblob(0)")]
     [InlineData("simulation_ticks = simulation_ticks + 1")]
-    [InlineData("state_format = 2")]
+    [InlineData("state_format = 999")]
     [InlineData("created_utc = 'invalid'")]
     public void BadCheckpointIsRejectedAndEarlierRecoveryRemainsLoadable(string change)
     {
         var store = Store();
         var campaign = store.CreateCampaign("Corruption");
-        var state = new SystemLab().ExportState();
+        var state = SystemLab.CreateLegacyFixture().ExportState();
         var first = store.SaveRecovery(campaign.Id, 0, Build, state);
         var second = store.SaveRecovery(campaign.Id, 1, Build, state);
         Execute(campaign.Id, $"PRAGMA ignore_check_constraints = ON; UPDATE checkpoints SET {change} WHERE sequence = 2;");
@@ -190,7 +190,7 @@ public sealed class SqliteCampaignStoreTests : IDisposable
     {
         var store = Store();
         var campaign = store.CreateCampaign("Invalid state");
-        var state = new SystemLab().ExportState();
+        var state = SystemLab.CreateLegacyFixture().ExportState();
         var saved = store.SaveRecovery(campaign.Id, 0, Build, state);
         var payload = validJson
             ? SimulationStateJson.Serialize(state with { LastEventSequence = 99 })
@@ -223,7 +223,7 @@ public sealed class SqliteCampaignStoreTests : IDisposable
         Assert.NotNull(entry.Error);
 
         Assert.Throws<InvalidDataException>(() => store.MigrateCampaign(campaign.Id));
-        Assert.Throws<InvalidDataException>(() => store.SaveRecovery(campaign.Id, 0, Build, new SystemLab().ExportState()));
+        Assert.Throws<InvalidDataException>(() => store.SaveRecovery(campaign.Id, 0, Build, SystemLab.CreateLegacyFixture().ExportState()));
         Assert.Equal(before, File.ReadAllBytes(DatabasePath(campaign.Id)));
     }
 
@@ -238,7 +238,7 @@ public sealed class SqliteCampaignStoreTests : IDisposable
         Assert.Throws<ArgumentException>(() => new SqliteCampaignStore("../relative"));
         Assert.Throws<ArgumentException>(() => store.GetCampaign(Guid.Empty));
         Assert.Throws<ArgumentException>(() => store.RestoreBackup(campaign.Id, Guid.Empty, "Restored"));
-        Assert.Throws<ArgumentException>(() => store.SaveNamed(campaign.Id, 0, "\n", Build, new SystemLab().ExportState()));
+        Assert.Throws<ArgumentException>(() => store.SaveNamed(campaign.Id, 0, "\n", Build, SystemLab.CreateLegacyFixture().ExportState()));
         Assert.Throws<FileNotFoundException>(() => store.GetCampaign(missingId));
         Assert.False(File.Exists(DatabasePath(missingId)));
         Assert.Equal(campaign, Assert.Single(store.ListCampaigns()).Campaign);
@@ -250,7 +250,7 @@ public sealed class SqliteCampaignStoreTests : IDisposable
     {
         var store = Store();
         var campaign = store.CreateCampaign("Legacy schema");
-        var state = new SystemLab().ExportState();
+        var state = SystemLab.CreateLegacyFixture().ExportState();
         var saved = store.SaveNamed(campaign.Id, 0, "Old save", Build, state);
         Execute(campaign.Id, """
             DROP INDEX recovery_sequence;
@@ -275,7 +275,7 @@ public sealed class SqliteCampaignStoreTests : IDisposable
     {
         var store = Store();
         var campaign = store.CreateCampaign("Backup");
-        var lab = new SystemLab();
+        var lab = SystemLab.CreateLegacyFixture();
         var first = store.SaveNamed(campaign.Id, 0, "First", Build, lab.ExportState());
         var earlier = store.CreateBackup(campaign.Id);
         var earlierBytes = File.ReadAllBytes(BackupPath(campaign.Id, earlier.Id));
@@ -316,7 +316,7 @@ public sealed class SqliteCampaignStoreTests : IDisposable
     {
         var store = Store();
         var campaign = store.CreateCampaign("Backup failure");
-        var state = new SystemLab().ExportState();
+        var state = SystemLab.CreateLegacyFixture().ExportState();
         store.SaveRecovery(campaign.Id, 0, Build, state);
         var backup = store.CreateBackup(campaign.Id);
         var path = BackupPath(campaign.Id, backup.Id);

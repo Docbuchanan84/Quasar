@@ -1,5 +1,19 @@
 # Development log
 
+
+## 2026-11-09 — Solar System starter
+
+New campaigns use the [Solar System catalogue and test course workflow](SOLAR_SYSTEM.md).
+Both views share the authoritative body positions and orbit geometry. The Venus
+assist regression checks exact encounter and arrival boundaries through checkpoint
+reload. Format 1 Helios checkpoints remain readable.
+
+Local verification passed 192 .NET tests, locked restore, formatting, renderer
+checks, client tests, and the production build. The disposable API test passed
+all nine intervals. Chromium checked the new campaign in desktop and iPhone 17
+Pro emulation. Physical-device testing is still pending.
+
+
 ## 2026-11-08 — Private campaign release
 
 - PR #17 merged as `f86ffd2` and passed main Verify. Published the merged

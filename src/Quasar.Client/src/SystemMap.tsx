@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Application, Container, Graphics, Text } from 'pixi.js'
 import { MapGesture, wheelPixels } from './mapGestures'
 import { courseColor, objectColor, type MapProps } from './lab'
-import { mapScale, referenceCircle } from './mapCoordinates'
+import { focusRadius, mapScale, orbitPath, showObject } from './mapCoordinates'
 
 export default function SystemMap(props: MapProps) {
   const host = useRef<HTMLDivElement>(null)
@@ -45,12 +45,14 @@ export default function SystemMap(props: MapProps) {
       let zoom = 100,
         panX = 0,
         panY = 0
+      let focusedId: string | null = null
+      let origin = { x: 0, y: 0, z: 0 }
       const lines = new Graphics()
       scene.addChild(lines)
       const symbols = new Map<string, { marker: Graphics; label: Text }>()
       const gesture = new MapGesture()
       const pointers = gesture.pointers
-      const clampZoom = (value: number) => Math.max(15, Math.min(800, value))
+      const clampZoom = (value: number) => Math.max(.008, Math.min(20000, value))
       // Keep the world point beneath the cursor/finger midpoint stationary.
       const zoomAt = (value: number, clientX: number, clientY: number) => {
         const rect = app.canvas.getBoundingClientRect()
@@ -62,14 +64,25 @@ export default function SystemMap(props: MapProps) {
         zoom = clampZoom(value)
       }
       const screen = (x: number, y: number) => ({
-        x: app.screen.width / 2 + panX + x * mapScale * zoom,
-        y: app.screen.height / 2 + panY - y * mapScale * zoom,
+        x: app.screen.width / 2 + panX + (x - origin.x) * mapScale * zoom,
+        y: app.screen.height / 2 + panY - (y - origin.y) * mapScale * zoom,
       })
+      let catalogueRoot: string | undefined
       function draw() {
         const { objects, selectedId, courses, references } = current.current
+        const root = objects.find((o) => o.kind === 'star')?.id
+        if (root !== catalogueRoot) {
+          catalogueRoot = root
+          controls.current('reset')
+          return
+        }
+        const focused = objects.find((o) => o.id === focusedId)
+        if (focused) origin = focused.position
+        const span = Math.min(app.screen.width, app.screen.height) / (mapScale * zoom)
+        const visible = (object: MapProps['objects'][number]) => showObject(object, selectedId, focusedId, span)
         lines.clear()
         if (references) {
-          for (let n = -6; n <= 6; n++) {
+          if (!objects.some((o) => o.orbit)) for (let n = -6; n <= 6; n++) {
             const a = screen(n * 1e6, -6e6),
               b = screen(n * 1e6, 6e6),
               c = screen(-6e6, n * 1e6),
@@ -82,11 +95,12 @@ export default function SystemMap(props: MapProps) {
               .stroke({ color: '#203443', width: 1 })
           }
           const origin = screen(0, 0)
-          for (const planet of objects.filter((o) => o.kind === 'planet')) {
-            for (const [i, point] of referenceCircle(
-              planet.position,
-            ).entries()) {
-              const q = screen(point.x, point.y)
+          for (const object of objects.filter(visible)) {
+            const parent = objects.find((o) => o.id === object.parentId)?.position
+            const path = orbitPath(object)
+            if (!path.length) continue
+            for (const [i, point] of path.entries()) {
+              const q = screen(point.x + (parent?.x ?? 0), point.y + (parent?.y ?? 0))
               if (i === 0) lines.moveTo(q.x, q.y)
               else lines.lineTo(q.x, q.y)
             }
@@ -104,6 +118,11 @@ export default function SystemMap(props: MapProps) {
             else lines.lineTo(p.x, p.y)
           }
           lines.stroke({ color, width: course.kind === 'preview' ? 2.5 : 1.5 })
+          const encounter = points.find((sample) => sample.atTicks === course.trajectory.flyby?.atTicks)
+          if (encounter) {
+            const p = screen(encounter.positionKm.x, encounter.positionKm.y)
+            lines.circle(p.x, p.y, 9).stroke({ color, width: 2 })
+          }
           const departure = points[0]?.positionKm,
             arrival = points.at(-1)?.positionKm
           if (departure && arrival) {
@@ -155,6 +174,10 @@ export default function SystemMap(props: MapProps) {
           }
           const { marker, label } = symbol
           marker.clear()
+          marker.visible = visible(object) && p.x >= -25 && p.y >= -25 &&
+            p.x <= app.screen.width + 25 && p.y <= app.screen.height + 25
+          label.visible = marker.visible
+          if (!marker.visible) continue
           if (object.kind === 'spacecraft')
             marker
               .poly([
@@ -168,6 +191,8 @@ export default function SystemMap(props: MapProps) {
                 p.y + 7,
               ])
               .fill(color)
+          else if (object.kind === 'station')
+            marker.rect(p.x - 5, p.y - 5, 10, 10).stroke({ color, width: 2 })
           else
             marker
               .circle(p.x, p.y, object.kind === 'star' ? 10 : 7)
@@ -185,11 +210,22 @@ export default function SystemMap(props: MapProps) {
       }
       controls.current = (action) => {
         if (action === 'reset') {
-          zoom = Math.min(element.clientWidth / 6, 110)
-          panX = 0
-          panY = 0
-        } else if (action === 'in') zoom = Math.min(800, zoom * 1.3)
-        else if (action === 'out') zoom = Math.max(15, zoom / 1.3)
+          focusedId = null
+          origin = { x: 0, y: 0, z: 0 }
+          zoom = current.current.objects.some((o) => o.orbit)
+            ? clampZoom(Math.min(element.clientWidth, element.clientHeight) / 10000)
+            : Math.min(element.clientWidth / 6, 110)
+          panX = panY = 0
+        } else if (action === 'focus') {
+          const selected = current.current.objects.find((o) => o.id === current.current.selectedId)
+          if (selected) {
+            focusedId = selected.id
+            panX = panY = 0
+            zoom = clampZoom(Math.min(element.clientWidth, element.clientHeight) /
+              (2.4 * mapScale * focusRadius(current.current.objects, selected.id)))
+          }
+        } else if (action === 'in') zoom = clampZoom(zoom * 1.3)
+        else if (action === 'out') zoom = clampZoom(zoom / 1.3)
         draw()
       }
       controls.current('reset')
@@ -202,6 +238,7 @@ export default function SystemMap(props: MapProps) {
         const before = [...pointers.values()]
         const previous = gesture.move(e.pointerId, e.clientX, e.clientY)
         if (!previous || !gesture.dragging) return
+        focusedId = null
         if (pointers.size === 2) {
           const [a, b] = before,
             [c, d] = [...pointers.values()]
@@ -229,6 +266,7 @@ export default function SystemMap(props: MapProps) {
           let nearest: string | null = null,
             distance = 28
           for (const object of current.current.objects) {
+            if (!symbols.get(object.id)?.marker.visible) continue
             const p = screen(object.position.x, object.position.y)
             const d = Math.hypot(x - p.x, y - p.y)
             if (d < distance) {
@@ -321,12 +359,13 @@ export default function SystemMap(props: MapProps) {
           ['in', '+'],
           ['out', '−'],
           ['reset', 'Reset View'],
+          ['focus', 'Focus Selected'],
         ].map(([action, label]) => (
           <button
             key={action}
             aria-label={
-              action === 'reset'
-                ? 'Reset View'
+              action === 'reset' || action === 'focus'
+                ? label
                 : action === 'in'
                   ? 'Zoom in'
                   : 'Zoom out'

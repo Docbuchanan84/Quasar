@@ -5,6 +5,7 @@ export type Trajectory = {
   travelSeconds: number
   requiredDeltaVKmPerSecond: number
   fuel: { propellantMassKg: number | null; unavailableReason: string | null }
+  flyby?: { bodyId: string; bodyName: string; atTicks: string; closestApproachKm: number } | null
   points: {
     atTicks: string
     positionKm: Position
@@ -18,6 +19,14 @@ export type LabObject = {
   position: Position
   velocityKmPerSecond: Position | null
   parentId: string | null
+  radiusKm?: number
+  orbit?: {
+    semiMajorAxisKm: number
+    eccentricity: number
+    inclinationRadians: number
+    longitudeOfAscendingNodeRadians: number
+    argumentOfPeriapsisRadians: number
+  } | null
 }
 export type Snapshot = {
   instanceId: string
@@ -29,6 +38,7 @@ export type Snapshot = {
   world: {
     trajectory: Trajectory | null
     elapsedTicks: string
+    referenceEpoch?: string | null
     objects: LabObject[]
     ship: {
       status: string
@@ -79,4 +89,4 @@ export function formatTime(ticks: number | string) {
     )} ${[(seconds / 3600n) % 24n, (seconds / 60n) % 60n, seconds % 60n].map((v) => v.toString().padStart(2, '0')).join(':')}`
 }
 export const objectColor = (kind: string) =>
-  kind === 'star' ? '#efc46b' : kind === 'planet' ? '#7ab6d5' : '#87e4bd'
+  kind === 'star' ? '#efc46b' : kind === 'planet' ? '#7ab6d5' : kind === 'station' ? '#e99dcd' : kind === 'spacecraft' ? '#87e4bd' : '#b6bccf'

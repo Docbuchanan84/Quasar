@@ -79,6 +79,15 @@ export default function CoursePanel({
           }
         />
       </label>
+      {inputs.maneuverBudget !== undefined && (
+        <label>
+          Test maneuver budget · {inputs.maneuverBudget} km/s
+          <input aria-label="Test maneuver budget" type="range" min="1" max="100"
+            value={inputs.maneuverBudget} disabled={disabled}
+            onChange={(e) => onChange({ ...inputs, maneuverBudget: Number(e.target.value) })}
+          />
+        </label>
+      )}
       {!valid && (
         <p role="alert">Enter a whole number from 1 to 315,576,000 seconds.</p>
       )}
@@ -130,6 +139,10 @@ export default function CoursePanel({
           </dl>
           {trajectory.fuel.unavailableReason && (
             <p className="muted">{trajectory.fuel.unavailableReason}</p>
+          )}
+          {trajectory.flyby && (
+            <p>Gravity assist at {trajectory.flyby.bodyName} · {formatTime(trajectory.flyby.atTicks)}
+              {' · '}closest approach {number(trajectory.flyby.closestApproachKm)} km from center</p>
           )}
           <ul className="course-warnings" aria-label="Feasibility warnings">
             {preview.warnings.map((w) => (

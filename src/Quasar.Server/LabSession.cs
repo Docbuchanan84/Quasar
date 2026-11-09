@@ -15,6 +15,8 @@ public sealed partial class LabSession(TimeProvider timeProvider, bool startWith
 {
     private readonly object gate = new();
     private SystemLab? world = startWithWorld ? new() : null;
+    internal LabSession(TimeProvider timeProvider, SystemLab fixture) : this(timeProvider, false) => world = fixture;
+
     private readonly Dictionary<string, (long Revision, TrajectoryPlan Plan)> previews = [];
     private string instanceId = Guid.NewGuid().ToString();
     private long revision;
@@ -49,12 +51,12 @@ public sealed partial class LabSession(TimeProvider timeProvider, bool startWith
         lock (gate) return RequireWorld().ShipStateAt(atTicks);
     }
 
-    public CoursePreview PreviewCourse(string destinationId, int flightSeconds)
+    public CoursePreview PreviewCourse(string destinationId, int flightSeconds, double? maneuverBudget = null)
     {
         lock (gate)
         {
             if (running) throw new InvalidOperationException("Stop time processing before plotting a course.");
-            var plan = RequireWorld().PreviewTravel(destinationId, flightSeconds);
+            var plan = RequireWorld().PreviewTravel(destinationId, flightSeconds, maneuverBudget);
             var trajectory = SystemLab.Present(plan);
             var distance = trajectory.Points.Zip(trajectory.Points.Skip(1),
                 (a, b) => a.PositionKm.DistanceTo(b.PositionKm)).Sum();
@@ -63,7 +65,7 @@ public sealed partial class LabSession(TimeProvider timeProvider, bool startWith
             var id = Guid.NewGuid().ToString();
             previews.Add(id, (revision, plan));
             return new(id, instanceId, revision, SystemLab.ShipId, destinationId, distance,
-                ["Impulsive transfer in one gravitational well; no finite thrust or body-radius collision model.",
+                ["Analytical solar coasts and instantaneous test maneuvers. A flyby uses an approximate encounter boundary.",
                  "Delta-v is a calculated requirement, not a verified spacecraft capability."], trajectory);
         }
     }
