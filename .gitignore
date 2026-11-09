@@ -23,6 +23,7 @@ output/playwright/
 !.env.example
 *.log
 *.db
+*.db-journal
 *.db-shm
 *.db-wal
 *.sqlite

@@ -1,5 +1,22 @@
 # Development log
 
+## 2026-11-08 — SQLite campaign checkpoint storage
+
+- Implemented [issue #11](https://github.com/Docbuchanan84/Quasar/issues/11)
+  on `codex/sqlite-save-storage` from `35b5b2c`. The host-side store persists
+  the existing checkpoint bytes, validates SHA-256 and detached restore, and
+  commits the checkpoint, sequence, and recovery rotation together.
+- Named saves survive rotation. Recovery retains five checkpoints by default.
+  Schema upgrades are forward-only. Verified SQLite backups include committed
+  WAL data, retain prior copies, and restore under a new campaign ID so a
+  damaged original remains available for inspection.
+- `scripts/Verify.ps1` passed 162 xUnit cases, including 24 SQLite integration
+  cases, plus 11 Node cases, format, lint, and production and renderer checks.
+  An isolated run of `Publish-HostedApp.ps1` preserved the SHA-256 hashes of
+  disposable campaign and backup files and included the native SQLite library.
+- Next is [issue #12](https://github.com/Docbuchanan84/Quasar/issues/12). See
+  [the storage API and lifecycle handoff](SQLITE_PERSISTENCE.md).
+
 ## 2026-11-08 — Versioned headless simulation state
 
 - Implemented issue #10 on `codex/save-state-contracts`. The immutable version
