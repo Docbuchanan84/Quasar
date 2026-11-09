@@ -11,12 +11,12 @@ public sealed record SessionSnapshot(string InstanceId, long Revision, bool Runn
     int DurationSeconds, string Mode, LabSnapshot World);
 
 /// <summary>The host is the only writer. This gate also makes polling snapshots internally consistent.</summary>
-public sealed class LabSession(TimeProvider timeProvider)
+public sealed partial class LabSession(TimeProvider timeProvider, bool startWithWorld = true)
 {
     private readonly object gate = new();
-    private readonly SystemLab world = new();
+    private SystemLab? world = startWithWorld ? new() : null;
     private readonly Dictionary<string, (long Revision, TrajectoryPlan Plan)> previews = [];
-    private readonly string instanceId = Guid.NewGuid().ToString();
+    private string instanceId = Guid.NewGuid().ToString();
     private long revision;
     private bool running;
     private string stopReason = "Ready";
@@ -31,17 +31,22 @@ public sealed class LabSession(TimeProvider timeProvider)
         lock (gate) return Read();
     }
 
-    // The immutable celestial catalogue needs no session lock and cannot advance the world.
-    public CelestialState CelestialStateAt(string bodyId, long atTicks) => world.CelestialPositions.GetState(bodyId, atTicks);
+    // Capture the catalogue under the gate, then query it independently of campaign replacement.
+    public CelestialState CelestialStateAt(string bodyId, long atTicks)
+    {
+        ICelestialPositionService catalogue;
+        lock (gate) catalogue = RequireWorld().CelestialPositions;
+        return catalogue.GetState(bodyId, atTicks);
+    }
 
     public TrajectoryDisplay PreviewTravel(string destinationId, int flightSeconds)
     {
-        lock (gate) return SystemLab.Present(world.PreviewTravel(destinationId, flightSeconds));
+        lock (gate) return SystemLab.Present(RequireWorld().PreviewTravel(destinationId, flightSeconds));
     }
 
     public CelestialState ShipStateAt(long atTicks)
     {
-        lock (gate) return world.ShipStateAt(atTicks);
+        lock (gate) return RequireWorld().ShipStateAt(atTicks);
     }
 
     public CoursePreview PreviewCourse(string destinationId, int flightSeconds)
@@ -49,7 +54,7 @@ public sealed class LabSession(TimeProvider timeProvider)
         lock (gate)
         {
             if (running) throw new InvalidOperationException("Stop time processing before plotting a course.");
-            var plan = world.PreviewTravel(destinationId, flightSeconds);
+            var plan = RequireWorld().PreviewTravel(destinationId, flightSeconds);
             var trajectory = SystemLab.Present(plan);
             var distance = trajectory.Points.Zip(trajectory.Points.Skip(1),
                 (a, b) => a.PositionKm.DistanceTo(b.PositionKm)).Sum();
@@ -68,10 +73,11 @@ public sealed class LabSession(TimeProvider timeProvider)
         lock (gate)
         {
             // Stop is safe against an older snapshot in the same instance: a tick must never defeat it.
-            if (command.InstanceId != instanceId || command.Revision > revision
+            if (shuttingDown || switchingCampaign || command.InstanceId != instanceId || command.Revision > revision
                 || (command.Operation != "stop" && command.Revision != revision))
                 throw new InvalidOperationException("State changed. Refresh and review before trying again.");
             if (!Guid.TryParse(command.ClientId, out _)) throw new ArgumentException("Invalid browser identity.");
+            var activeWorld = RequireWorld();
             switch (command.Operation)
             {
                 case "configure":
@@ -89,12 +95,14 @@ public sealed class LabSession(TimeProvider timeProvider)
                     stopReason = "Processing";
                     break;
                 case "stop":
+                    if (running) lastStopVersion = worldVersion;
                     running = false;
                     stopReason = "Player stopped";
                     break;
                 case "travel":
                     if (running) throw new InvalidOperationException("Stop before issuing an order.");
-                    world.OrderTravel(command.DestinationId ?? "", command.FlightSeconds ?? 21600);
+                    activeWorld.OrderTravel(command.DestinationId ?? "", command.FlightSeconds ?? 21600);
+                    MarkWorldChanged(significant: true);
                     stopReason = "Course committed — ready to advance";
                     break;
                 case "commit-course":
@@ -102,12 +110,14 @@ public sealed class LabSession(TimeProvider timeProvider)
                     if (command.PreviewId is null || !previews.TryGetValue(command.PreviewId, out var preview)
                         || preview.Revision != revision)
                         throw new InvalidOperationException("Course preview expired. Recalculate and review before issuing an order.");
-                    world.CommitTravel(preview.Plan);
+                    activeWorld.CommitTravel(preview.Plan);
+                    MarkWorldChanged(significant: true);
                     stopReason = "Course committed — ready to advance";
                     break;
                 case "cancel-travel":
                     if (running) throw new InvalidOperationException("Stop before cancelling a course.");
-                    world.CancelTravel();
+                    activeWorld.CancelTravel();
+                    MarkWorldChanged(significant: true);
                     stopReason = "Course cancelled — coasting";
                     break;
                 default: throw new ArgumentException("Unknown command.");
@@ -131,7 +141,7 @@ public sealed class LabSession(TimeProvider timeProvider)
     {
         lock (gate)
         {
-            if (!running) return;
+            if (!running || switchingCampaign || shuttingDown) return;
             if (timeProvider.GetUtcNow() >= leaseUntil)
             {
                 running = false;
@@ -141,7 +151,10 @@ public sealed class LabSession(TimeProvider timeProvider)
             {
                 try
                 {
-                    var arrived = world.Advance(TimeSpan.FromSeconds(durationSeconds));
+                    var activeWorld = RequireWorld();
+                    var before = activeWorld.ElapsedTicks;
+                    var arrived = activeWorld.Advance(TimeSpan.FromSeconds(durationSeconds));
+                    if (arrived || activeWorld.ElapsedTicks != before) MarkWorldChanged(significant: arrived);
                     if (arrived || mode == "once")
                     {
                         running = false;
@@ -159,7 +172,7 @@ public sealed class LabSession(TimeProvider timeProvider)
         }
     }
 
-    private SessionSnapshot Read() => new(instanceId, revision, running, stopReason, durationSeconds, mode, world.Snapshot());
+    private SessionSnapshot Read() => new(instanceId, revision, running, stopReason, durationSeconds, mode, RequireWorld().Snapshot());
 }
 
 public sealed class LabRunner(LabSession session) : BackgroundService

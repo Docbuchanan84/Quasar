@@ -1,11 +1,15 @@
+using System.Text.Json.Serialization;
+
 namespace Quasar.Simulation;
 
 public sealed record LabObject(string Id, string Name, string Kind, Position3 Position, string? ParentId,
     Velocity3? VelocityKmPerSecond = null);
-public sealed record LabEvent(long Sequence, long AtTicks, string Kind, string ObjectId, string Message);
+public sealed record LabEvent(long Sequence,
+    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long AtTicks, string Kind, string ObjectId, string Message);
 public sealed record ShipStatus(string Status, double SpeedKmPerSecond, string? DestinationId,
-    long? ArrivalTicks, double RemainingDistanceKm);
-public sealed record LabSnapshot(long ElapsedTicks, LabObject[] Objects, ShipStatus Ship, LabEvent[] Events,
+    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long? ArrivalTicks, double RemainingDistanceKm);
+public sealed record LabSnapshot(
+    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long ElapsedTicks, LabObject[] Objects, ShipStatus Ship, LabEvent[] Events,
     TrajectoryDisplay? Trajectory = null);
 public sealed record TrajectoryDisplayPoint(string AtTicks, Position3 PositionKm, Velocity3 VelocityKmPerSecond);
 public sealed record TrajectoryDisplay(string DepartureTicks, string ArrivalTicks, double TravelSeconds,

@@ -59,8 +59,8 @@ bytes produced by `SimulationStateJson` alongside a signed 64-bit clock, a
 simulation format version, and a SHA-256 digest. It checks the size, digest,
 metadata, decoded format and clock, and detached `SystemLab.RestoreState`
 before returning a checkpoint. Storage schema and simulation format have
-separate versions. Issue #12 owns installing the validated candidate and
-starting it stopped.
+separate versions. The [host lifecycle](CAMPAIGN_LIFECYCLE.md) installs the
+validated candidate and starts it stopped.
 
 ## Verification
 

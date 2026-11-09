@@ -155,7 +155,7 @@ public sealed partial class SqliteCampaignStore
         return command;
     }
 
-    private static void RequirePlainPath(string path)
+    internal static void RequirePlainPath(string path)
     {
         try
         {

@@ -28,18 +28,18 @@ export type Snapshot = {
   mode: 'once' | 'continuous'
   world: {
     trajectory: Trajectory | null
-    elapsedTicks: number
+    elapsedTicks: string
     objects: LabObject[]
     ship: {
       status: string
       speedKmPerSecond: number
       destinationId: string | null
-      arrivalTicks: number | null
+      arrivalTicks: string | null
       remainingDistanceKm: number
     }
     events: {
       sequence: number
-      atTicks: number
+      atTicks: string
       kind: string
       objectId: string
       message: string

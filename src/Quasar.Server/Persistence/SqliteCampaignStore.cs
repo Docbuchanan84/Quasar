@@ -34,7 +34,16 @@ public sealed partial class SqliteCampaignStore : ICampaignStore
         return new SqliteCampaignStore(Path.Combine(localData, "Quasar", "saves"), recoveryRetention);
     }
 
-    public CampaignInfo CreateCampaign(string displayName)
+    public CampaignInfo CreateCampaign(string displayName) => CreateCampaign(displayName, null);
+
+    public CampaignInfo CreateCampaign(string displayName, string gameBuild, SystemLabState initialState)
+    {
+        RequireInputText(gameBuild, MaxBuildLength, nameof(gameBuild));
+        return CreateCampaign(displayName, (gameBuild, initialState, EncodeCheckpoint(initialState)));
+    }
+
+    private CampaignInfo CreateCampaign(string displayName,
+        (string Build, SystemLabState State, byte[] Payload)? initial)
     {
         RequireInputText(displayName, MaxLabelLength, nameof(displayName));
         var now = DateTimeOffset.UtcNow;
@@ -49,6 +58,12 @@ public sealed partial class SqliteCampaignStore : ICampaignStore
                 VALUES (1, $id, $name, $now, $now, 0);
                 """, ("$id", IdText(campaign.Id)), ("$name", displayName), ("$now", UtcText(now)));
             insert.ExecuteNonQuery();
+            if (initial is { } checkpoint)
+            {
+                var saved = InsertCheckpoint(connection, transaction, campaign, CheckpointKind.Recovery, null,
+                    checkpoint.Build, checkpoint.State, checkpoint.Payload);
+                campaign = campaign with { HeadSequence = saved.Sequence, UpdatedUtc = saved.CreatedUtc };
+            }
             transaction.Commit();
         });
         return campaign;
@@ -95,7 +110,12 @@ public sealed partial class SqliteCampaignStore : ICampaignStore
         transaction.Commit();
     }
 
-    public IReadOnlyList<CheckpointInfo> ListCheckpoints(Guid campaignId)
+    public IReadOnlyList<CheckpointInfo> ListCheckpoints(Guid campaignId) =>
+        DiscoverCheckpoints(campaignId, rejectMalformed: true).Checkpoints;
+
+    public CheckpointDiscovery DiscoverCheckpoints(Guid campaignId) => DiscoverCheckpoints(campaignId, rejectMalformed: false);
+
+    private CheckpointDiscovery DiscoverCheckpoints(Guid campaignId, bool rejectMalformed)
     {
         using var connection = Open(CampaignPath(campaignId), SqliteOpenMode.ReadOnly);
         using var transaction = connection.BeginTransaction(deferred: true);
@@ -104,9 +124,13 @@ public sealed partial class SqliteCampaignStore : ICampaignStore
             $"SELECT {CheckpointColumns} FROM checkpoints ORDER BY sequence DESC;");
         using var reader = command.ExecuteReader();
         var checkpoints = new List<CheckpointInfo>();
+        var rejected = 0;
         while (reader.Read())
-            checkpoints.Add(ReadCheckpointInfo(reader, campaign));
-        return checkpoints;
+        {
+            try { checkpoints.Add(ReadCheckpointInfo(reader, campaign)); }
+            catch (InvalidDataException) when (!rejectMalformed) { rejected++; }
+        }
+        return new(checkpoints, rejected);
     }
 
     public CheckpointInfo SaveNamed(Guid campaignId, long expectedHead, string label, string gameBuild, SystemLabState state)
@@ -125,10 +149,7 @@ public sealed partial class SqliteCampaignStore : ICampaignStore
         RequireInputText(gameBuild, MaxBuildLength, nameof(gameBuild));
         var path = CampaignPath(campaignId);
         RequireHead(GetCampaign(campaignId), expectedHead);
-        SystemLab.RestoreState(state);
-        var payload = SimulationStateJson.Serialize(state);
-        if (payload.Length > MaxPayloadBytes)
-            throw new InvalidDataException("Checkpoint payload exceeds the storage limit.");
+        var payload = EncodeCheckpoint(state);
 
         using var connection = Open(path, SqliteOpenMode.ReadWrite);
         using (var wal = Command(connection, null, "PRAGMA journal_mode = WAL;"))
@@ -143,10 +164,38 @@ public sealed partial class SqliteCampaignStore : ICampaignStore
         RequireHead(campaign, expectedHead);
         ApplyMigrations(connection, transaction, ReadSchemaVersion(connection, transaction));
 
+        var info = InsertCheckpoint(connection, transaction, campaign, kind, label, gameBuild, state, payload);
+
+        if (kind == CheckpointKind.Recovery)
+        {
+            using var rotate = Command(connection, transaction, """
+                DELETE FROM checkpoints WHERE kind = 2 AND sequence IN (
+                    SELECT sequence FROM checkpoints WHERE kind = 2 ORDER BY sequence DESC LIMIT -1 OFFSET $retain
+                );
+                """, ("$retain", recoveryRetention));
+            rotate.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+        return info;
+    }
+
+    private static byte[] EncodeCheckpoint(SystemLabState state)
+    {
+        SystemLab.RestoreState(state);
+        var payload = SimulationStateJson.Serialize(state);
+        if (payload.Length > MaxPayloadBytes)
+            throw new InvalidDataException("Checkpoint payload exceeds the storage limit.");
+        return payload;
+    }
+
+    private static CheckpointInfo InsertCheckpoint(SqliteConnection connection, SqliteTransaction transaction,
+        CampaignInfo campaign, CheckpointKind kind, string? label, string gameBuild, SystemLabState state, byte[] payload)
+    {
         var now = DateTimeOffset.UtcNow;
         if (now < campaign.UpdatedUtc)
             now = campaign.UpdatedUtc;
-        var sequence = checked(expectedHead + 1);
+        var sequence = checked(campaign.HeadSequence + 1);
         var id = Guid.NewGuid();
         var digest = SHA256.HashData(payload);
         var info = new CheckpointInfo(id, sequence, kind, label, now, gameBuild,
@@ -166,17 +215,6 @@ public sealed partial class SqliteCampaignStore : ICampaignStore
             """, ("$now", UtcText(now)), ("$sequence", sequence)))
             update.ExecuteNonQuery();
 
-        if (kind == CheckpointKind.Recovery)
-        {
-            using var rotate = Command(connection, transaction, """
-                DELETE FROM checkpoints WHERE kind = 2 AND sequence IN (
-                    SELECT sequence FROM checkpoints WHERE kind = 2 ORDER BY sequence DESC LIMIT -1 OFFSET $retain
-                );
-                """, ("$retain", recoveryRetention));
-            rotate.ExecuteNonQuery();
-        }
-
-        transaction.Commit();
         return info;
     }
 

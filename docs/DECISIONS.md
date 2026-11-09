@@ -15,8 +15,16 @@ and Microsoft.Data.Sqlite for local campaign storage. The host-side store uses
 one active database per campaign, transactional checkpoint rotation, forward
 schema migrations, and verified standalone backups. Database schema versions
 are independent of simulation checkpoint versions. The five-checkpoint
-recovery default is provisional. See [storage and recovery policy](SQLITE_PERSISTENCE.md).
-Server lifecycle integration follows in issue #12.
+recovery default is configurable. See [storage and recovery policy](SQLITE_PERSISTENCE.md).
+
+## Approved — campaign host lifecycle (issue #12)
+
+The owner approved a dirty-only 300-second real-time autosave, five retained
+recovery checkpoints by default, optional event triggers, and a best-effort
+shutdown save. The host restores the last played campaign from validated storage
+and always installs it paused. Manual saves remain available outside recovery
+rotation. The [campaign lifecycle](CAMPAIGN_LIFECYCLE.md) documents settings,
+recovery and the HTTP handoff. Player-facing controls follow in issue #13.
 
 ## Approved — Agent 4 course plotting and map integration (2026-11-08)
 

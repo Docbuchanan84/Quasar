@@ -36,9 +36,11 @@ background/reconnect, and cellular-only access separately.
 - [Issue #11](https://github.com/Docbuchanan84/Quasar/issues/11) implements SQLite
   campaign storage, named and rotating checkpoints, schema upgrades, and
   verified backups. See the [storage contract](SQLITE_PERSISTENCE.md).
-- [Issue #12](https://github.com/Docbuchanan84/Quasar/issues/12) will integrate
-  the storage APIs with the System Lab session, autosave, and restart recovery.
-  Player-facing save controls follow separately.
+- [Issue #12](https://github.com/Docbuchanan84/Quasar/issues/12) integrates
+  startup recovery, autosave, and campaign operations with the System Lab.
+  See the [HTTP and lifecycle contract](CAMPAIGN_LIFECYCLE.md).
+- [Issue #13](https://github.com/Docbuchanan84/Quasar/issues/13) owns the
+  player-facing New Game, Continue, Save, and Load workflow.
 
 ## Open implementation and design work
 

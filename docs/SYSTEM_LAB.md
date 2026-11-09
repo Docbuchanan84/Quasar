@@ -36,9 +36,8 @@ Fuel estimates remain unavailable until propulsion and mass data exist.
 ## Clock and execution
 
 Elapsed time uses nonnegative checked .NET ticks of 100 ns. The UI shows elapsed
-days, hours, minutes, and seconds. Snapshot clock values are JSON numbers.
-Trajectory sample timestamps and exact query timestamps are decimal strings
-where specified in the API.
+days, hours, minutes, and seconds. Snapshot, trajectory sample, and exact
+query timestamps use decimal strings across HTTP.
 
 The nine supported intervals are 1, 5, 30, 60, 3,600, 86,400, 432,000,
 1,296,000, and 2,592,000 seconds. Once processes one interval. Continuous uses
@@ -47,11 +46,10 @@ expiry of the initiating browser's five-second lease. The visible client polls
 every 500 ms and renews its run lease every second. A refreshed browser gets a
 new controller ID. Another connected browser can inspect or Stop the shared run.
 
-A restart creates a fresh instance at elapsed zero with Pathfinder coasting.
-Refresh preserves the world. Orders, clock, and event history are held in memory.
-The headless [checkpoint contract](SIMULATION_STATE.md) can export and restore
-those values. The current host still starts a fresh lab and holds no save files.
-Use the [hosting instructions](HOSTING.md) for an explicitly requested restart.
+The persistence-enabled host restores the last valid checkpoint on restart.
+First run requires creating a campaign through the [campaign API](CAMPAIGN_LIFECYCLE.md)
+until the save/load UI is available. The currently deployed course release
+holds its lab in memory.
 **Reset View** changes the camera only.
 
 ## HTTP contract
@@ -93,5 +91,5 @@ endpoint. See [course plotting](COURSE_PLOTTING.md) for browser test reproductio
 
 Initial physical-phone portrait 2D play is confirmed. The current course workflow,
 physical-phone 3D, lifecycle behavior, and measured performance remain open.
-Persistent saves, finite thrust and propellant use, collision and docking, fleets,
+Player-facing save controls, finite thrust and propellant use, collision and docking, fleets,
 and wider simulation domains are future work. See the [project plan](PROJECT_PLAN.md).

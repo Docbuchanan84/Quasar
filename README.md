@@ -34,8 +34,9 @@ transfers, impulsive departure/arrival, and analytical coasts. The reusable
 simulation also supports hierarchical celestial queries, moving targets, and
 explicit sphere-of-influence patches. The browser currently exposes one ship
 and fixed planet destinations. Fuel estimates await propulsion and mass data.
-The lab is shared across browsers. Refresh retains state, and a host restart
-resets it.
+The lab is shared across browsers. The deployed course release keeps state
+in memory. The persistence-enabled development host restores SQLite checkpoints
+and uses the [campaign API](docs/CAMPAIGN_LIFECYCLE.md) for first-run creation.
 
 ## Run and verify
 
