@@ -8,14 +8,14 @@ public sealed record MovementView(string SpacecraftId, long AtTicks, CelestialSt
 /// Single-writer, headless movement owner. Advance examines ordered boundaries, not every spacecraft.
 /// Positions are pure timestamp queries. Cancellation retains momentum and resumes an unforced coast.
 /// </summary>
-public sealed class MovementExecution(CelestialPositionService catalogue)
+public sealed partial class MovementExecution(CelestialPositionService catalogue)
 {
-    private sealed class Spacecraft(string primary, TwoBodyTrajectory coast)
+    private sealed class Spacecraft(string primary, TwoBodyTrajectory? coast)
     {
         public string Primary = primary;
-        public TwoBodyTrajectory Coast = coast;
+        public TwoBodyTrajectory? Coast = coast;
         public TrajectoryPlan? Plan;
-        public TrajectoryDestination? Rendezvous;
+        public (TrajectoryDestination Destination, long ArrivalTicks)? Rendezvous;
         public long Generation;
         public int NextBoundary;
     }
@@ -38,8 +38,8 @@ public sealed class MovementExecution(CelestialPositionService catalogue)
         var ship = spacecraft[id];
         if (ship.Plan is { } plan)
             return atTicks <= plan.ArrivalTicks ? plan.StateAt(atTicks) : plan.Destination.StateAt(catalogue, atTicks);
-        if (ship.Rendezvous is { } target) return target.StateAt(catalogue, atTicks);
-        return TrajectoryPlanner.Add(ship.Coast.StateAt(atTicks), catalogue.GetState(ship.Primary, atTicks));
+        if (ship.Rendezvous is { } target) return target.Destination.StateAt(catalogue, atTicks);
+        return TrajectoryPlanner.Add(ship.Coast!.StateAt(atTicks), catalogue.GetState(ship.Primary, atTicks));
     }
 
     public MovementView View(string id)
@@ -61,6 +61,8 @@ public sealed class MovementExecution(CelestialPositionService catalogue)
         if (plan.DepartureTicks != ElapsedTicks || plan.InitialState != StateAt(id, ElapsedTicks))
             throw new InvalidOperationException("The departure state or time changed. Preview again before committing.");
         ship.Plan = plan; ship.Rendezvous = null; ship.Generation++; ship.NextBoundary = 0;
+        ship.Primary = plan.Segments[0].PrimaryBodyId;
+        ship.Coast = null;
         Schedule(id, ship);
         CompactQueue();
     }
@@ -68,10 +70,10 @@ public sealed class MovementExecution(CelestialPositionService catalogue)
     public void Cancel(string id)
     {
         var ship = spacecraft[id];
-        if (ship.Plan is not { } plan) throw new InvalidOperationException("No committed course to cancel.");
-        var primary = plan.Segments.First(s => ElapsedTicks < s.EndTicks).PrimaryBodyId;
-        var coast = NewCoast(StateAt(id, ElapsedTicks), primary);
-        ship.Primary = primary; ship.Coast = coast; ship.Plan = null; ship.Rendezvous = null; ship.Generation++;
+        if (ship.Plan is null) throw new InvalidOperationException("No committed course to cancel.");
+
+        ship.Coast = NewCoast(StateAt(id, ElapsedTicks), ship.Primary);
+        ship.Plan = null; ship.Generation++;
         CompactQueue();
     }
 
@@ -93,11 +95,12 @@ public sealed class MovementExecution(CelestialPositionService catalogue)
             ship.NextBoundary++;
             if (ship.NextBoundary == plan.Segments.Count)
             {
-                ship.Rendezvous = plan.Destination; ship.Plan = null;
+                ship.Rendezvous = (plan.Destination, at); ship.Plan = null;
                 events.Add(new(at, entry.Id, "arrival"));
             }
             else
             {
+                ship.Primary = plan.Segments[ship.NextBoundary].PrimaryBodyId;
                 events.Add(new(at, entry.Id, "patch"));
                 Schedule(entry.Id, ship);
             }

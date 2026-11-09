@@ -49,6 +49,8 @@ new controller ID. Another connected browser can inspect or Stop the shared run.
 
 A restart creates a fresh instance at elapsed zero with Pathfinder coasting.
 Refresh preserves the world. Orders, clock, and event history are held in memory.
+The headless [checkpoint contract](SIMULATION_STATE.md) can export and restore
+those values. The current host still starts a fresh lab and holds no save files.
 Use the [hosting instructions](HOSTING.md) for an explicitly requested restart.
 **Reset View** changes the camera only.
 

@@ -28,11 +28,17 @@ Exercise the current course workflow, arrival, and both maps on the owner's
 iPhone 17 Pro and record iOS/browser versions. Cover gestures, landscape,
 background/reconnect, and cellular-only access separately.
 
+## Persistence sequence
+
+- [Issue #10](https://github.com/Docbuchanan84/Quasar/issues/10) implements the
+  version 1 headless simulation checkpoint contract and detached restore.
+  See [simulation state](SIMULATION_STATE.md) for the API and verification.
+- [Issue #11](https://github.com/Docbuchanan84/Quasar/issues/11) adds SQLite
+  campaign storage, recoverable checkpoints, and backups after #10 merges.
+  Session load orchestration and player save controls follow separately.
+
 ## Open implementation and design work
 
-- Recoverable versioned save/load with atomic writes, stable IDs, history, and
-  stopped-on-load behavior is a proposed development slice. Format, migration,
-  retention, and storage choices remain open.
 - Propulsion and mass modelling, finite thrust, fuel expenditure, fleets, collision,
   docking, and player-facing moving-target/waypoint selection remain open. The
   headless trajectory planner already supports moving-target interception.
