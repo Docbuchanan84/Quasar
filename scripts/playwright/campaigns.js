@@ -1,4 +1,4 @@
-;async (page) => {
+async function campaignBrowserScenario(page) {
   const button = (name) => page.getByRole('button', { name, exact: true })
   const text = (value) => page.getByText(value, { exact: true })
   const clock = (value) =>
