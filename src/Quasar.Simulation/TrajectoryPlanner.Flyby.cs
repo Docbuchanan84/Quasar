@@ -4,13 +4,27 @@ public sealed partial class TrajectoryPlanner
 {
     public TrajectoryPlan PlanWithFlyby(CelestialState initial, long departure, TransferLeg arrival, double budget)
     {
-        if (!double.IsFinite(budget) || budget is < 1 or > 100)
-            throw new ArgumentException("Choose a maneuver budget between 1 and 100 km/s.");
+        ValidateManeuverBudget(budget);
+        return FindRoute(initial, departure, arrival, budget, includeFlybys: true, CancellationToken.None)
+            ?? throw new ArgumentException("No direct or single-flyby route found within this flight time and maneuver budget.");
+    }
 
+    internal static void ValidateManeuverBudget(double? budget)
+    {
+        if (budget is { } value && (!double.IsFinite(value) || value is < 1 or > 100))
+            throw new ArgumentException("Choose a maneuver budget between 1 and 100 km/s.");
+    }
+
+    internal TrajectoryPlan? FindRoute(CelestialState initial, long departure, TransferLeg arrival,
+        double? budget, bool includeFlybys, CancellationToken cancellationToken)
+    {
+        var limit = budget ?? double.PositiveInfinity;
         var best = TryPlan([arrival]);
         var alternate = TryPlan([arrival with { LongWay = !arrival.LongWay }]);
         if (alternate is not null && (best is null || alternate.RequiredDeltaVKmPerSecond < best.RequiredDeltaVKmPerSecond))
             best = alternate;
+        if (!includeFlybys) return WithinBudget();
+
         foreach (var body in catalogue.Bodies.Values.OrderBy(body => body.Id, StringComparer.Ordinal))
         {
             if (body.Kind != CelestialBodyKind.Planet || body.ParentId != arrival.PrimaryBodyId
@@ -22,9 +36,9 @@ public sealed partial class TrajectoryPlanner
             Search(body, true, true);
         }
 
-        if (best is null || best.RequiredDeltaVKmPerSecond > budget)
-            throw new ArgumentException("No direct or single-flyby route found within this flight time and maneuver budget.");
-        return best;
+        return WithinBudget();
+
+        TrajectoryPlan? WithinBudget() => best?.RequiredDeltaVKmPerSecond <= limit ? best : null;
 
         void Search(CelestialBody body, bool firstLongWay, bool secondLongWay)
         {
@@ -64,7 +78,7 @@ public sealed partial class TrajectoryPlanner
                 if (Math.Abs(difference) <= .001 && ClosestApproach(body, a, b) is { } radius)
                 {
                     var cost = plan.Burns[0].DeltaVKmPerSecond + plan.Burns[^1].DeltaVKmPerSecond;
-                    if (cost <= budget && (best is null || best.RequiredDeltaVKmPerSecond > cost + 1e-7))
+                    if (cost <= limit && (best is null || best.RequiredDeltaVKmPerSecond > cost + 1e-7))
                         best = new(catalogue, initial, arrival.Destination, [.. plan.Segments], [.. plan.Burns],
                             fuelEstimator?.Estimate(cost) ?? plan.Fuel, new(body.Id, radius));
                 }
@@ -74,6 +88,7 @@ public sealed partial class TrajectoryPlanner
 
         TrajectoryPlan? TryPlan(TransferLeg[] legs)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try { return PlanPatched(initial, departure, legs); }
             catch (Exception error) when (error is ArgumentException or ArithmeticException or InvalidOperationException) { return null; }
         }

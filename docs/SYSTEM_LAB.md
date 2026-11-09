@@ -26,8 +26,8 @@ and velocity and starts an unforced coast. The reusable
 explicit gravity patches. The player workflow exposes single-well transfers to
 the fixed planets.
 
-Select Pathfinder, choose **Plot Course**, select a planet, and review or adjust
-the flight duration. **Issue Order** commits the exact reviewed plan while the
+Select Pathfinder, choose **Plot Course**, select a planet or moon, and review
+the calculated fastest and lowest maneuver-cost routes. **Issue Order** commits the exact reviewed plan while the
 host instance and revision match. Previewing and cancelling a preview preserve
 the simulation and any existing course. Both views draw the same sampled preview
 or committed path. Departure and arrival markers use the planned positions.

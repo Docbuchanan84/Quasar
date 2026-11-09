@@ -85,24 +85,47 @@ public sealed partial class SystemLab
 
     public TrajectoryPlan PreviewTravel(string destinationId, int flightSeconds = 21600, double? maneuverBudget = null)
     {
-        if (!celestialPositions.Bodies.TryGetValue(destinationId, out var destination) || destination.Kind != CelestialBodyKind.Planet)
-            throw new ArgumentException("Choose a planet in this system.", nameof(destinationId));
-        if (flightSeconds is < 1 or > 315576000) throw new ArgumentException("Flight time must be between one second and ten Julian years.");
-        var state = movement.StateAt(ShipId, ElapsedTicks);
-        if (state.PositionKm.DistanceTo(celestialPositions.GetState(destinationId, ElapsedTicks).PositionKm) < 1e-6)
-            throw new InvalidOperationException("Already at that planet.");
-        var leg = new TransferLeg(PrimaryId,
-            checked(ElapsedTicks + (long)flightSeconds * TimeSpan.TicksPerSecond), new(destinationId),
-            MinimumPrimaryClearanceKm: Math.Max(1, celestialPositions.Bodies[PrimaryId].RadiusKm));
-        return maneuverBudget is { } budget && PrimaryId == SolarSystem.Sun
-            ? planner.PlanWithFlyby(state, ElapsedTicks, leg, budget)
-            : planner.Plan(new(state, ElapsedTicks, leg, maneuverBudget));
+        if (flightSeconds is < 1 or > CourseSearch.MaximumSeconds)
+            throw new ArgumentException("Flight time must be between one second and ten Julian years.");
+        var (state, departure, leg) = CaptureDeparture(destinationId);
+        leg = leg with { ArrivalTicks = checked(departure + (long)flightSeconds * TimeSpan.TicksPerSecond) };
+        return maneuverBudget is { } budget && leg.PrimaryBodyId == SolarSystem.Sun
+            ? planner.PlanWithFlyby(state, departure, leg, budget)
+            : planner.Plan(new(state, departure, leg, maneuverBudget));
+    }
+
+    // The captured search reads the immutable catalogue and departure inputs, never the live world.
+    public Func<CancellationToken, CourseChoices?> CaptureCourseSearch(string destinationId, double? maneuverBudget = null)
+    {
+        var (state, departure, leg) = CaptureDeparture(destinationId);
+        var includeFlybys = leg.PrimaryBodyId == SolarSystem.Sun;
+        maneuverBudget ??= includeFlybys ? 25 : null;
+        TrajectoryPlanner.ValidateManeuverBudget(maneuverBudget);
+        return cancellationToken => CourseSearch.Find(seconds =>
+        {
+            var arrival = leg with { ArrivalTicks = checked(departure + (long)seconds * TimeSpan.TicksPerSecond) };
+            return planner.FindRoute(state, departure, arrival, maneuverBudget, includeFlybys, cancellationToken);
+        }, cancellationToken);
+    }
+
+    private (CelestialState State, long Departure, TransferLeg Leg) CaptureDeparture(string destinationId)
+    {
+        if (!celestialPositions.Bodies.TryGetValue(destinationId, out var destination)
+            || destination.Kind is not (CelestialBodyKind.Planet or CelestialBodyKind.Moon))
+            throw new ArgumentException("Choose a planet or moon in this system.", nameof(destinationId));
+        var departure = ElapsedTicks;
+        var state = movement.StateAt(ShipId, departure);
+        if (state.PositionKm.DistanceTo(celestialPositions.GetState(destinationId, departure).PositionKm) < 1e-6)
+            throw new InvalidOperationException("Already at that destination.");
+        var primary = PrimaryId;
+        return (state, departure, new(primary, departure, new(destinationId),
+            MinimumPrimaryClearanceKm: Math.Max(1, celestialPositions.Bodies[primary].RadiusKm)));
     }
 
     public void OrderTravel(string destinationId, int flightSeconds = 21600)
     {
         if (movement.CommittedPlan(ShipId)?.Destination.BodyId == destinationId)
-            throw new InvalidOperationException("Already travelling to that planet.");
+            throw new InvalidOperationException("Already travelling to that destination.");
         var plan = PreviewTravel(destinationId, flightSeconds);
         CommitTravel(plan);
     }

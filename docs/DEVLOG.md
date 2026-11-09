@@ -1,5 +1,18 @@
 # Development log
 
+## 2026-11-09 — Automatic course planning
+
+- Plot Course accepts planets and moons and compares the fastest and lowest
+  maneuver-cost routes found within the test budget. The selected preview
+  determines the map path and the exact order committed.
+- In one disposable-host run from the Solar System starting state, the Jupiter
+  search took 2.45 seconds at 25 km/s and 1.02 seconds for the full no-route
+  search at 1 km/s. The Moon search took 1.71 seconds at 25 km/s. These are
+  local HTTP timings.
+- Chromium checked Jupiter and the Moon, including the portrait layout and a
+  Moon order in 3D. The automated checkpoint test reloads a committed Moon
+  course. Physical iPhone verification remains open.
+
 
 ## 2026-11-09 — Solar System starter
 

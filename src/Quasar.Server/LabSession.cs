@@ -7,6 +7,7 @@ public sealed record LabCommand(string InstanceId, long Revision, string ClientI
     string? PreviewId = null);
 public sealed record CoursePreview(string PreviewId, string InstanceId, long Revision, string ShipId,
     string DestinationId, double SampledDistanceKm, string[] Warnings, TrajectoryDisplay Trajectory);
+public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePreview? LowestManeuverCost);
 public sealed record SessionSnapshot(string InstanceId, long Revision, bool Running, string StopReason,
     int DurationSeconds, string Mode, LabSnapshot World);
 
@@ -57,17 +58,53 @@ public sealed partial class LabSession(TimeProvider timeProvider, bool startWith
         {
             if (running) throw new InvalidOperationException("Stop time processing before plotting a course.");
             var plan = RequireWorld().PreviewTravel(destinationId, flightSeconds, maneuverBudget);
-            var trajectory = SystemLab.Present(plan);
-            var distance = trajectory.Points.Zip(trajectory.Points.Skip(1),
-                (a, b) => a.PositionKm.DistanceTo(b.PositionKm)).Sum();
-            // Bounded, disposable tokens retain solved plans, never client-provided geometry.
-            if (previews.Count >= 32) previews.Remove(previews.Keys.First());
-            var id = Guid.NewGuid().ToString();
-            previews.Add(id, (revision, plan));
-            return new(id, instanceId, revision, SystemLab.ShipId, destinationId, distance,
-                ["Analytical solar coasts and instantaneous test maneuvers. A flyby uses an approximate encounter boundary.",
-                 "Delta-v is a calculated requirement, not a verified spacecraft capability."], trajectory);
+            return RetainPreview(destinationId, plan);
         }
+    }
+
+    public AutomaticCoursePreview PreviewAutomaticCourse(string destinationId, double? maneuverBudget,
+        CancellationToken cancellationToken)
+    {
+        string departureInstance;
+        long departureRevision;
+        Func<CancellationToken, CourseChoices?> search;
+        lock (gate)
+        {
+            if (running) throw new InvalidOperationException("Stop time processing before plotting a course.");
+            search = RequireWorld().CaptureCourseSearch(destinationId, maneuverBudget);
+            departureInstance = instanceId;
+            departureRevision = revision;
+        }
+
+        var choices = search(cancellationToken);
+
+        lock (gate)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (running || switchingCampaign || shuttingDown || departureInstance != instanceId || departureRevision != revision)
+                throw new InvalidOperationException("State changed during planning. Refresh state and recalculate.");
+            if (choices is null) return new(null, null);
+
+            var fastest = RetainPreview(destinationId, choices.Fastest);
+            var lowestCost = ReferenceEquals(choices.Fastest, choices.LowestManeuverCost)
+                ? null
+                : RetainPreview(destinationId, choices.LowestManeuverCost);
+            return new(fastest, lowestCost);
+        }
+    }
+
+    private CoursePreview RetainPreview(string destinationId, TrajectoryPlan plan)
+    {
+        var trajectory = SystemLab.Present(plan);
+        var distance = trajectory.Points.Zip(trajectory.Points.Skip(1),
+            (a, b) => a.PositionKm.DistanceTo(b.PositionKm)).Sum();
+        // Bounded, disposable tokens retain solved plans, never client-provided geometry.
+        if (previews.Count >= 32) previews.Remove(previews.Keys.First());
+        var id = Guid.NewGuid().ToString();
+        previews.Add(id, (revision, plan));
+        return new(id, instanceId, revision, SystemLab.ShipId, destinationId, distance,
+            ["Analytical solar coasts and instantaneous test maneuvers. A flyby uses an approximate encounter boundary.",
+             "Delta-v is a calculated requirement, not a verified spacecraft capability."], trajectory);
     }
 
     public SessionSnapshot Execute(LabCommand command)

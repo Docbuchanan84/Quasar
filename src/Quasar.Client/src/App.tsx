@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
-import { formatTime, objectColor, type Snapshot } from './lab'
+import { formatTime, isCourseDestination, objectColor, type Snapshot } from './lab'
 import CampaignPanel from './CampaignPanel'
 import { useLabSession } from './useLabSession'
 import MapBoundary from './MapBoundary'
@@ -49,7 +49,12 @@ function App() {
   const disabled = !online || pending || !snapshot
   const course = useCoursePreview(snapshot, plotting, online)
   const committedTrajectory = world?.trajectory
-  const preview = course.preview
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
+  const fastest = course.routes?.fastest ?? null
+  const lowestCost = course.routes?.lowestManeuverCost ?? null
+  const preview = lowestCost && lowestCost.previewId === selectedRouteId
+    ? lowestCost
+    : fastest
   const courses = useMemo<CourseLayer[]>(
     () => [
       ...(committedTrajectory
@@ -65,7 +70,7 @@ function App() {
     setSelectedId(id)
     if (
       plotting &&
-      world?.objects.some((o) => o.id === id && o.kind === 'planet')
+      world?.objects.some((o) => o.id === id && isCourseDestination(o))
     )
       setPlotting({ ...plotting, destinationId: id })
   }
@@ -253,19 +258,20 @@ function App() {
             <CoursePanel
               inputs={plotting}
               objects={world.objects}
-              preview={course.preview}
+              preview={preview}
+              routes={course.routes}
+              onSelectRoute={setSelectedRouteId}
               error={course.error}
               loading={course.loading}
-              valid={course.valid}
               disabled={disabled}
               running={snapshot?.running ?? false}
               onChange={setPlotting}
               onRecalculate={course.recalculate}
               onCancel={() => setPlotting(null)}
               onIssue={() => {
-                if (!course.preview) return
+                if (!preview) return
                 void command('commit-course', {
-                  previewId: course.preview.previewId,
+                  previewId: preview.previewId,
                 }).then(() => setPlotting(null))
               }}
             />
@@ -329,7 +335,6 @@ function App() {
                         setPlotting({
                           shipId: selected.id,
                           destinationId: '',
-                          flightSeconds: world.referenceEpoch ? '25920000' : '21600',
                           maneuverBudget: world.referenceEpoch ? 25 : undefined,
                         })
                       }

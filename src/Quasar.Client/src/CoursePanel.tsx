@@ -1,13 +1,28 @@
-import { formatTime, type CoursePreview, type LabObject } from './lab'
+import {
+  formatTime, isCourseDestination,
+  type AutomaticCoursePreview, type CoursePreview, type LabObject,
+} from './lab'
 import type { PlotInputs } from './useCoursePreview'
+
+function formatDuration(seconds: number) {
+  const days = Math.floor(seconds / 86400)
+  const hours = Math.floor(seconds / 3600) % 24
+  const minutes = Math.floor(seconds / 60) % 60
+  return [[days, 'd'], [hours, 'h'], [minutes, 'm'], [seconds % 60, 's']]
+    .filter(([value]) => value !== 0)
+    .slice(0, 2)
+    .map(([value, unit]) => String(value) + unit)
+    .join(' ')
+}
 
 export default function CoursePanel({
   inputs,
   objects,
   preview,
+  routes,
+  onSelectRoute,
   error,
   loading,
-  valid,
   disabled,
   running,
   onChange,
@@ -18,9 +33,10 @@ export default function CoursePanel({
   inputs: PlotInputs
   objects: LabObject[]
   preview: CoursePreview | null
+  routes: AutomaticCoursePreview | null
+  onSelectRoute: (previewId: string) => void
   error?: string
   loading: boolean
-  valid: boolean
   disabled: boolean
   running: boolean
   onChange: (value: PlotInputs) => void
@@ -40,7 +56,7 @@ export default function CoursePanel({
         current departure state
       </p>
       <p className="muted">
-        Select a planet on either map, in the object list, or below. Previewing
+        Select a planet or moon on either map, in the object list, or below. Previewing
         and cancelling a preview issue no orders.
       </p>
       <label>
@@ -55,7 +71,7 @@ export default function CoursePanel({
         >
           <option value="">Choose destination…</option>
           {objects
-            .filter((o) => o.kind === 'planet')
+            .filter(isCourseDestination)
             .map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
@@ -63,33 +79,17 @@ export default function CoursePanel({
             ))}
         </select>
       </label>
-      <label>
-        Flight duration (seconds)
-        <input
-          aria-label="Flight duration (seconds)"
-          type="number"
-          inputMode="numeric"
-          min="1"
-          max="315576000"
-          step="1"
-          value={inputs.flightSeconds}
-          disabled={disabled}
-          onChange={(e) =>
-            onChange({ ...inputs, flightSeconds: e.target.value })
-          }
-        />
-      </label>
       {inputs.maneuverBudget !== undefined && (
-        <label>
-          Test maneuver budget · {inputs.maneuverBudget} km/s
-          <input aria-label="Test maneuver budget" type="range" min="1" max="100"
-            value={inputs.maneuverBudget} disabled={disabled}
-            onChange={(e) => onChange({ ...inputs, maneuverBudget: Number(e.target.value) })}
-          />
-        </label>
-      )}
-      {!valid && (
-        <p role="alert">Enter a whole number from 1 to 315,576,000 seconds.</p>
+        <details>
+          <summary>Advanced</summary>
+          <label>
+            Test maneuver budget · {inputs.maneuverBudget} km/s
+            <input aria-label="Test maneuver budget" type="range" min="1" max="100"
+              value={inputs.maneuverBudget} disabled={disabled}
+              onChange={(e) => onChange({ ...inputs, maneuverBudget: Number(e.target.value) })}
+            />
+          </label>
+        </details>
       )}
       {running && (
         <p role="status">
@@ -98,6 +98,34 @@ export default function CoursePanel({
       )}
       {loading && <p role="status">Calculating course…</p>}
       {error && <p role="alert">{error}</p>}
+      {routes && !routes.fastest && (
+        <p role="status">
+          {inputs.maneuverBudget === undefined
+            ? 'No route found for the flight times searched.'
+            : 'No route found within the test maneuver budget for the flight times searched.'}
+        </p>
+      )}
+      {routes?.fastest && (
+        <>
+          <p className="muted">Best routes found for the flight times searched.</p>
+          {routes.lowestManeuverCost ? (
+            <div className="course-options" role="group" aria-label="Route options">
+              {([
+                ['Fastest', routes.fastest],
+                ['Lowest maneuver cost', routes.lowestManeuverCost],
+              ] as const).map(([label, route]) => (
+                <button key={route.previewId} aria-pressed={route === preview}
+                  disabled={disabled} onClick={() => onSelectRoute(route.previewId)}>
+                  <strong>{label}</strong>
+                  <span>{formatDuration(route.trajectory.travelSeconds)} · {number(route.trajectory.requiredDeltaVKmPerSecond)} km/s</span>
+                  <span>ETA {formatTime(route.trajectory.arrivalTicks)} · {route.trajectory.flyby
+                    ? 'via ' + route.trajectory.flyby.bodyName : 'Direct'}</span>
+                </button>
+              ))}
+            </div>
+          ) : <h3>Fastest and lowest maneuver cost</h3>}
+        </>
+      )}
       {trajectory && preview && (
         <>
           <p className="eyebrow">PREVIEW · NOT ORDERED</p>
@@ -118,7 +146,7 @@ export default function CoursePanel({
             </div>
             <div>
               <dt>Travel duration</dt>
-              <dd>{number(trajectory.travelSeconds)} s</dd>
+              <dd>{formatDuration(trajectory.travelSeconds)}</dd>
             </div>
             <div>
               <dt>ETA</dt>
@@ -140,10 +168,10 @@ export default function CoursePanel({
           {trajectory.fuel.unavailableReason && (
             <p className="muted">{trajectory.fuel.unavailableReason}</p>
           )}
-          {trajectory.flyby && (
+          {trajectory.flyby ? (
             <p>Gravity assist at {trajectory.flyby.bodyName} · {formatTime(trajectory.flyby.atTicks)}
               {' · '}closest approach {number(trajectory.flyby.closestApproachKm)} km from center</p>
-          )}
+          ) : <p>Direct transfer</p>}
           <ul className="course-warnings" aria-label="Feasibility warnings">
             {preview.warnings.map((w) => (
               <li key={w}>{w}</li>
@@ -155,7 +183,7 @@ export default function CoursePanel({
         <button
           onClick={onRecalculate}
           disabled={
-            disabled || running || !valid || !inputs.destinationId || loading
+            disabled || running || !inputs.destinationId || loading
           }
         >
           Recalculate

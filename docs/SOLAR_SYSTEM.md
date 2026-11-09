@@ -28,20 +28,19 @@ a 20° ascending node. Their starting phases are 230° and 90°, respectively.
 
 ## Pathfinder
 
-Try Mercury with a 300-day flight (25,920,000 seconds) and the default 25 km/s
-test maneuver budget from the starting epoch. The preview selects a Venus
-assist for about 16.2 km/s of departure and arrival maneuvers. The ship’s speed
-changes along each solar coast. At the flyby the two arcs meet at Venus’s
-center in the simplified model. The predicted closest approach describes the
-implied hyperbola. The map does not resolve that hyperbola at local scale.
+Select Mercury in **Plot Course** to compare the fastest and lowest
+maneuver-cost routes found within the default 25 km/s test budget. At the
+starting epoch, the search can find routes via Venus. The ship's speed changes
+along each solar coast. At the flyby the two arcs meet at Venus's center in the
+simplified model. The predicted closest approach describes the implied
+hyperbola. The map depicts the two coasts at system scale.
 
-The deterministic search tries direct and one-planet routes at the selected
-arrival time, including short and long zero-revolution arcs. A flyby needs
-matching planet-relative excess speeds within 0.001 km/s and a predicted
-closest approach at least 1,000 km above the reference radius. The search is
-bounded. Changing the duration or budget may expose a route that the previous
-search could not find. The ship still uses instantaneous test maneuvers. A
-finite-thrust engine and fuel expenditure are reserved for propulsion work.
+The [course planner](COURSE_PLOTTING.md) checks direct and one-planet routes
+across candidate arrival times, including short and long zero-revolution arcs.
+A flyby needs matching planet-relative excess speeds within 0.001 km/s and a
+predicted closest approach at least 1,000 km above the reference radius. The
+ship uses instantaneous test maneuvers. Finite thrust and fuel expenditure are
+reserved for propulsion work.
 
 Checkpoint format 2 stores body radii and the optional flyby encounter.
 Version 1 checkpoints retain their original catalogue and courses when loaded.
