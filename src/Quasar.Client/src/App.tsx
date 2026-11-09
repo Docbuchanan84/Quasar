@@ -1,10 +1,10 @@
-import { Fragment } from 'react'
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
-import { formatTime, isCourseDestination, objectColor, type Snapshot } from './lab'
+import { formatTime, isCourseDestination, type Snapshot } from './lab'
 import CampaignPanel from './CampaignPanel'
 import { useLabSession } from './useLabSession'
 import MapBoundary from './MapBoundary'
 import CoursePanel from './CoursePanel'
+import SystemObjectTree from './SystemObjectTree'
 import { useCoursePreview, type PlotInputs } from './useCoursePreview'
 import type { CourseLayer } from './lab'
 
@@ -226,32 +226,12 @@ function App() {
           <p className="map-note">
             Symbols enlarged for readability · {world.referenceEpoch ? `Orbital epoch ${world.referenceEpoch}` : 'Legacy reference guides'}
           </p>
-          <nav className="object-list" aria-label="System objects">
-            {[...world.objects].sort((a, b) => (a.parentId ?? '').localeCompare(b.parentId ?? '')).map((object, index, sorted) => (
-              <Fragment key={object.id}>
-                {index > 0 && sorted[index - 1].parentId !== object.parentId && (
-                  <span className="object-group">{world.objects.find((parent) => parent.id === object.parentId)?.name ?? 'System'}</span>
-                )}
-              <button
-                key={object.id}
-                aria-pressed={selectedId === object.id}
-                onClick={() => selectObject(object.id)}
-              >
-                <span
-                  style={{ color: objectColor(object.kind) }}
-                  aria-hidden="true"
-                >
-                  {object.kind === 'star'
-                    ? '☉'
-                    : object.kind === 'planet'
-                      ? '●'
-                      : '▲'}
-                </span>{' '}
-                {object.name}
-              </button>
-              </Fragment>
-            ))}
-          </nav>
+          <SystemObjectTree
+            key={snapshot.instanceId}
+            objects={world.objects}
+            selectedId={selectedId}
+            onSelect={selectObject}
+          />
         </section>
         <aside className="inspector">
           {plotting && world && (

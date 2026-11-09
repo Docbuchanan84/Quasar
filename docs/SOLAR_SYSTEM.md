@@ -1,10 +1,16 @@
 # Solar System starter
 
 New campaigns start paused at 2026-11-09 00:00 TDB with 38 natural bodies, two
-fictional Earth installations, and Pathfinder. Choose Earth from the grouped
-object list, then **Focus Selected** to see the Moon, O’Neill Habitat, and Earth
-Staryard in either map. Reset View returns to the Sun-to-Neptune overview. The
-list also exposes objects beyond the default view.
+fictional Earth installations, and Pathfinder. The object tree starts with
+**Sol** open and the planets ordered by orbital size. Tap a name to select
+it, or use the chevron to expand or collapse its branch. Expand **Earth**
+for **Luna** and **Constructed**, which contains **O’Connor Station** and
+**Virgin Galactic Star Yards**. These are tree labels for the Moon, O’Neill
+Habitat, and Earth Staryard in the campaign catalogue. **Small bodies**
+contains the asteroids, comets, and dwarf planets.
+
+Select Earth and choose **Focus Selected** to see its local orbits in either
+map. **Reset View** returns to the Sun-to-Neptune overview.
 
 ## Orbital data and limits
 
