@@ -1,5 +1,18 @@
 # Development log
 
+## 2026-11-09 — System object tree
+
+- Replaced the object grid with a collapsible tree based on the campaign's
+  orbital hierarchy. Planet rows run from Mercury to Neptune by orbital size.
+  Moons stay with their planets, stations appear under Constructed, and small
+  bodies have their own branch. Pathfinder stays accessible when Sol is closed.
+- Kept tree labels separate from saved object names and reused the existing
+  map, inspector, and course selection path.
+- `scripts/Verify.ps1` passed. A disposable Chromium session with iPhone
+  emulation checked the hierarchy, tap and keyboard toggles, selection, course
+  destination updates, and tree widths from 320 to 1024 CSS pixels. Physical
+  iPhone validation remains open.
+
 ## 2026-11-09 — Course planning release and documentation
 
 - Automatic course planning merged into `main` through

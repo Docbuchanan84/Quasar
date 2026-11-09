@@ -261,19 +261,68 @@ main {
   color: #7894a6;
   padding: 0 14px 10px;
 }
-.object-list {
-  display: flex;
-  gap: 7px;
-  flex-wrap: wrap;
-  padding: 12px;
+.object-tree {
+  padding: 6px 12px;
   border-top: 1px solid #293e4d;
 }
-.object-list button {
-  font-size: 12px;
-  flex: 1;
+.object-tree ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.object-list span {
-  margin-right: 5px;
+.object-tree ul ul {
+  margin-inline-start: 16px;
+  border-inline-start: 1px solid #293e4d;
+}
+.object-tree-row {
+  display: flex;
+  border-bottom: 1px solid #293e4d;
+}
+.object-tree-row button {
+  background: transparent;
+  border-color: transparent;
+  font-size: .875rem;
+  padding: 0;
+}
+.object-tree-row button:focus-visible {
+  outline-offset: -2px;
+}
+.object-tree-toggle {
+  flex: 0 0 44px;
+}
+.object-tree-row .object-tree-label,
+.object-tree-row .object-tree-group {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding-inline: 4px 8px;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.object-tree-row .object-tree-group {
+  color: #a0b4c4;
+  padding-inline-start: 0;
+  gap: 4px;
+}
+.object-tree-group .object-tree-chevron {
+  width: 44px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.object-tree-chevron {
+  display: inline-block;
+  color: #a0b4c4;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.object-tree-row [aria-expanded='true'] > .object-tree-chevron {
+  transform: rotate(90deg);
+}
+.object-tree-row .object-tree-label[aria-pressed='true'] {
+  border-color: #87e4bd;
+  background: #193c3b;
 }
 .loading {
   padding: 30px;
@@ -690,5 +739,3 @@ footer {
 .save-list li .save-details {
   display: block;
 }
-
-.object-group { flex-basis: 100%; color: #a0b4c4; font-size: .8rem; }

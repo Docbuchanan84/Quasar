@@ -12,7 +12,7 @@ automatic course planning, interactive maps, and persistent campaigns. The
 | Clock | Nine intervals, Once/Continuous, Stop, exact event interruption, and browser lease |
 | Celestial mechanics | Analytical hierarchical position and velocity queries and sphere-of-influence data |
 | Spacecraft movement | Lambert transfers, analytical coasting, impulses, and headless event execution |
-| Navigation | Gesture-safe selection, pan/orbit/zoom, Reset View, and Focus Selected in both maps |
+| Navigation | Collapsible system object tree, gesture-safe selection, pan/orbit/zoom, Reset View, and Focus Selected in both maps |
 | Course plotting | Planet and moon destinations, automatic fastest and lowest maneuver-cost routes, shared map preview, and revision-bound commit |
 | Campaigns | SQLite checkpoints, autosave, startup restore, and player-facing New Game, Save Game, Named Save, and Load Game |
 
