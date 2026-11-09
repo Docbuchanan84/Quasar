@@ -1,9 +1,10 @@
 # Simulation and host-session tests
 
-The integrated course release has 99 xUnit cases. Coverage includes the fixture
-and exact clock advances, celestial queries and projection data, gravitational
-propagation and interception, event ordering, course preview/commit isolation,
-cancellation, stale revisions, concurrent writers, and controller lease expiry.
+Coverage includes the Solar System and legacy fixtures, exact clock advances,
+celestial queries, gravitational propagation, flybys, automatic course search,
+preview and commit isolation, event ordering, and controller lease expiry.
+Checkpoint and campaign cases cover save/load, compatibility, concurrent
+writes, and recovery.
 
 Run `scripts/Verify.ps1` from the repository root. This test project references the
 server to exercise the session boundary in process. The simulation library is

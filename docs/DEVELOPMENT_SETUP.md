@@ -76,8 +76,8 @@ TypeScript compilation, and Vite build.
 
 The renderer check uses Babylon NullEngine and a Pixi display object and builds
 a separate in-memory browser bundle. It does not establish browser GPU support,
-visual correctness, or performance. The course release ran 99 xUnit cases for
-simulation, course planning, and host sessions.
+visual correctness, or performance. The .NET suite covers simulation, route
+search, host sessions, checkpoint validation, and SQLite campaign recovery.
 
 ## Editor and maintenance
 

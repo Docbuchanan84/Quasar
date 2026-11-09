@@ -31,8 +31,8 @@ which public or dated local material was used and ask the owner for the necessar
 context. Building and running this repository does not require Google access.
 Do not create competing knowledge vaults or automatic two-way synchronization.
 
-The live record's **Current implementation and release** section reflects the
-merged, deployed course release. The original Task 002 notes remain historical.
+Check the revision of the live record before using its implementation summaries.
+Use repository code, tests, and the development log to verify shipped behavior.
 
 ## Task 002 owner evidence (2026-11-08)
 

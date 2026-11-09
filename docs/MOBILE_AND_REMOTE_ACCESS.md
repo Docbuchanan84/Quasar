@@ -1,13 +1,16 @@
 # iPhone play and remote access
 
-## Current status — 8 November 2026
+## Current validation
 
-The deployed campaign release is `f86ffd2`. Desktop Chromium verified the
-course workflow and navigation, including emulated touch. The physical-phone evidence
-below comes from the original System Lab release. The current course workflow,
-3D and lifecycle still need physical iPhone validation.
+The owner gave positive feedback after the automatic course planner reached
+the private preview. A portrait Chromium check against that endpoint verified
+destination selection, the maneuver budget control, and both route choices.
+End-to-end order and arrival, 3D, save/load, and reconnect still need explicit
+physical-device checks. See the [development log](DEVLOG.md) for release history.
 
-**Task 002 is deployed and owner-accepted in actual phone use.** After trying the
+## Initial phone evidence — 8 November 2026
+
+After trying the original
 System Lab, the owner reported: "It looks so good already and works just how I
 want." Two supplied phone screenshots show the playable 2D tactical display in
 portrait, including selected spacecraft, depth labels, movement vector, and

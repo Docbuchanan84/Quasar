@@ -11,7 +11,10 @@ panel shows a single option. Select a route to see it on the map, then use
 The route options show calculated travel duration, ETA, required delta-v, and
 any gravity assist. **Advanced** holds the Solar System test maneuver budget,
 which defaults to 25 km/s. Delta-v measures maneuver cost in this fixture.
-Arrival matches the destination body's modeled position and velocity.
+If the search finds no route, choose another destination or adjust the test
+budget and retry. Results depend on Pathfinder's current position and velocity
+and on the destination's motion. Arrival matches the destination body's modeled
+position and velocity.
 
 The planner checks 40 whole-second durations over a range of one second to ten
 Julian years, then checks additional times around the earliest feasible and
@@ -101,4 +104,5 @@ npx --yes --package @playwright/cli@0.1.23 playwright-cli -s=quasar-course close
 ```
 
 The scenario commits a Moon course. Use a fresh disposable campaign for each
-run. Physical iPhone 17 Pro testing remains open.
+run. See [mobile validation](MOBILE_AND_REMOTE_ACCESS.md) for hosted portrait
+checks and physical-device coverage.

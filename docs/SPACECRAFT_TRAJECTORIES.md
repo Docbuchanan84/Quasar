@@ -1,9 +1,8 @@
 # Spacecraft trajectories and movement
 
-Agent 4 adds a player preview/adjust/confirm workflow and a revision-bound
-`course-preview` / `commit-course` host adapter retaining the exact solved plan.
-Immediate travel buttons are replaced; existing APIs below remain compatible.
-See [COURSE_PLOTTING.md](COURSE_PLOTTING.md) for the current UI and confirmation contract.
+The player selects a destination and reviews the routes returned by automatic
+course planning. The host retains the exact preview for revision-bound
+confirmation. See [course plotting](COURSE_PLOTTING.md) for the UI and host API.
 
 Implemented for the owner's Agent 3 request on 8 November 2026, stacked on
 Agent 2's celestial service (`2f79207`). No runtime packages, fleet hierarchy,
@@ -37,8 +36,9 @@ variables and Stumpff functions. The resulting coast obeys the point-mass gravit
 equation `acceleration = -GM r / |r|³`; it is not an interpolated chord. Short and
 long arcs are selectable. Departure is an instantaneous velocity change, coast is
 an unforced conic, and arrival instantaneously matches the target velocity.
-Delta-v sums the magnitudes of all burns. Flight time is an input; ETA is its
-arrival tick. There is no claim of optimal time or fuel.
+Delta-v sums the magnitudes of all burns. Each individual solve takes a flight
+duration. Automatic plotting compares solved candidates across sampled
+durations and presents the best options found.
 
 Propagation uses a bounded, safeguarded Newton solution of universal Kepler's
 equation and Lagrange f/g coefficients. Elliptic phase is reduced before converting

@@ -14,7 +14,7 @@ interactive map. The two interactive maps are `SystemMap.tsx` and `SpaceMap.tsx`
 | Rotate/orbit | Not applicable to the XY projection | Left mouse drag or one-finger swipe |
 | Zoom | Wheel or pinch; compact + / − alternatives | Wheel or pinch; compact + / − alternatives |
 | Recover orientation | **Reset View** restores the initial centred fit | **Reset View** restores origin, home angles and distance |
-| Focus | Not added | **Focus Selected** makes the selected object's position the orbit pivot |
+| Focus | **Focus Selected** centers and follows the selected object | **Focus Selected** makes the selected object the tracked orbit pivot |
 
 The four directional arrows and 3D rotate-step button are removed because their
 gestures provide equivalent movement. Visible gesture hints describe the inputs.

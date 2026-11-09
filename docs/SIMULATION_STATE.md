@@ -18,7 +18,9 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   `History` entries. `SimulationState` contains `FormatVersion`,
   `ElapsedTicks`, `Bodies`, and `Spacecraft`. The nested
   `Simulation.FormatVersion` versions the entire checkpoint. The current version
-  is `SimulationState.CurrentFormatVersion` (1).
+  is `SimulationState.CurrentFormatVersion` (2). Version 2 adds body radii
+  and optional flyby metadata on committed trajectories. Version 1 remains
+  readable and retains its saved catalogue.
 - `CelestialBodyState` and `OrbitState` carry stable IDs, hierarchy, GM,
   reference state and epoch, and orbital elements and epoch. `SpacecraftState`
   carries the ship ID, gravity primary (last primary while in rendezvous), and
@@ -44,7 +46,8 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
 - `MovementExecution.ExportState()` and
   `MovementExecution.RestoreState(SimulationState)` also support standalone
   headless multi-ship worlds. The lab factory additionally checks its Pathfinder
-  and Helios identities and verifies history against the saved motion.
+  identity and a supported stellar primary (the Sun or legacy Helios) and
+  verifies history against the saved motion.
 - Restore constructs a separate catalogue and execution owner, checks the solved
   conics and burn continuity, and enqueues only the next live boundary per
   ship. Later boundaries are scheduled as they are reached. It reconstructs
@@ -67,5 +70,6 @@ validated candidate and starts it stopped.
 `scripts/Verify.ps1` covers the checkpoint regression cases and existing suites.
 Checkpoint cases cover midflight JSON round trips, exact 15-day arrival
 interruptions, checkpoints before and at a patch, stable simultaneous events,
-cancelled free coasts, moving rendezvous, history sequence and ordering, signed
-64-bit tick limits, and invalid state/JSON rejection without active-world mutation.
+cancelled free coasts, moving rendezvous, flyby and Moon course reload,
+history sequence and ordering, signed 64-bit tick limits, and invalid
+state/JSON rejection without active-world mutation.

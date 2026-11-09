@@ -1,5 +1,14 @@
 # Quasar decision record
 
+## Approved — automatic course plotting (2026-11-09)
+
+The player chooses a modeled planet or moon and reviews the fastest and lowest
+maneuver-cost routes found for the current departure. A bounded search reuses
+the existing direct and single-flyby solver. The player confirms the exact
+selected preview. The test maneuver budget is adjustable under Advanced.
+See the [course plotting contract](COURSE_PLOTTING.md) for search bounds and
+fixed-duration API compatibility.
+
 ## Approved — authoritative simulation checkpoint (issue #10)
 
 The owner requested explicit, versioned export and detached restore of
@@ -24,7 +33,7 @@ recovery checkpoints by default, optional event triggers, and a best-effort
 shutdown save. The host restores the last played campaign from validated storage
 and always installs it paused. Manual saves remain available outside recovery
 rotation. The [campaign lifecycle](CAMPAIGN_LIFECYCLE.md) documents settings,
-recovery and the HTTP handoff. Player-facing controls follow in issue #13.
+recovery and the HTTP handoff. Issue #13 delivered the player-facing controls.
 
 ## Approved — Agent 4 course plotting and map integration (2026-11-08)
 
@@ -51,8 +60,9 @@ Task-scoped implementation: zero-revolution impulsive Lambert transfers,
 universal Kepler coasts, explicit parent/child SOI patches with costed corrections,
 immutable previews and a bounded event queue. This does not approve finite thrust,
 n-body physics, docking/capture, automatic route search, a permanent universal
-scheduler or measured capacity. See SPACECRAFT_TRAJECTORIES.md. Further propulsion
-and automatic routing work remain **Proposed** and require a concrete task.
+scheduler or measured capacity. See [spacecraft trajectories](SPACECRAFT_TRAJECTORIES.md).
+Automatic course plotting was approved separately. Further propulsion remains
+**Proposed**.
 
 ## Approved — celestial mechanics task scope (2026-11-08)
 
