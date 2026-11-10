@@ -1,5 +1,19 @@
 # Development log
 
+## 2026-11-10 — Hosted propulsion-aware courses
+
+- Published merged [PR #34](https://github.com/Docbuchanan84/Quasar/pull/34)
+  at `65def4c` to the existing private host. Loopback and private HTTPS health,
+  the published asset bytes, and the 402 px Chromium layout passed checks.
+- An integrity-checked copy restored the existing v5 checkpoint before cutover.
+  The live restart restored the same paused checkpoint and committed legacy
+  course. The stopped save directory was copied and hash-verified for rollback.
+- A fresh disposable campaign verified an executable Earth approach, the
+  10.141 kg reserve warning, and advisory-only fixed-duration planning. Saved
+  ships without modeled propulsion retain their existing capabilities.
+- Merged-main verification passed 250 xUnit tests and 11 Node checks. Physical
+  iPhone validation remains open.
+
 ## 2026-11-10 — Propulsion-aware automatic courses
 
 - [Issue #28](https://github.com/Docbuchanan84/Quasar/issues/28) makes automatic
