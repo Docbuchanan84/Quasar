@@ -139,6 +139,42 @@ The [Pathfinder propulsion model](SOLAR_SYSTEM.md#pathfinder-propulsion) reports
 separate equipment-derived performance. Impulsive course execution does not debit
 its tank.
 
+## Orbital destination states and automatic coast transitions
+
+Body-local XYZ has parallel, nonrotating axes. At a shared tick, subtract or
+add the reference body's inertial position and velocity together. Orbit targets
+use a bound two-body conic above the reference surface and within the modeled
+SOI. Station targets use their ephemerides. Spacecraft targets sample current
+orders and freeze the resulting state at the requested tick for advisory use.
+
+Automatic transitions apply to eligible free coasts. Entry uses 99% of the
+child's Laplace SOI and exit uses 101% of the current body's SOI. The crossing
+must clear the nominal boundary by 1 cm to keep grazing contacts stable.
+The search uses a bound on relative acceleration to rule out whole intervals
+and subdivides possible crossings down to the first 100 ns clock tick on the
+new side. This detects fly-throughs whose endpoints are both outside and
+avoids scanning the full time span at a fixed cadence.
+
+The first crossing interrupts advancement and seeds the next conic with the
+same inertial position and velocity. Earliest time wins in overlapping
+spheres. At the same tick, exit takes precedence over entry, child IDs break
+entry ties, and simultaneous events across ships are processed together.
+Resume after each interrupt to reach the original requested end time.
+
+The scanner works in windows of up to 30 days. Read-only predictions allow
+30 days inclusive from the current tick for an eligible coast, or from the
+scheduled cutoff for its predicted post-burn coast. A prediction beyond the
+window returns an explicit error. Orbit presets and station ephemerides are
+independent of that limit. Advancement can continue beyond the prediction
+window. The model still uses patched two-body dynamics, keeps the prescribed
+primary during committed transfers and powered flight, and skips handoffs
+that would require unsupported radial/collision conics.
+
+Body-center arrival uses the legacy velocity-matching impulse. Resolving a
+target position and velocity supplies neither a capture maneuver nor contact
+dynamics. Orbital capture requires a reachable approach, braking and a
+verified bound post-maneuver state. Docking and landing need separate contracts.
+
 ## Finite burns
 
 The powered segment integrates central gravity and fixed-direction thrust in
@@ -163,13 +199,42 @@ switching during burns, and general error guarantees require further modeling.
   are reusable immutable results but are not automatically memoized.
 - Position queries locate a segment in O(log segments), then evaluate one prepared
   conic and primary ephemeris. They never solve a trajectory or integrate frames.
-- No-event advancement is O(1) apart from amortized obsolete queue cleanup;
-  event handling is O(events log active movements). Advancing time does not walk
-  every ship. Extracting N visible positions costs O(N); sampling is separate.
+- The explicit event queue handles committed transfers and burn cutoff.
+  Automatic SOI detection also checks the active free coasts. Its work depends
+  on how many boundaries survive radial and time-interval pruning. Near-grazing
+  or persistently close geometries can still require substantially more work.
 - Preliminary Windows Release sample, one shared plan and 1,000 ships: cold solve
   8.925 ms, 1,000 position queries 1.085 ms, first no-event advance 2.065 ms,
   1,000 simultaneous arrivals 1.030 ms. JIT and a single shared route limit these
   numbers; they are not sustained capacity, GPU or phone-readiness claims.
+
+### Thirty-day automatic coast benchmark
+
+Windows x64 Release, .NET SDK 10.0.403, Intel Core i5-11600KF. Three samples
+per fleet size after a one-ship warm-up. Timings cover `MovementExecution.Advance`
+only. Each ship has a distinct circular heliocentric coast whose radial range
+admits Earth as a candidate. The fleet stays away from encounters for the full
+30 days. The baseline is the integrated PR branch with the minute scan.
+
+| Spacecraft | Minute scan median | Adaptive search median |
+| ---: | ---: | ---: |
+| 1 | 68.393 ms | 0.012 ms |
+| 100 | 6,459.537 ms | 0.582 ms |
+| 1,000 | 66,995.755 ms | 5.785 ms |
+
+```powershell
+. .\scripts\Use-DevEnvironment.ps1
+dotnet run -c Release --file scripts/Benchmark-CoastAdvance.cs
+```
+
+This fixture measures event-free advancement with a plausible SOI candidate.
+Encounter-heavy fleets and repeated short Continuous steps need separate
+measurements. If those reveal repeated work, cache the next crossing and the
+tick searched through for each unchanged coast and catalogue. Predicted
+crossings could then use the existing event queue, invalidated on a new
+coast, catalogue change, or restore. A bounded cache of parent-relative body
+positions shared across ships within one advance is a separate option if
+profiling shows repeated ephemeris evaluation.
 
 Tests cover independent circular geometry, energy/angular-momentum conservation,
 reverse hyperbolic propagation, both arcs, future interception, translating

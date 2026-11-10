@@ -58,7 +58,7 @@ public sealed partial class MovementExecution
     }
 
     private SpacecraftState ExportShip(string id, Spacecraft ship) => new(id, ship.Primary,
-        ship.Coast is { } coast ? ExportCoast(coast) : null,
+        ship.Coast is { } coast ? ExportCoast(coast) with { AutomaticPrimary = ship.AutomaticPrimary } : null,
         ship.Plan is { } plan ? ExportPlan(plan, ship.NextBoundary) : null,
         ship.Rendezvous is { } rendezvous ? new(ExportDestination(rendezvous.Destination), rendezvous.ArrivalTicks) : null,
         PropulsionAt(ship, ElapsedTicks), ship.Burn?.State);
@@ -88,6 +88,7 @@ public sealed partial class MovementExecution
             case { FreeCoast: { } coast, Trajectory: null, Rendezvous: null, ActiveBurn: null }:
                 Require(coast.EpochTicks <= ElapsedTicks, "Free coast starts after the world clock.");
                 ship.Coast = RestoreCoast(coast, state.PrimaryBodyId);
+                ship.AutomaticPrimary = coast.AutomaticPrimary;
                 break;
             case { FreeCoast: null, Trajectory: { } trajectory, Rendezvous: null, ActiveBurn: null }:
                 ship.Plan = RestorePlan(trajectory);
@@ -154,7 +155,7 @@ public sealed partial class MovementExecution
         for (var i = 0; i < segments.Length; i++)
         {
             var saved = state.Segments[i];
-            Require(saved is not null, "Missing trajectory segment.");
+            Require(saved is not null && saved.Coast is { AutomaticPrimary: false }, "Missing or invalid trajectory segment.");
             var coast = RestoreCoast(saved.Coast, saved.PrimaryBodyId);
             var start = coast.EpochTicks;
             Require(saved.EndTicks > start && (decimal)saved.EndTicks - start <= TimeSpan.TicksPerDay * 36525m

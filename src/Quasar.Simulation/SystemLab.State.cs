@@ -55,12 +55,15 @@ public sealed partial class SystemLab
                     orderIndex = -1;
                     break;
                 case "burn-start" when state.Simulation.FormatVersion >= 4 && i > 0 && orderIndex < 0 && !burning
-                    && state.History[i - 1].Kind is ("created" or "cancel" or "burn-complete" or "burn-exhausted" or "burn-cutoff"):
+                    && state.History[i - 1].Kind is ("created" or "cancel" or "burn-complete" or "burn-exhausted" or "burn-cutoff" or "primary-change"):
                     burning = true;
                     break;
                 case "burn-complete" or "burn-exhausted" when burning && entry.AtTicks > previousTicks:
                 case "burn-cutoff" when burning:
                     burning = false;
+                    break;
+                case "primary-change" when state.Simulation.FormatVersion >= 5 && i > 0 && orderIndex < 0 && !burning
+                    && state.History[i - 1].Kind is ("created" or "cancel" or "burn-complete" or "burn-exhausted" or "burn-cutoff" or "primary-change"):
                     break;
                 default:
                     throw new InvalidDataException("Invalid System Lab event order.");
@@ -92,7 +95,7 @@ public sealed partial class SystemLab
             if (rendezvous.Destination.BodyId is null || last.Kind != "arrival" || last.AtTicks != rendezvous.ArrivalTicks)
                 throw new InvalidDataException("Rendezvous disagrees with System Lab history.");
         }
-        else if (last.Kind is not ("created" or "cancel" or "burn-complete" or "burn-exhausted" or "burn-cutoff") || last.AtTicks != ship.FreeCoast!.EpochTicks)
+        else if (last.Kind is not ("created" or "cancel" or "burn-complete" or "burn-exhausted" or "burn-cutoff" or "primary-change") || last.AtTicks != ship.FreeCoast!.EpochTicks)
             throw new InvalidDataException("Free coast disagrees with System Lab history.");
     }
 }

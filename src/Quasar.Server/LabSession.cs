@@ -46,6 +46,11 @@ public sealed partial class LabSession(bool startWithWorld = true)
         lock (gate) return SystemLab.Present(RequireWorld().PreviewTravel(destinationId, flightSeconds));
     }
 
+    public OrbitalTargetState TargetStateAt(string kind, string targetId, long atTicks)
+    {
+        lock (gate) return RequireWorld().TargetStateAt(kind, targetId, atTicks);
+    }
+
     public CelestialState ShipStateAt(long atTicks)
     {
         lock (gate) return RequireWorld().ShipStateAt(atTicks);

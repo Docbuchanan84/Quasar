@@ -9,13 +9,15 @@ public sealed record LabEvent(long Sequence,
 public sealed record ShipStatus(string Status, double SpeedKmPerSecond, string? DestinationId,
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long? ArrivalTicks, double RemainingDistanceKm,
     PropulsionPerformance? Propulsion = null,
-    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long? BurnEndTicks = null);
+    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long? BurnEndTicks = null,
+    string? ArrivalKind = null);
 public sealed record LabSnapshot(
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long ElapsedTicks, LabObject[] Objects, ShipStatus Ship, LabEvent[] Events,
     TrajectoryDisplay? Trajectory = null, string? ReferenceEpoch = null);
 public sealed record TrajectoryDisplayPoint(string AtTicks, Position3 PositionKm, Velocity3 VelocityKmPerSecond);
 public sealed record TrajectoryDisplay(string DepartureTicks, string ArrivalTicks, double TravelSeconds,
-    double RequiredDeltaVKmPerSecond, TransferFuelEstimate Fuel, TrajectoryDisplayPoint[] Points, FlybyDisplay? Flyby = null);
+    double RequiredDeltaVKmPerSecond, TransferFuelEstimate Fuel, TrajectoryDisplayPoint[] Points, FlybyDisplay? Flyby = null,
+    string? ArrivalKind = null);
 public sealed record FlybyDisplay(string BodyId, string BodyName, string AtTicks, double ClosestApproachKm);
 
 /// <summary>Headless fixture using the planner/execution contracts available to future fleet systems.</summary>
@@ -47,7 +49,7 @@ public sealed partial class SystemLab
         var position = (radial + radial / radial.Length * 1_000_000).Position;
         movement.AddSpacecraft(ShipId, new(position, earth.VelocityKmPerSecond), PrimaryId,
             new(8000, new(1000, 3, 1.5, 200_000, 3000, "test-chemical"),
-                new(1000, 10_000, 10_000, "test-chemical")));
+                new(1000, 10_000, 10_000, "test-chemical")), automaticPrimary: true);
         Record("created", "Solar System initialized. Pathfinder coasting near Earth.");
     }
 
@@ -83,7 +85,8 @@ public sealed partial class SystemLab
         return new(ElapsedTicks,
             [.. bodies, new(ShipId, "Pathfinder", "spacecraft", ship.State.PositionKm, null, ship.State.VelocityKmPerSecond)],
             new(ship.Status, Vector3d.From(ship.State.VelocityKmPerSecond).Length, ship.DestinationId,
-                ship.ArrivalTicks, distance, ship.Propulsion, ship.BurnEndTicks), [.. events], display is null ? null : display with { Points = [.. display.Points] },
+                ship.ArrivalTicks, distance, ship.Propulsion, ship.BurnEndTicks,
+                ship.DestinationId is not null || ship.Status == "Arrived" ? "body-center" : null), [.. events], display is null ? null : display with { Points = [.. display.Points] },
             PrimaryId == SolarSystem.Sun ? SolarSystem.Epoch : null);
     }
 
@@ -166,13 +169,37 @@ public sealed partial class SystemLab
     public LabEvent LastEvent => events[^1];
     public string LastEventKind => LastEvent.Kind;
 
+    public OrbitalTargetState TargetStateAt(string kind, string targetId, long atTicks) => kind switch
+    {
+        "orbit" => ResolvePresetOrbit(targetId, atTicks),
+        "station" => OrbitalNavigation.ResolveStation(celestialPositions, targetId, atTicks),
+        "spacecraft" => movement.ResolveSpacecraftTarget(targetId, atTicks),
+        _ => throw new ArgumentException("Choose orbit, station, or spacecraft.", nameof(kind))
+    };
+
+    private OrbitalTargetState ResolvePresetOrbit(string bodyId, long atTicks)
+    {
+        var altitude = bodyId switch
+        {
+            SolarSystem.Earth => 400,
+            "moon-moon" => 100,
+            _ => throw new ArgumentException("Choose an Earth or lunar orbit preset.", nameof(bodyId))
+        };
+        if (!celestialPositions.Bodies.TryGetValue(bodyId, out var body))
+            throw new ArgumentException("This campaign does not contain the requested orbit preset.", nameof(bodyId));
+        var radius = body.RadiusKm + altitude;
+        var speed = Math.Sqrt(body.GravitationalParameterKm3PerSecond2 / radius);
+        return OrbitalNavigation.ResolveOrbit(celestialPositions, bodyId, 0, new(new(radius, 0, 0), new(0, speed, 0)), atTicks);
+    }
+
     public CelestialState ShipStateAt(long atTicks) => movement.StateAt(ShipId, atTicks);
 
     public static TrajectoryDisplay Present(TrajectoryPlan plan) => new(Ticks(plan.DepartureTicks), Ticks(plan.ArrivalTicks),
         plan.TravelSeconds, plan.RequiredDeltaVKmPerSecond, plan.Fuel,
         plan.Sample().Select(p => new TrajectoryDisplayPoint(Ticks(p.AtTicks), p.State.PositionKm, p.State.VelocityKmPerSecond)).ToArray(),
         plan.Flyby is { } flyby ? new(flyby.BodyId, plan.Catalogue.Bodies[flyby.BodyId].Name,
-            Ticks(plan.Segments[0].EndTicks), flyby.ClosestApproachKm) : null);
+            Ticks(plan.Segments[0].EndTicks), flyby.ClosestApproachKm) : null,
+        plan.Destination.BodyId is not null ? "body-center" : "waypoint");
 
     public bool Advance(TimeSpan duration)
     {
@@ -185,7 +212,8 @@ public sealed partial class SystemLab
             {
                 "burn-complete" => "Pathfinder completed its timed burn and resumed an unforced coast.",
                 "burn-exhausted" => "Pathfinder exhausted its propellant and resumed an unforced coast.",
-                "arrival" => "Pathfinder arrived. Arrival impulse applied; awaiting orders.",
+                "arrival" => "Body-center arrival. Pathfinder applied the planned velocity-matching impulse.",
+                "primary-change" => $"Pathfinder changed gravity primary to {celestialPositions.Bodies[movement.PrimaryOf(ShipId)].Name} without thrust.",
                 _ => flyby is null ? "Pathfinder changed gravitational primary at a committed patch boundary."
                     : $"Pathfinder completed a gravity assist at {celestialPositions.Bodies[flyby.BodyId].Name}."
             });

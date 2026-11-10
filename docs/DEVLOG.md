@@ -1,5 +1,40 @@
 # Development log
 
+## 2026-11-10 — Automatic SOI crossing audit
+
+- Integrated host-owned Continuous play from PR #32. An automatic primary
+  change stops the run and appears in the clock notice and event history.
+- Replaced one-minute sampling with acceleration-bounded subdivision. A
+  500 km/s Earth grazing fly-through penetrates for under one second with both
+  minute endpoints outside. Tests cover that entry, brief exit near apoapsis,
+  tangencies, overlapping spheres, coincident arrival and entry, inertial
+  continuity, and equal results after resuming to the same tick in large or
+  small advances. The high-speed case also exposed and fixed hyperbolic
+  propagation overflow when seeding the solver bracket.
+- SQLite tests restored formats v1–v5. The coast prediction horizon accepts
+  30 days exactly and explicitly rejects the next tick.
+- A 30-day event-free advance with 1,000 eligible coasts took 5.785 ms median
+  in Release, down from 66.996 s with the minute scan. The
+  [trajectory notes](SPACECRAFT_TRAJECTORIES.md#thirty-day-automatic-coast-benchmark)
+  include the smaller fleets, fixture and scheduling opportunities.
+- `scripts/Verify.ps1` passed with 232 xUnit tests and 11 Node checks.
+  The focused physics, SQLite, and HTTP run passed 88 tests. Seven disposable
+  Chromium phases passed on desktop and at iPhone dimensions. They covered a
+  save written by the previous v4 host, v5 saves and recovery, the prediction
+  limit, the SOI notice after reconnect, and body-center arrival.
+
+## 2026-11-10 — Orbital reference frames and target states
+
+- [Issue #27](https://github.com/Docbuchanan84/Quasar/issues/27) adds read-only
+  orbit, station, and spacecraft targets. Existing orders and arrivals carry
+  the body-center label.
+- Eligible free coasts change primaries at bracketed Laplace SOI crossings.
+  Position and velocity are preserved, and v5 checkpoints retain eligibility.
+  Legacy free coasts retain their stored primary.
+- `scripts/Verify.ps1` passed with 222 xUnit tests. Disposable Chromium verified
+  the target endpoint, preview and explicit confirmation, arrival wording at
+  desktop and phone widths, and save/restart. Physical iPhone testing remains open.
+
 ## 2026-11-10 — Continuous play through browser disconnects
 
 - The host advances Continuous play through phone lock, tab closure, and lost

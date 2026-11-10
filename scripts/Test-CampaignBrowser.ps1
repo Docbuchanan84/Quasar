@@ -76,6 +76,9 @@ function Read-Json([string]$Path) {
 function ConvertTo-ComparableWorld($World) {
     # The Solar System release adds optional snapshot fields to older catalogues.
     $json = $World | ConvertTo-Json -Depth 30 -Compress | ConvertFrom-Json -AsHashtable
+    # Orbital navigation adds presentation metadata to the existing trajectory.
+    $null = $json.ship.Remove('arrivalKind')
+    if ($json.trajectory) { $null = $json.trajectory.Remove('arrivalKind') }
     if (!$json.referenceEpoch) {
         $json.Remove('referenceEpoch')
         foreach ($body in $json.objects) {
@@ -120,6 +123,8 @@ try {
     Invoke-BrowserPhase resume -Mobile
     $null = Assert-Midflight $restarted $beforeShip
     if (@(Read-Json '/api/campaigns').Count -ne 1) { throw 'Cancelled New Game created a campaign.' }
+    Invoke-BrowserPhase coast -Mobile
+    Start-Sleep -Seconds 1
     Invoke-BrowserPhase arrival
     $head = Read-Json '/api/campaigns/status'
     if ($head.lastCheckpoint.sequence -ne '5') { throw 'Expected five checkpoints.' }

@@ -100,8 +100,9 @@ public sealed class SimulationStateTests
         Assert.Equal(atCancel.State, cancelled.State);
         foreach (var at in new[] { Ticks(10000), Ticks(14000), Ticks(15000), Ticks(17500) })
             Assert.Equal(original.StateAt("ship-a", at), restored.StateAt("ship-a", at));
-        Assert.Empty(restored.Advance(TimeSpan.FromDays(15)));
-        Assert.Equal(Ticks(10000) + TimeSpan.FromDays(15).Ticks, restored.ElapsedTicks);
+        Assert.Equal(original.Advance(TimeSpan.FromDays(15)), restored.Advance(TimeSpan.FromDays(15)));
+        Assert.Equal(original.ElapsedTicks, restored.ElapsedTicks);
+        Assert.Equal(original.View("ship-a"), restored.View("ship-a"));
     }
 
     [Fact]

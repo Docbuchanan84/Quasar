@@ -16,6 +16,7 @@ automatic course planning, interactive maps, and persistent campaigns. The
 | Course plotting | Planet and moon destinations, automatic fastest and lowest maneuver-cost routes, shared map preview, and revision-bound commit |
 | Propulsion 1/4 | Single chemical engine and tank, read-only Pathfinder performance, and compatible v3 checkpoints |
 | Propulsion 2/4 | Finite burns, fuel depletion, clock interrupts, and active-burn v4 checkpoints |
+| Navigation 1/2 | Orbital target states, automatic coast primary changes, and checkpoint v5 |
 | Campaigns | SQLite checkpoints, autosave, startup restore, and player-facing New Game, Save Game, Named Save, and Load Game |
 
 The [System Lab guide](SYSTEM_LAB.md), [integration record](AGENT_INTEGRATION.md),
@@ -53,8 +54,8 @@ landscape, background/reconnect, and cellular-only access separately.
 
 ## Open implementation and design work
 
-- Orbital navigation ([issue #27](https://github.com/Docbuchanan84/Quasar/issues/27)),
-  propulsion-aware course planning, fleets, collision,
+- Propulsion-aware course planning ([issue #28](https://github.com/Docbuchanan84/Quasar/issues/28)),
+  fleets, collision,
   docking, and player-facing moving-target/waypoint selection remain open. The
   headless trajectory planner already supports moving-target interception.
 - Phone push delivery for game interrupts remains open.

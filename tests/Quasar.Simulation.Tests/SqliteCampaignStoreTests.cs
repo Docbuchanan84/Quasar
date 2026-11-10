@@ -56,6 +56,40 @@ public sealed class SqliteCampaignStoreTests : IDisposable
         Assert.Equal(lab.ShipStateAt(lab.ElapsedTicks), loaded.World.ShipStateAt(loaded.World.ElapsedTicks));
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public void AllSupportedCheckpointVersionsRestoreThroughSqlite(int version)
+    {
+        var store = Store();
+        var campaign = store.CreateCampaign("Versioned checkpoints");
+        var lab = version < 3 ? SystemLab.CreateLegacyFixture() : new SystemLab();
+        if (version == 4) lab.StartBurn("prograde", 30);
+        var exported = lab.ExportState();
+        var ship = exported.Simulation.Spacecraft[0];
+        if (version == 3) ship = ship with { FreeCoast = ship.FreeCoast! with { AutomaticPrimary = false } };
+        var state = exported with
+        {
+            Simulation = exported.Simulation with { FormatVersion = version, Spacecraft = [ship] }
+        };
+
+        var save = store.SaveNamed(campaign.Id, 0, "Original", Build, state);
+        var loaded = Store().LoadCheckpoint(campaign.Id, save.Id);
+        Assert.Equal(version, loaded.Info.StateFormatVersion);
+        Assert.Equal(SimulationStateJson.Serialize(state), SimulationStateJson.Serialize(loaded.State));
+        Assert.Equal(lab.Snapshot().Ship, loaded.World.Snapshot().Ship);
+        Assert.Equal(version == 5, loaded.World.ExportState().Simulation.Spacecraft[0].FreeCoast?.AutomaticPrimary == true);
+        if (version == 4)
+        {
+            Assert.True(loaded.World.Advance(TimeSpan.FromMinutes(1)));
+            Assert.Equal("burn-complete", loaded.World.LastEventKind);
+            Assert.Equal(30 * TimeSpan.TicksPerSecond, loaded.World.ElapsedTicks);
+        }
+    }
+
     [Fact]
     public void InvalidPropulsionRecoversEarlierVersionTwoCheckpoint()
     {
@@ -66,7 +100,7 @@ public sealed class SqliteCampaignStoreTests : IDisposable
         var ship = state.Simulation.Spacecraft[0];
         var legacy = state with
         {
-            Simulation = state.Simulation with { FormatVersion = 2, Spacecraft = [ship with { Propulsion = null }] }
+            Simulation = state.Simulation with { FormatVersion = 2, Spacecraft = [ship with { Propulsion = null, FreeCoast = ship.FreeCoast! with { AutomaticPrimary = false } }] }
         };
         var previous = store.SaveRecovery(campaign.Id, 0, Build, legacy);
         var current = store.SaveRecovery(campaign.Id, 1, Build, state);

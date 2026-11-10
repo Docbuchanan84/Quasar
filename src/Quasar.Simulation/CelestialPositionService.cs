@@ -80,6 +80,9 @@ public sealed class CelestialPositionService : ICelestialPositionService
 
     public OrbitalEnvironment GetEnvironment(string bodyId) => environments[bodyId];
 
+    internal Vector3d OrbitalOffsetAt(string bodyId, long atTicks) =>
+        Vector3d.From(orbits[bodyId].Calculate(atTicks).PositionKm);
+
     public CelestialState GetState(string bodyId, long atTicks)
     {
         lock (gate)

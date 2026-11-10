@@ -35,7 +35,8 @@ views draw the same sampled preview or committed path. Departure and arrival
 markers use the planned positions.
 Route fuel estimates remain unavailable for these impulsive plans. The
 [finite engine burn](SOLAR_SYSTEM.md#pathfinder-propulsion) spends propellant
-and is mutually exclusive with a committed course.
+and is mutually exclusive with a committed course. The snapshot and course
+preview report `arrivalKind: "body-center"` for those orders.
 
 ## Clock and execution
 
@@ -50,8 +51,8 @@ limit. Locking the phone, closing the tab, or losing the browser connection
 does not stop the host. The visible client polls every 500 ms and refreshes on
 return. Any connected browser can inspect or Stop the shared run.
 
-Interrupts such as an arrival, gravity assist boundary, or burn completion
-pause at the exact event time. The host includes the triggering event in
+Arrivals, gravity assists, automatic coast primary changes, and burn completion
+pause at the event tick. The host includes the triggering event in
 `interrupt` so the clock can display its time and message, including after a
 reconnect or reload. The notice clears on Play or campaign replacement. The
 event remains in campaign history. Phone push delivery remains open.
@@ -71,8 +72,15 @@ the camera.
 | `GET /api/lab/course-preview?destinationId=…&flightSeconds=…` | Solve a single fixed-duration course for existing callers |
 | `GET /api/lab/trajectory-preview?destinationId=…&flightSeconds=…` | Compatibility query for an advisory trajectory without a confirmation ID |
 | `GET /api/lab/celestial/{bodyId}/state?atTicks=…` | Read celestial state at a signed Int64 timestamp |
+| `GET /api/lab/target-state?kind=…&targetId=…&atTicks=…` | Read inertial target position and velocity and the reference body. Orbit presets use `planet-earth` at 400 km or `moon-moon` at 100 km. Station and spacecraft kinds use object IDs. |
 | `GET /api/lab/spacecraft/state?atTicks=…` | Read Pathfinder's current or predicted future state |
 | `POST /api/lab/commands` | Apply a revision-checked command |
+
+The two spacecraft state queries accept automatic coast predictions through
+30 days inclusive. A later tick returns HTTP 400 with the message
+“Automatic coast predictions cover up to 30 days.” For an active burn, the
+post-burn prediction window starts at its scheduled cutoff. The limit does
+not apply to independent orbit and station targets.
 
 Commands take JSON `{instanceId, revision, clientId, operation}` plus operation
 arguments. The current UI uses `configure` with `durationSeconds` and `mode`

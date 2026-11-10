@@ -90,6 +90,13 @@ public static class QuasarHost
             catch (Exception error) when (error is ArgumentException or OverflowException)
             { return Results.BadRequest(new { error = error.Message }); }
         });
+        app.MapGet("/api/lab/target-state", (string kind, string targetId, long atTicks, LabSession session) =>
+        {
+            try { return Results.Ok(session.TargetStateAt(kind, targetId, atTicks)); }
+            catch (InvalidOperationException error) { return Results.Conflict(new { error = error.Message }); }
+            catch (Exception error) when (error is ArgumentException or OverflowException)
+            { return Results.BadRequest(new { error = error.Message }); }
+        });
         app.MapGet("/api/lab/spacecraft/state", (long atTicks, LabSession session) =>
         {
             try { return Results.Ok(new { atTicks = atTicks.ToString(System.Globalization.CultureInfo.InvariantCulture), state = session.ShipStateAt(atTicks) }); }
