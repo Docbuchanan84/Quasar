@@ -47,11 +47,12 @@ an engine specification and has zero available thrust acceleration and delta-v.
 
 The read-only `MovementExecution.View` and `GET /api/lab` ship status expose
 these derived figures in SI units. The inspector displays delta-v in km/s.
-For [issue #26](https://github.com/Docbuchanan84/Quasar/issues/26), the persisted
-configuration supplies the thrust, exhaust velocity, and current tank quantity.
-That issue owns ignition, depletion, numerical integration, and burn checkpoint
-state. Existing Lambert orders continue as impulsive test maneuvers, independent
-of the ship's theoretical delta-v and tank quantity.
+Use **Engine burn** in the Pathfinder inspector to ignite for 1–3,600 seconds
+while freely coasting and paused. Prograde and retrograde fix the direction from
+the primary-relative velocity at ignition. Press **Play** to advance. The clock
+interrupts at the first of the requested cutoff or propellant exhaustion. To
+end a burn early, pause time and select **Cut thrust**. A saved active burn
+resumes from the saved clock and tank quantity when you press **Play** again.
 
 ## Pathfinder flight
 
@@ -66,8 +67,8 @@ The [course planner](COURSE_PLOTTING.md) checks direct and one-planet routes
 across candidate arrival times, including short and long zero-revolution arcs.
 A flyby needs matching planet-relative excess speeds within 0.001 km/s and a
 predicted closest approach at least 1,000 km above the reference radius. The
-ship uses instantaneous test maneuvers. Finite thrust and fuel expenditure are
-reserved for propulsion work.
+planner uses instantaneous test maneuvers. Finite engine burns are separate
+orders and spend propellant only as simulation time advances.
 
 Checkpoint format 2 stores body radii and the optional flyby encounter.
 Version 1 checkpoints retain their original catalogue and courses when loaded.

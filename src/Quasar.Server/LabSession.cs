@@ -4,7 +4,7 @@ namespace Quasar.Server;
 
 public sealed record LabCommand(string InstanceId, long Revision, string ClientId, string Operation,
     int? DurationSeconds = null, string? Mode = null, string? DestinationId = null, int? FlightSeconds = null,
-    string? PreviewId = null);
+    string? PreviewId = null, string? BurnDirection = null, int? BurnSeconds = null);
 public sealed record CoursePreview(string PreviewId, string InstanceId, long Revision, string ShipId,
     string DestinationId, double SampledDistanceKm, string[] Warnings, TrajectoryDisplay Trajectory);
 public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePreview? LowestManeuverCost);
@@ -159,6 +159,18 @@ public sealed partial class LabSession(TimeProvider timeProvider, bool startWith
                     MarkWorldChanged(significant: true);
                     stopReason = "Course cancelled — coasting";
                     break;
+                case "start-burn":
+                    if (running) throw new InvalidOperationException("Stop time processing before ignition.");
+                    activeWorld.StartBurn(command.BurnDirection ?? "", command.BurnSeconds ?? 0);
+                    MarkWorldChanged(significant: true);
+                    stopReason = "Engine ignited — ready to advance";
+                    break;
+                case "cut-thrust":
+                    if (running) throw new InvalidOperationException("Stop time processing before cutting thrust.");
+                    activeWorld.CutThrust();
+                    MarkWorldChanged(significant: true);
+                    stopReason = "Thrust cut — coasting";
+                    break;
                 default: throw new ArgumentException("Unknown command.");
             }
             revision++;
@@ -192,12 +204,17 @@ public sealed partial class LabSession(TimeProvider timeProvider, bool startWith
                 {
                     var activeWorld = RequireWorld();
                     var before = activeWorld.ElapsedTicks;
-                    var arrived = activeWorld.Advance(TimeSpan.FromSeconds(durationSeconds));
-                    if (arrived || activeWorld.ElapsedTicks != before) MarkWorldChanged(significant: arrived);
-                    if (arrived || mode == "once")
+                    var interrupted = activeWorld.Advance(TimeSpan.FromSeconds(durationSeconds));
+                    if (interrupted || activeWorld.ElapsedTicks != before) MarkWorldChanged(significant: interrupted);
+                    if (interrupted || mode == "once")
                     {
                         running = false;
-                        stopReason = arrived ? "Arrival — awaiting orders" : "Advance complete";
+                        stopReason = !interrupted ? "Advance complete" : activeWorld.LastEventKind switch
+                        {
+                            "burn-complete" => "Burn complete — coasting",
+                            "burn-exhausted" => "Propellant exhausted — coasting",
+                            _ => "Arrival — awaiting orders"
+                        };
                     }
                 }
                 catch (OverflowException)

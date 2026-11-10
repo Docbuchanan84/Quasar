@@ -39,7 +39,7 @@ public sealed partial class MovementExecution
     {
         // Enqueue only the next live boundary per ship, in a stable order independent of payload order.
         foreach (var (id, ship) in spacecraft.OrderBy(pair => pair.Key, StringComparer.Ordinal))
-            if (ship.Plan is not null) Schedule(id, ship);
+            Schedule(id, ship);
     }
 
     private static CelestialBodyState ExportBody(CelestialBody body) => new(body.Id, body.Name, body.Kind,
@@ -57,11 +57,11 @@ public sealed partial class MovementExecution
                 orbit.EpochTicks) : null, body.ReferenceState.ToRuntime(), body.ReferenceEpochTicks, body.RadiusKm);
     }
 
-    private static SpacecraftState ExportShip(string id, Spacecraft ship) => new(id, ship.Primary,
+    private SpacecraftState ExportShip(string id, Spacecraft ship) => new(id, ship.Primary,
         ship.Coast is { } coast ? ExportCoast(coast) : null,
         ship.Plan is { } plan ? ExportPlan(plan, ship.NextBoundary) : null,
         ship.Rendezvous is { } rendezvous ? new(ExportDestination(rendezvous.Destination), rendezvous.ArrivalTicks) : null,
-        ship.Propulsion);
+        PropulsionAt(ship, ElapsedTicks), ship.Burn?.State);
 
     private static CoastState ExportCoast(TwoBodyTrajectory coast) =>
         new(coast.EpochTicks, KinematicState.From(coast.InitialState));
@@ -85,22 +85,31 @@ public sealed partial class MovementExecution
         var ship = new Spacecraft(state.PrimaryBodyId, null, state.Propulsion);
         switch (state)
         {
-            case { FreeCoast: { } coast, Trajectory: null, Rendezvous: null }:
+            case { FreeCoast: { } coast, Trajectory: null, Rendezvous: null, ActiveBurn: null }:
                 Require(coast.EpochTicks <= ElapsedTicks, "Free coast starts after the world clock.");
                 ship.Coast = RestoreCoast(coast, state.PrimaryBodyId);
                 break;
-            case { FreeCoast: null, Trajectory: { } trajectory, Rendezvous: null }:
+            case { FreeCoast: null, Trajectory: { } trajectory, Rendezvous: null, ActiveBurn: null }:
                 ship.Plan = RestorePlan(trajectory);
                 ship.NextBoundary = trajectory.NextBoundaryIndex;
                 var current = ship.Plan.Segments[ship.NextBoundary];
                 Require(current.StartTicks <= ElapsedTicks && ElapsedTicks < current.EndTicks
                     && current.PrimaryBodyId == state.PrimaryBodyId, "Active segment disagrees with clock or primary.");
                 break;
-            case { FreeCoast: null, Trajectory: null, Rendezvous: { } rendezvous }:
+            case { FreeCoast: null, Trajectory: null, Rendezvous: { } rendezvous, ActiveBurn: null }:
                 Require(rendezvous.ArrivalTicks <= ElapsedTicks, "Rendezvous arrives after the world clock.");
                 var destination = RestoreDestination(rendezvous.Destination);
                 destination.StateAt(catalogue, rendezvous.ArrivalTicks);
                 ship.Rendezvous = (destination, rendezvous.ArrivalTicks);
+                break;
+            case { FreeCoast: null, Trajectory: null, Rendezvous: null, ActiveBurn: { } burn, Propulsion: { } propulsion }:
+                Require(burn.StartTicks <= ElapsedTicks && burn.InitialRelativeState is not null && burn.UnitDirection is not null,
+                    "Incomplete active burn or ignition epoch after the clock.");
+                ship.Propulsion = WithPropellant(propulsion, burn.IgnitionPropellantKg);
+                ship.Burn = BuildBurn(ship.Primary, ship.Propulsion, burn);
+                Require(ElapsedTicks < ship.Burn.Path.EndTicks
+                    && ship.Burn.Path.RemainingPropellantKg(ElapsedTicks) == propulsion.Tank.QuantityKg,
+                    "Active burn disagrees with clock or propellant quantity.");
                 break;
             default:
                 throw new InvalidDataException("A spacecraft must have exactly one motion state.");

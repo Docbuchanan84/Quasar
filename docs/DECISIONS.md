@@ -1,5 +1,12 @@
 # Quasar decision record
 
+## Approved — finite-thrust task scope (issue #26)
+
+Pathfinder can burn under gravity using installed equipment and stored
+propellant. The System Lab uses fixed-at-ignition prograde or retrograde
+direction, a bounded powered integration, and an analytical coast after cutoff.
+These choices apply to this slice. See the [flight contract](SPACECRAFT_TRAJECTORIES.md#finite-burns).
+
 ## Approved — propulsion foundation (issue #25)
 
 The approved sequence starts with component-derived conventional propulsion.

@@ -139,6 +139,23 @@ The [Pathfinder propulsion model](SOLAR_SYSTEM.md#pathfinder-propulsion) reports
 separate equipment-derived performance. Impulsive course execution does not debit
 its tank.
 
+## Finite burns
+
+The powered segment integrates central gravity and fixed-direction thrust in
+primary-relative km and seconds. RK4 uses one-second steps from the ignition
+epoch. Mass decreases at the rated flow through physical cutoff, with a
+partial final step when required. Exhaustion interrupts at the first 100 ns
+clock tick at or after depletion. The handoff takes the powered endpoint's
+position and velocity as the initial conditions of the analytical coast.
+Queries and clock partitions produce identical results within a single build
+because they evaluate from the same ignition data rather than chaining steps
+across caller advances.
+
+For the tested 150-second full-tank case at 150 million km under solar gravity,
+the endpoint is within 1 mm and 0.01 mm/s of an independent 0.01-second RK4
+reference. These tolerances cover that fixture. Close approaches, primary
+switching during burns, and general error guarantees require further modeling.
+
 ## Performance and validation
 
 - Solves have bounded scalar iterations and endpoint verification. A planner memo
@@ -169,4 +186,4 @@ node src/Quasar.Client/scripts/test-trajectory-api.mjs http://127.0.0.1:5093
 The live Game Design Record was read on 8 November 2026, including Project
 overview, Time behavior, and Control, orders and delegation. Edit tooling was
 exposed; writes were not tested and no shared-document edits were performed.
-Finite-thrust execution and fuel expenditure remain open. See [the project plan](PROJECT_PLAN.md).
+Propulsion-aware course feasibility remains open. See [the project plan](PROJECT_PLAN.md).

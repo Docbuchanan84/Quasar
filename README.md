@@ -33,7 +33,10 @@ two fingers to pan. Both views support wheel/pinch zoom and **Reset View**.
 C# owns the simulation clock and movement. The lab uses gravitational Lambert
 transfers, impulsive departure/arrival, and analytical coasts. The reusable
 simulation also supports hierarchical celestial queries and moving targets.
-The browser exposes one ship. Fuel estimates await propulsion and mass data.
+The browser exposes one ship. Use **Engine burn** on Pathfinder to command a
+prograde or retrograde burn while paused and freely coasting. Timed cutoff or
+propellant exhaustion interrupts time processing. Route fuel estimates remain
+unavailable for impulsive course orders.
 The lab is shared across browsers. The host restores SQLite checkpoints
 and exposes **New Game**, **Save Game**, **Named Save**, and **Load Game**.
 Choose **Continue** inside Load Game to recover the latest readable save.

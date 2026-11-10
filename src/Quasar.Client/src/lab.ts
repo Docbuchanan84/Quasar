@@ -49,6 +49,7 @@ export type Snapshot = {
       destinationId: string | null
       arrivalTicks: string | null
       remainingDistanceKm: number
+      burnEndTicks?: string | null
       propulsion?: {
         dryMassKg: number
         wetMassKg: number
