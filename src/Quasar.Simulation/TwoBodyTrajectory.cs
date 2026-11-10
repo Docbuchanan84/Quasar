@@ -23,6 +23,7 @@ public sealed class TwoBodyTrajectory
     private readonly double mu, radius, alpha, radialProduct, sqrtMu;
     public long EpochTicks { get; }
     public double PeriapsisKm { get; }
+    public double? ApoapsisKm => alpha > 0 ? 2 / alpha - PeriapsisKm : null;
     public double? PeriodSeconds { get; }
     public CelestialState InitialState { get; }
 

@@ -29,6 +29,7 @@ public sealed partial class MovementExecution
         var burn = BuildBurn(ship.Primary, propulsion, saved);
         ship.Burn = burn;
         ship.Coast = null;
+        ship.AutomaticPrimary = false;
         ship.Generation++;
         Schedule(id, ship);
         CompactQueue();
@@ -63,6 +64,7 @@ public sealed partial class MovementExecution
         ship.Propulsion = PropulsionAt(ship, atTicks);
         ship.Burn = null;
         ship.Coast = coast;
+        ship.AutomaticPrimary = true;
         ship.Generation++;
     }
 }

@@ -70,7 +70,17 @@ public sealed class FiniteBurnExecutionTests
         var lab = new SystemLab();
         var coast = lab.ExportState();
         Assert.Equal(coast.Simulation.Spacecraft[0].Propulsion,
-            SystemLab.RestoreState(coast with { Simulation = coast.Simulation with { FormatVersion = 3 } })
+            SystemLab.RestoreState(coast with
+            {
+                Simulation = coast.Simulation with
+                {
+                    FormatVersion = 3,
+                    Spacecraft = [coast.Simulation.Spacecraft[0] with
+                    {
+                        FreeCoast = coast.Simulation.Spacecraft[0].FreeCoast! with { AutomaticPrimary = false }
+                    }]
+                }
+            })
                 .ExportState().Simulation.Spacecraft[0].Propulsion);
         lab.StartBurn("prograde", 30);
         lab.Advance(TimeSpan.FromSeconds(5));

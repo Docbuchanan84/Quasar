@@ -149,7 +149,7 @@ export default function CoursePanel({
               <dd>{formatDuration(trajectory.travelSeconds)}</dd>
             </div>
             <div>
-              <dt>ETA</dt>
+              <dt>Body-center arrival ETA</dt>
               <dd>{formatTime(trajectory.arrivalTicks)}</dd>
             </div>
             <div>

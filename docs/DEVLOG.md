@@ -1,5 +1,17 @@
 # Development log
 
+## 2026-11-10 — Orbital reference frames and target states
+
+- [Issue #27](https://github.com/Docbuchanan84/Quasar/issues/27) adds read-only
+  orbit, station, and spacecraft targets. Existing orders and arrivals carry
+  the body-center label.
+- Eligible free coasts change primaries at bracketed Laplace SOI crossings.
+  Position and velocity are preserved, and v5 checkpoints retain eligibility.
+  Legacy free coasts retain their stored primary.
+- `scripts/Verify.ps1` passed with 222 xUnit tests. Disposable Chromium verified
+  the target endpoint, preview and explicit confirmation, arrival wording at
+  desktop and phone widths, and save/restart. Physical iPhone testing remains open.
+
 ## 2026-11-10 — Finite-thrust burns
 
 - The first [issue #26](https://github.com/Docbuchanan84/Quasar/issues/26)

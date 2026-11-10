@@ -139,6 +139,32 @@ The [Pathfinder propulsion model](SOLAR_SYSTEM.md#pathfinder-propulsion) reports
 separate equipment-derived performance. Impulsive course execution does not debit
 its tank.
 
+## Orbital destination states and automatic coast transitions
+
+Body-local XYZ has parallel, nonrotating axes. At a shared tick, subtract or
+add the reference body's inertial position and velocity together. Orbit targets
+use a bound two-body conic above the reference surface and within the modeled
+SOI. Station targets use their ephemerides. Spacecraft targets sample current
+orders and freeze the resulting state at the requested tick for advisory use.
+
+Automatic transitions apply to eligible free coasts. They sample at most every
+60 seconds on a grid anchored to the coast epoch. A bracketed entry crosses
+99% of the child's Laplace SOI and exit crosses 101% of the current body's SOI.
+The first bracketed tick interrupts advancement and seeds a new coast using
+the same inertial position and velocity. At simultaneous crossings, exit wins
+over entry and child IDs break ties. The scanner works in windows of up to
+30 days, with up to one sample of lookahead to keep brackets independent of
+advance partitioning. Future predictions for eligible coasts have a 30-day
+horizon. Overlapping or brief encounters can be missed between samples, and
+a crossing that would require an unsupported radial conic retains the current
+coast. These are patched two-body approximations. Existing committed Lambert
+segments and active burns retain their prescribed gravity primaries.
+
+Body-center arrival uses the legacy velocity-matching impulse. Resolving a
+target position and velocity supplies neither a capture maneuver nor contact
+dynamics. Orbital capture requires a reachable approach, braking and a
+verified bound post-maneuver state. Docking and landing need separate contracts.
+
 ## Finite burns
 
 The powered segment integrates central gravity and fixed-direction thrust in

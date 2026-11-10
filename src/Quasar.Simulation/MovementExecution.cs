@@ -6,7 +6,7 @@ public sealed record MovementView(string SpacecraftId, long AtTicks, CelestialSt
     PropulsionPerformance? Propulsion = null, long? BurnEndTicks = null);
 
 /// <summary>
-/// Single-writer, headless movement owner. Advance examines ordered boundaries, not every spacecraft.
+/// Single-writer, headless movement owner. Advance considers queued boundaries and eligible analytical coasts.
 /// Positions are pure timestamp queries. Cancellation retains momentum and resumes an unforced coast.
 /// </summary>
 public sealed partial class MovementExecution(CelestialPositionService catalogue)
@@ -17,6 +17,7 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
         public ActiveBurn? Burn;
         public string Primary = primary;
         public TwoBodyTrajectory? Coast = coast;
+        public bool AutomaticPrimary;
         public TrajectoryPlan? Plan;
         public (TrajectoryDestination Destination, long ArrivalTicks)? Rendezvous;
         public long Generation;
@@ -27,28 +28,36 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
     private long sequence;
     public long ElapsedTicks { get; private set; }
 
-    public void AddSpacecraft(string id, CelestialState state, string primaryBodyId, SpacecraftPropulsion? propulsion = null)
+    public void AddSpacecraft(string id, CelestialState state, string primaryBodyId, SpacecraftPropulsion? propulsion = null,
+        bool automaticPrimary = false)
     {
         if (string.IsNullOrWhiteSpace(id) || spacecraft.ContainsKey(id)) throw new ArgumentException("Spacecraft identity must be unique and nonempty.");
         state.RequireFinite();
         var coast = NewCoast(state, primaryBodyId);
         propulsion?.CalculatePerformance();
-        spacecraft.Add(id, new(primaryBodyId, coast, propulsion));
+        spacecraft.Add(id, new(primaryBodyId, coast, propulsion) { AutomaticPrimary = automaticPrimary });
     }
 
     public CelestialState StateAt(string id, long atTicks)
     {
-        if (atTicks < ElapsedTicks) throw new ArgumentOutOfRangeException(nameof(atTicks), "Execution queries describe current/future state, not discarded order history.");
+        RequireFuture(atTicks);
         var ship = spacecraft[id];
         if (ship.Burn is { } burn)
         {
-            var relative = atTicks < burn.Path.EndTicks ? burn.Path.StateAt(atTicks) : burn.EndCoast.StateAt(atTicks);
-            return TrajectoryPlanner.Add(relative, catalogue.GetState(ship.Primary, atTicks));
+            if (atTicks > burn.Path.EndTicks)
+                return PredictCoast(burn.EndCoast, ship.Primary, atTicks, burn.Path.EndTicks).State;
+            return OrbitalNavigation.ToSystem(catalogue, ship.Primary, atTicks, burn.Path.StateAt(atTicks));
         }
         if (ship.Plan is { } plan)
             return atTicks <= plan.ArrivalTicks ? plan.StateAt(atTicks) : plan.Destination.StateAt(catalogue, atTicks);
         if (ship.Rendezvous is { } target) return target.Destination.StateAt(catalogue, atTicks);
-        return TrajectoryPlanner.Add(ship.Coast!.StateAt(atTicks), catalogue.GetState(ship.Primary, atTicks));
+        return ship.AutomaticPrimary ? PredictCoast(ship.Coast!, ship.Primary, atTicks).State
+            : OrbitalNavigation.ToSystem(catalogue, ship.Primary, atTicks, ship.Coast!.StateAt(atTicks));
+    }
+
+    private void RequireFuture(long atTicks)
+    {
+        if (atTicks < ElapsedTicks) throw new ArgumentOutOfRangeException(nameof(atTicks), "Execution queries describe current/future state, not discarded order history.");
     }
 
     public MovementView View(string id)
@@ -74,6 +83,7 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
         ship.Plan = plan; ship.Rendezvous = null; ship.Generation++; ship.NextBoundary = 0;
         ship.Primary = plan.Segments[0].PrimaryBodyId;
         ship.Coast = null;
+        ship.AutomaticPrimary = false;
         Schedule(id, ship);
         CompactQueue();
     }
@@ -84,6 +94,7 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
         if (ship.Plan is null) throw new InvalidOperationException("No committed course to cancel.");
 
         ship.Coast = NewCoast(StateAt(id, ElapsedTicks), ship.Primary);
+        ship.AutomaticPrimary = true;
         ship.Plan = null; ship.Generation++;
         CompactQueue();
     }
@@ -94,10 +105,33 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
         ArgumentOutOfRangeException.ThrowIfNegative(duration.Ticks);
         var deadline = checked(ElapsedTicks + duration.Ticks);
         DiscardObsolete();
-        if (!boundaries.TryPeek(out _, out var next) || next.Ticks > deadline)
-        { ElapsedTicks = deadline; return []; }
-        var at = next.Ticks;
+        var at = boundaries.TryPeek(out _, out var next) ? Math.Min(deadline, next.Ticks) : deadline;
+        var patches = new List<(string Id, Spacecraft Ship, CoastPatch Patch)>();
+        foreach (var (id, ship) in spacecraft)
+        {
+            if (!ship.AutomaticPrimary || ship.Coast is not { } coast) continue;
+            var cursor = ElapsedTicks;
+            while (cursor <= at && duration.Ticks > 0)
+            {
+                var through = cursor > long.MaxValue - SearchWindow ? at : Math.Min(at, cursor + SearchWindow);
+                if (FindCoastPatch(coast, ship.Primary, cursor, through) is { } patch)
+                {
+                    at = patch.AtTicks;
+                    patches.Add((id, ship, patch));
+                    break;
+                }
+                if (through == at) break;
+                cursor = through;
+            }
+        }
         var events = new List<MovementEvent>();
+        foreach (var (id, ship, patch) in patches)
+        {
+            if (patch.AtTicks != at) continue;
+            ship.Primary = patch.Primary;
+            ship.Coast = patch.Coast;
+            events.Add(new(at, id, "primary-change"));
+        }
         while (boundaries.TryPeek(out var entry, out var priority) && priority.Ticks == at)
         {
             boundaries.Dequeue();

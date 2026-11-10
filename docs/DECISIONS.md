@@ -1,5 +1,11 @@
 # Quasar decision record
 
+## Approved — orbital navigation task scope (issue #27)
+
+The initial navigation slice exposes target states and clarifies body-center
+arrival wording. It uses bounded Laplace SOI crossings for new free coasts.
+See the [navigation contract](SPACECRAFT_TRAJECTORIES.md#orbital-destination-states-and-automatic-coast-transitions).
+
 ## Approved — finite-thrust task scope (issue #26)
 
 Pathfinder can burn under gravity using installed equipment and stored

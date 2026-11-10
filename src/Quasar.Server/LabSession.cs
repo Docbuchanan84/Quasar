@@ -47,6 +47,11 @@ public sealed partial class LabSession(TimeProvider timeProvider, bool startWith
         lock (gate) return SystemLab.Present(RequireWorld().PreviewTravel(destinationId, flightSeconds));
     }
 
+    public OrbitalTargetState TargetStateAt(string kind, string targetId, long atTicks)
+    {
+        lock (gate) return RequireWorld().TargetStateAt(kind, targetId, atTicks);
+    }
+
     public CelestialState ShipStateAt(long atTicks)
     {
         lock (gate) return RequireWorld().ShipStateAt(atTicks);
@@ -213,7 +218,8 @@ public sealed partial class LabSession(TimeProvider timeProvider, bool startWith
                         {
                             "burn-complete" => "Burn complete — coasting",
                             "burn-exhausted" => "Propellant exhausted — coasting",
-                            _ => "Arrival — awaiting orders"
+                            "primary-change" => "Gravity primary changed — coasting",
+                            _ => "Body-center Arrival — awaiting orders"
                         };
                     }
                 }

@@ -18,8 +18,10 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   `History` entries. `SimulationState` contains `FormatVersion`,
   `ElapsedTicks`, `Bodies`, and `Spacecraft`. The nested
   `Simulation.FormatVersion` versions the entire checkpoint. The current version
-  is `SimulationState.CurrentFormatVersion` (4). Version 4 adds an optional
-  active finite burn. Version 3 stores optional propulsion and current propellant.
+  is `SimulationState.CurrentFormatVersion` (5). Version 5 records automatic
+  primary selection on eligible free coasts. Older free coasts keep their
+  stored primary until a new coast is created by cancellation or burn cutoff.
+  Version 4 added an optional active finite burn. Version 3 stores optional propulsion and current propellant.
   Versions 1 and 2 restore without propulsion and retain their original catalogue.
   Version 2 introduced body radii and optional flyby metadata.
 - `CelestialBodyState` and `OrbitState` carry stable IDs, hierarchy, GM,

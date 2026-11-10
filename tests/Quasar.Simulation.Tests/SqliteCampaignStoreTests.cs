@@ -66,7 +66,7 @@ public sealed class SqliteCampaignStoreTests : IDisposable
         var ship = state.Simulation.Spacecraft[0];
         var legacy = state with
         {
-            Simulation = state.Simulation with { FormatVersion = 2, Spacecraft = [ship with { Propulsion = null }] }
+            Simulation = state.Simulation with { FormatVersion = 2, Spacecraft = [ship with { Propulsion = null, FreeCoast = ship.FreeCoast! with { AutomaticPrimary = false } }] }
         };
         var previous = store.SaveRecovery(campaign.Id, 0, Build, legacy);
         var current = store.SaveRecovery(campaign.Id, 1, Build, state);
