@@ -99,6 +99,10 @@ public class CoursePreviewTests
         Assert.InRange(fastest.Trajectory.RequiredDeltaVKmPerSecond, 0, 25);
         Assert.True(fastest.Trajectory.Fuel.PropellantMassKg > lowestCost.Trajectory.Fuel.PropellantMassKg);
         Assert.Equal("approach", fastest.Trajectory.Arrival!.Kind);
+        Assert.Equal(10.141, fastest.Trajectory.BrakingMarginKg!.Value, 3);
+        Assert.Equal(0.1014, fastest.Trajectory.BrakingMarginPercent!.Value, 4);
+        Assert.True(fastest.Trajectory.CriticalBrakingReserve);
+        Assert.False(lowestCost.Trajectory.CriticalBrakingReserve);
         Assert.Equal(2, fastest.Trajectory.BurnSchedule!.Length);
         Assert.Equal(before.Revision, session.Snapshot().Revision);
         Assert.Null(session.Snapshot().World.Trajectory);
@@ -134,7 +138,7 @@ public class CoursePreviewTests
         {
             ("course-departure-cutoff", departureCutoff),
             ("course-braking-start", long.Parse(schedule[1].StartTicks)),
-            ("course-arrival", long.Parse(preview.Trajectory.ArrivalTicks))
+            ("course-approach-complete", long.Parse(preview.Trajectory.ArrivalTicks))
         })
         {
             Assert.True(Send(session, "play").Running);
@@ -154,6 +158,9 @@ public class CoursePreviewTests
         Assert.Equal(preview.Trajectory.Points[^1].PositionKm, spacecraft.Position);
         Assert.InRange(spacecraft.Position.DistanceTo(earth.Position), 1_000_000, 1_030_000);
         Assert.Equal("Coasting", after.World.Ship.Status);
+        Assert.Equal("approach", after.World.Ship.ArrivalKind);
+        Assert.Equal("Velocity-matched approach complete", after.StopReason);
+        Assert.Equal(after.StopReason, after.Interrupt!.ArrivalLabel);
         Assert.Contains("approach point", after.Interrupt!.Message);
         Assert.Equal(preview.Trajectory.BrakingMarginKg, after.World.Ship.Propulsion!.AvailablePropellantKg);
     }

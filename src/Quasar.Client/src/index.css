@@ -436,7 +436,7 @@ small {
     monospace;
   color: #7ab6d5;
 }
-.event-kind.arrival {
+.event-kind:is(.arrival, .course-approach-complete, .course-orbit-inserted) {
   color: #87e4bd;
 }
 footer {
@@ -629,6 +629,14 @@ footer {
   padding-left: 20px;
   color: #efc46b;
   font-size: 12px;
+}
+.course-reserve {
+  color: #efc46b;
+  font-weight: 650;
+}
+.course-reserve-alert {
+  border-inline-start: 3px solid currentColor;
+  padding: 6px 10px;
 }
 .course-legend {
   padding: 0 12px;

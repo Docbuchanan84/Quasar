@@ -43,11 +43,15 @@ async (page) => {
   const earth = await choose('planet-earth', () => destination.selectOption('planet-earth'))
   await route('Fastest').waitFor()
   assert(await route('Fastest').getAttribute('aria-pressed') === 'true', 'Fastest is selected by default')
+  await route('Fastest').getByText('Critically low propellant reserve').waitFor()
+  await panel.getByRole('alert').filter({ hasText: /less than 1%/ }).waitFor()
+  await panel.getByText(/10\.141 kg.*0\.1%/).waitFor()
   await route('Lowest maneuver cost').click()
   assert(await route('Lowest maneuver cost').getAttribute('aria-pressed') === 'true', 'Route selection switches')
   assert(earth.fastest.trajectory.travelSeconds < earth.lowestManeuverCost.trajectory.travelSeconds, 'Earth has a faster option')
   await panel.getByText('Estimated burn schedule').waitFor()
   await panel.getByText(/Braking margin/).waitFor()
+  assert(await panel.getByRole('alert').count() === 0, 'Sufficient reserve clears the warning')
   assert(same(before, await read()), 'Preview and route selection leave canonical state untouched')
 
   await page.setViewportSize({ width: 393, height: 852 })
@@ -57,6 +61,7 @@ async (page) => {
   const reviewed = await choose('planet-earth', () => arrival.selectOption('approach'))
   await route('Fastest').waitFor()
   assert(await route('Fastest').getAttribute('aria-pressed') === 'true', 'New arrival condition defaults to fastest')
+  await panel.getByRole('alert').filter({ hasText: /Critically low propellant reserve/ }).waitFor()
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Portrait has no horizontal overflow')
   await panel.screenshot({ path: 'output/playwright/course-phone-panel.png' })
 
@@ -71,6 +76,18 @@ async (page) => {
   assert(committed.world.ship.destinationId === 'planet-earth', 'Order targets Earth')
   assert(same(committed.world.trajectory, reviewed.lowestManeuverCost.trajectory), 'Order matches the selected preview')
   assert(committed.world.events.filter((e) => e.kind === 'order').length === 1, 'Only confirmation records an order')
+  await page.getByLabel('Advance interval').selectOption('2592000')
+  await page.getByLabel('Processing mode').selectOption('continuous')
+  for (const kind of ['course-departure-cutoff', 'course-braking-start', 'course-approach-complete']) {
+    await button('▶ Play').click()
+    await page.waitForFunction(async (expected) => {
+      const state = await (await fetch('/api/lab')).json()
+      return !state.running && state.interrupt?.kind === expected
+    }, kind)
+  }
+  await page.locator('.clock').getByText('Velocity-matched approach complete', { exact: true }).waitFor()
+  await page.locator('.event-kind.course-approach-complete').filter({ hasText: /^Velocity-matched approach complete$/ }).waitFor()
+  assert((await read()).world.ship.arrivalKind === 'approach', 'Completion preserves the approach outcome')
   assert(errors.length === 0, errors.join(', '))
   return 'AUTOMATIC_COURSE_BROWSER_OK'
 }

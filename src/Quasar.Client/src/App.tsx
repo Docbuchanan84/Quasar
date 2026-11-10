@@ -294,7 +294,7 @@ function App() {
                 {selected.kind === 'spacecraft' ? (
                   <>
                     <div className="ship-state">
-                      <strong>{world.ship.status === 'Arrived' ? 'Body-center arrival' : world.ship.status}</strong>
+                      <strong>{world.ship.status === 'Arrived' ? 'Legacy body-center arrival' : world.ship.status}</strong>
                       <p>
                         Speed: {world.ship.speedKmPerSecond.toFixed(3)} km/s
                       </p>
@@ -316,7 +316,8 @@ function App() {
                             )}{' '}
                             km
                           </p>
-                          <p>{world.trajectory?.arrivalKind === 'body-center' ? 'Body-center arrival' : 'Planned arrival'}{' '}
+                          <p>{world.trajectory?.arrivalKind === 'body-center' ? 'Legacy body-center arrival'
+                            : world.trajectory?.arrivalKind === 'orbit' ? 'Planned orbital insertion' : 'Planned approach'}{' '}
                             {formatTime(world.ship.arrivalTicks!)}</p>
                         </>
                       )}
@@ -441,7 +442,7 @@ function App() {
             .map((event) => (
               <li key={event.sequence}>
                 <time>{formatTime(event.atTicks)}</time>
-                <span className={`event-kind ${event.kind}`}>{event.kind === 'arrival' ? 'Body-center arrival' : event.kind === 'course-arrival' ? 'Arrival' : event.kind}</span>
+                <span className={`event-kind ${event.kind}`}>{event.arrivalLabel ?? (event.kind === 'arrival' ? 'Legacy body-center arrival' : event.kind)}</span>
                 <span>{event.message}</span>
               </li>
             ))}

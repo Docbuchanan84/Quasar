@@ -57,24 +57,42 @@ internal sealed class PoweredTrajectory
             : Math.Max(0, performance.AvailablePropellantKg - seconds * performance.RatedMassFlowKgPerSecond);
     }
 
-    public CelestialState StateAt(long atTicks) => Integrate(initial, 0, SecondsAt(atTicks));
+    public CelestialState StateAt(long atTicks) => Integrate(initial, 0, SecondsAt(atTicks)).State;
 
-    internal CelestialState InitialStateFor(CelestialState end) => Integrate(end, poweredSeconds, 0);
+    internal CelestialState InitialStateFor(CelestialState end) => Integrate(end, poweredSeconds, 0).State;
 
-    internal void InspectPath(Action<long, Position3> inspect) =>
-        Integrate(initial, 0, poweredSeconds, (time, position) => inspect(StartTicks + (long)Math.Round(time * TimeSpan.TicksPerSecond), position));
+    internal bool HasClearPath(Func<long, Vector3d, Vector3d, double, double, bool> clear)
+    {
+        var maxThrustAcceleration = thrust / performance.DryMassKg / 1000 * direction.Length;
+        var (end, stepsClear) = Integrate(initial, 0, poweredSeconds, InspectStep);
+        return stepsClear && clear(EndTicks, Vector3d.From(end.PositionKm), default, 0, 0);
 
-    private CelestialState Integrate(CelestialState state, double from, double to, Action<double, Position3>? inspect = null)
+        bool InspectStep(double time, Vector3d position, Vector3d velocity, double step)
+        {
+            // Before the first possible exit below half the initial radius, gravity is bounded
+            // by GM/r_min² and thrust by its dry-mass limit. If the displacement bound cannot
+            // reach r_min, those bounds hold throughout this step. The RK4 stage positions
+            // and any partial RK4 step also stay inside the same tangent envelope.
+            var minimumRadius = position.Length / 2;
+            var maxAcceleration = mu / minimumRadius / minimumRadius + maxThrustAcceleration;
+            var deviation = maxAcceleration * step * step / 2;
+            return velocity.Length * step + deviation < minimumRadius
+                && clear(StartTicks + (long)Math.Round(time * TimeSpan.TicksPerSecond), position, velocity, step, deviation);
+        }
+    }
+
+    private (CelestialState State, bool Clear) Integrate(CelestialState state, double from, double to,
+        Func<double, Vector3d, Vector3d, double, bool>? inspect = null)
     {
         var r = Vector3d.From(state.PositionKm);
         var v = Vector3d.From(state.VelocityKmPerSecond);
-        inspect?.Invoke(from, r.Position);
         var directionOfTime = Math.Sign(to - from);
         // Anchor every substep to ignition so queries and caller advance partitions agree.
         for (var time = from; time != to;)
         {
             var next = Math.Abs(to - time) <= StepSeconds ? to : time + directionOfTime * StepSeconds;
             var step = next - time;
+            if (inspect is not null && !inspect(time, r, v, step)) return (default, false);
             var half = step / 2;
             var a1 = Acceleration(r, time);
             var v2 = v + a1 * half;
@@ -86,12 +104,11 @@ internal sealed class PoweredTrajectory
             r += (v + v2 * 2 + v3 * 2 + v4) * (step / 6);
             v += (a1 + a2 * 2 + a3 * 2 + a4) * (step / 6);
             time = next;
-            inspect?.Invoke(time, r.Position);
         }
 
         var result = new CelestialState(r.Position, v.Velocity);
         result.RequireFinite();
-        return result;
+        return (result, true);
     }
 
     private double SecondsAt(long atTicks)

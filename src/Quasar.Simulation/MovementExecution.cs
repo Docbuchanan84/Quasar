@@ -161,7 +161,7 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
                     ship.Coast = finite.ArrivalCoast;
                     ship.Plan = null;
                     ship.AutomaticPrimary = true;
-                    events.Add(new(at, entry.Id, "course-arrival"));
+                    events.Add(new(at, entry.Id, finite.Arrival.Kind == "orbit" ? "course-orbit-inserted" : "course-approach-complete"));
                 }
                 else
                 {

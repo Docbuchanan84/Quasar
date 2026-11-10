@@ -46,6 +46,9 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   arrival state. Restore rebuilds the burns and analytical coast, checks the
   endpoint and current propellant, and schedules the next boundary from the
   clock. Completed finite courses store a free coast at the achieved state.
+  History distinguishes a completed approach, an orbital insertion, and a
+  legacy body-center arrival. Older v6 histories used one kind for both finite
+  outcomes. Restore resolves those from the original generated event text.
 - Export is a detached immutable capture. Bodies and ships are exported in
   ordinal ID order. History, segments, and burns retain their execution order.
   Use the same single-writer synchronization as for world commands. Encoding can

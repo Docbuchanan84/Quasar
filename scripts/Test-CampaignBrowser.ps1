@@ -1,12 +1,11 @@
 [CmdletBinding()]
-param([string]$PreviousServerAssembly)
+param([Parameter(Mandatory)][string]$PreviousServerAssembly)
 
 . (Join-Path $PSScriptRoot 'Use-DevEnvironment.ps1')
 $run = [IO.Directory]::CreateTempSubdirectory('quasar-browser-').FullName
 $settings = Join-Path $run 'settings.json'
 '{"autosave":{"enabled":false},"saveOnShutdown":false}' | Set-Content -LiteralPath $settings
 $assembly = Join-Path $quasarRoot 'src/Quasar.Server/bin/Release/net10.0/Quasar.Server.dll'
-if (!$PreviousServerAssembly) { $PreviousServerAssembly = $assembly }
 $PreviousServerAssembly = (Resolve-Path -LiteralPath $PreviousServerAssembly).Path
 $dist = Join-Path $quasarRoot 'src/Quasar.Client/dist'
 $scenario = Join-Path $PSScriptRoot 'playwright/campaigns.js'

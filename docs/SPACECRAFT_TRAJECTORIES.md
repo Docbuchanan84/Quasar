@@ -97,7 +97,7 @@ incurs no fictional fuel expenditure. A subsequent order departs that state.
   returns a summary and samples, without changing revision, orders, clock or events.
 - `GET /api/lab/spacecraft/state?atTicks=...` returns a current/future authoritative
   position and velocity under the current orders without processing events.
-- `POST /api/lab/commands`: `travel` takes `destinationId` and optional
+- `POST /api/lab/commands`: legacy `travel` for ships without modeled propulsion takes `destinationId` and optional
   `flightSeconds` (default six hours); `cancel-travel` cancels. Both require stopped
   time processing. Existing revision/instance/client and same-origin JSON checks
   remain. Preview is advisory; changed departure state/time needs a fresh preview.
@@ -205,12 +205,18 @@ The accepted path is rebuilt entirely forward with the powered-flight RK4
 integrator. It must retain propellant after braking and reach the requested
 position within 10 m and velocity within 1 mm/s in the model. Orbit insertion
 also requires an achieved bound orbit above the surface and inside the SOI.
-Clearance checks use whole-conic periapsis, bounded coast SOI checks, and
-one-second samples on powered legs. These are approximations of the single-primary
-model. Cross-primary maneuvers and flybys require a different refinement.
+Clearance checks use whole-conic periapsis, bounded coast SOI checks, and a
+continuous enclosure on powered legs. Each RK4 step is enclosed around its
+starting tangent by half the bounded acceleration times the step duration
+squared. The ship bound uses half the starting radius and maximum dry-mass
+thrust. The child frame adds the child's maximum acceleration at periapsis.
+If the enclosure could touch a surface or sphere boundary, the course is
+rejected. This can reject very close safe passes. Cross-primary maneuvers and
+flybys require a different refinement.
 
 The departure cutoff, braking ignition, and final cutoff are separate clock
-interrupts. At final cutoff the ship coasts from its integrated state. Cancelling
+interrupts. At final cutoff the ship coasts from its integrated state and the
+clock and history identify the completed approach or insertion. Cancelling
 or replacing the course uses the current position, velocity, and remaining
 propellant. See [checkpoint version 6](SIMULATION_STATE.md).
 

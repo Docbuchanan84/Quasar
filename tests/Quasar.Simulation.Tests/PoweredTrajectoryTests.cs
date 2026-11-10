@@ -61,4 +61,30 @@ public sealed class PoweredTrajectoryTests
         var empty = Propulsion with { Tank = Propulsion.Tank with { QuantityKg = 0 } };
         Assert.Throws<InvalidOperationException>(() => new PoweredTrajectory(Initial, new(0, 1, 0), 1, empty, 0, 10));
     }
+
+    [Theory]
+    [InlineData(98.980, false)] // Crosses even the free-coast 99% entry radius.
+    [InlineData(99.9999, false)]
+    [InlineData(100.000001, false)] // The near miss is within the conservative error bound.
+    [InlineData(100.001, true)]
+    public void ValidatesClearanceBetweenPoweredSamplesOfAMovingSphere(double radialOffset, bool clear)
+    {
+        const double mu = 1.32712440018e11;
+        const double orbitRadius = 150_000_000;
+        const double sphere = 100;
+        var childMu = mu * Math.Pow(sphere / orbitRadius, 2.5);
+        var catalogue = new CelestialPositionService([
+            new("star", "Star", CelestialBodyKind.Star, mu, RadiusKm: 695700),
+            new("child", "Child", CelestialBodyKind.Asteroid, childMu, "star", new(orbitRadius, 0), RadiusKm: 1)
+        ]);
+        var initial = new CelestialState(new(orbitRadius + radialOffset, -50, 0),
+            new(0, Math.Sqrt((mu + childMu) / orbitRadius) + 100, 0));
+        var propulsion = Propulsion with { Engine = Propulsion.Engine with { ThrustN = 1 } };
+        var burn = new PoweredTrajectory(initial, new(0, 1, 0), mu, propulsion, 0, 1);
+        double Distance(long ticks) => burn.StateAt(ticks).PositionKm.DistanceTo(catalogue.GetState("child", ticks).PositionKm);
+
+        Assert.True(Distance(0) > sphere && Distance(burn.EndTicks) > sphere);
+        Assert.Equal(radialOffset, Distance(burn.EndTicks / 2), 4);
+        Assert.Equal(clear, new MovementExecution(catalogue).PoweredPathIsClear(burn, "star", CancellationToken.None));
+    }
 }

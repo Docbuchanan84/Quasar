@@ -11,6 +11,9 @@ panel shows a single option. Select a route to see it on the map, then use
 
 The course panel shows the arrival condition and error, burn start times and
 durations, expected propellant spent, and the propellant reserve after braking.
+Reserve is shown in kilograms and as a percentage of departure propellant.
+Below 1%, the option and confirmation panel warn about the small margin for
+later maneuvers. The warning leaves the decision to the player.
 **Advanced** applies an additional delta-v limit. The installed engine and
 propellant inventory always constrain the search. Infeasible results identify
 fuel, thrust, geometry, or arrival conditions that prevented a course.
@@ -35,8 +38,9 @@ Both previews are null when no candidate satisfies the search, with details in
 opaque `previewId`, host instance and revision, ship and destination IDs,
 warnings, trajectory samples, burn schedule, and arrival conditions. An optional
 `maneuverBudget` sets an additional limit in km/s. Fixed-duration callers can
-continue using `flightSeconds` without `mode=auto` for the legacy impulsive test
-course with body-center arrival and no fuel accounting.
+continue using `flightSeconds` without `mode=auto` for a legacy impulsive
+calculation. For a spacecraft with modeled propulsion the result is advisory
+and `previewId` is null.
 Automatic search uses captured departure state outside the session lock and
 checks that the session still matches before registering tokens.
 
@@ -54,8 +58,10 @@ An expired/evicted token receives HTTP 409 and requires recalculation/review.
 the retained **solved plan**, never browser geometry or a newly solved plan from
 potentially changed inputs. Execution also validates the departure state, time,
 catalogue and installed propulsion. A successful commit consumes all outstanding previews.
-Existing direct `travel`, query and `cancel-travel` APIs remain compatible, but
-the player UI no longer bypasses preview with immediate travel buttons.
+Direct `travel` returns a conflict for ships with modeled propulsion. Previously
+saved impulsive courses still load and execute, and ships from campaigns without
+modeled propulsion retain the legacy order API. Use `cancel-travel` to cancel a
+committed course.
 
 The React hook keys results by host instance/revision, ship, destination, maneuver
 budget and explicit retry. Old overlays and confirmation eligibility disappear

@@ -193,11 +193,13 @@ async function campaignBrowserScenario(page) {
     await click('▶ Play')
     await show(clock('06:00:00'))
     await show(page.locator('.event-kind.arrival'))
+    await show(page.locator('.clock').getByText('Legacy body-center arrival', { exact: true }))
     await show(page.getByText(/Body-center arrival\. Pathfinder applied/).first())
     await save('Arrival')
     await click('Load Game')
     await load('Load Arrival #4')
     await show(page.locator('.event-kind.arrival'))
+    await show(page.locator('.clock').getByText('Legacy body-center arrival', { exact: true }))
     await show(clock('06:00:00'))
     await save('Corrupt test checkpoint')
   } else if (phase === 'recover') {

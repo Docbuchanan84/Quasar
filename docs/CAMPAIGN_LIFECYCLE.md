@@ -175,12 +175,12 @@ existing hosted preview is a separate release.
 
 For the browser regression, run the following after setup and verification.
 It requires `sqlite3.exe` on PATH and Playwright CLI 0.1.23 with Chromium
-installed. The script starts and stops its own ephemeral loopback hosts and
-prints the temporary fixture and log directory.
+installed. Supply a separate previous server build that can still issue the
+legacy six-hour test order in a disposable campaign. The script starts and
+stops its own ephemeral loopback hosts and prints the temporary fixture and
+log directory.
 
 ```powershell
-.\scripts\Test-CampaignBrowser.ps1
-# Optional release compatibility check using a separately published previous build
 .\scripts\Test-CampaignBrowser.ps1 -PreviousServerAssembly C:\path\to\Quasar.Server.dll
 ```
 

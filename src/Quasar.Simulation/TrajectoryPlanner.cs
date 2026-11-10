@@ -76,6 +76,7 @@ public sealed class TrajectoryPlan
     public TransferFuelEstimate Fuel { get; }
     public FlybyEncounter? Flyby { get; }
     internal FiniteCourse? Finite { get; }
+    public bool UsesFiniteBurns => Finite is not null;
     public long DepartureTicks => Finite?.Departure.StartTicks ?? Segments[0].StartTicks;
     public long ArrivalTicks => Finite?.Braking.EndTicks ?? Segments[^1].EndTicks;
     public double TravelSeconds => (double)(((decimal)ArrivalTicks - DepartureTicks) / TimeSpan.TicksPerSecond);

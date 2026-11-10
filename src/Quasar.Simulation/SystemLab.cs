@@ -5,7 +5,25 @@ namespace Quasar.Simulation;
 public sealed record LabObject(string Id, string Name, string Kind, Position3 Position, string? ParentId,
     Velocity3? VelocityKmPerSecond = null, KeplerianOrbit? Orbit = null, double RadiusKm = 0);
 public sealed record LabEvent(long Sequence,
-    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long AtTicks, string Kind, string ObjectId, string Message);
+    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long AtTicks, string Kind, string ObjectId, string Message)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ArrivalLabel => Kind switch
+    {
+        "course-approach-complete" => "Velocity-matched approach complete",
+        "course-orbit-inserted" => "Orbital insertion complete",
+        "arrival" => "Legacy body-center arrival",
+        _ => null
+    };
+
+    internal string? ArrivalKind => Kind switch
+    {
+        "course-approach-complete" => "approach",
+        "course-orbit-inserted" => "orbit",
+        "arrival" => "body-center",
+        _ => null
+    };
+}
 public sealed record ShipStatus(string Status, double SpeedKmPerSecond, string? DestinationId,
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long? ArrivalTicks, double RemainingDistanceKm,
     PropulsionPerformance? Propulsion = null,
@@ -18,7 +36,12 @@ public sealed record TrajectoryDisplayPoint(string AtTicks, Position3 PositionKm
 public sealed record TrajectoryDisplay(string DepartureTicks, string ArrivalTicks, double TravelSeconds,
     double RequiredDeltaVKmPerSecond, TransferFuelEstimate Fuel, TrajectoryDisplayPoint[] Points, FlybyDisplay? Flyby = null,
     string? ArrivalKind = null, CourseArrival? Arrival = null, CourseBurnDisplay[]? BurnSchedule = null,
-    double? BrakingMarginKg = null);
+    double? BrakingMarginKg = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] double? BrakingMarginPercent = null)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool CriticalBrakingReserve => BrakingMarginPercent is < 1;
+}
 public sealed record CourseBurnDisplay(string Phase, string StartTicks, double DurationSeconds, double PropellantKg);
 public sealed record FlybyDisplay(string BodyId, string BodyName, string AtTicks, double ClosestApproachKm);
 
@@ -43,6 +66,7 @@ public sealed partial class SystemLab
     private TrajectoryDisplay? display;
     public ICelestialPositionService CelestialPositions => celestialPositions;
     public long ElapsedTicks => movement.ElapsedTicks;
+    public bool HasModeledPropulsion => movement.PropulsionOf(ShipId) is not null;
 
     public SystemLab() : this(new MovementExecution(SolarSystem.CreateCatalogue()))
     {
@@ -89,7 +113,7 @@ public sealed partial class SystemLab
             [.. bodies, new(ShipId, "Pathfinder", "spacecraft", ship.State.PositionKm, null, ship.State.VelocityKmPerSecond)],
             new(ship.Status, Vector3d.From(ship.State.VelocityKmPerSecond).Length, ship.DestinationId,
                 ship.ArrivalTicks, distance, ship.Propulsion, ship.BurnEndTicks,
-                display?.ArrivalKind ?? (ship.Status == "Arrived" ? "body-center" : null)), [.. events],
+                display?.ArrivalKind ?? LastEvent.ArrivalKind), [.. events],
             display is null ? null : display with { Points = [.. display.Points], BurnSchedule = display.BurnSchedule?.ToArray() },
             PrimaryId == SolarSystem.Sun ? SolarSystem.Epoch : null);
     }
@@ -196,7 +220,8 @@ public sealed partial class SystemLab
         [new("Departure", Ticks(finite.Departure.StartTicks), Seconds(finite.Departure),
             finite.State.Propulsion.Tank.QuantityKg - finite.Departure.RemainingPropellantKg(finite.Departure.EndTicks)),
          new("Braking", Ticks(finite.Braking.StartTicks), Seconds(finite.Braking), finite.BrakingPropellantKg)] : null,
-        plan.Finite?.RemainingPropellantKg);
+        plan.Finite?.RemainingPropellantKg, plan.Finite is { } solved
+            ? solved.RemainingPropellantKg / solved.State.Propulsion.Tank.QuantityKg * 100 : null);
 
     private static double Seconds(PoweredTrajectory burn) => (burn.EndTicks - burn.StartTicks) / (double)TimeSpan.TicksPerSecond;
 
@@ -207,7 +232,7 @@ public sealed partial class SystemLab
         var consequences = movement.Advance(duration);
         foreach (var consequence in consequences)
         {
-            if (consequence.Kind is "arrival" or "course-arrival") display = null;
+            if (consequence.Kind is "arrival" or "course-approach-complete" or "course-orbit-inserted") display = null;
             Record(consequence.Kind, consequence.Kind switch
             {
                 "burn-complete" => "Pathfinder completed its timed burn and resumed an unforced coast.",
@@ -215,9 +240,8 @@ public sealed partial class SystemLab
                 "arrival" => "Body-center arrival. Pathfinder applied the planned velocity-matching impulse.",
                 "course-departure-cutoff" => "Pathfinder completed the departure burn and began the transfer coast.",
                 "course-braking-start" => "Pathfinder began the planned braking burn.",
-                "course-arrival" => plan?.Finite?.Arrival.Kind == "orbit"
-                    ? "Pathfinder completed braking and entered the requested orbit."
-                    : "Pathfinder completed braking at the approach point and resumed a gravitational coast.",
+                "course-orbit-inserted" => "Pathfinder completed braking and entered the requested orbit.",
+                "course-approach-complete" => "Pathfinder completed braking at the velocity-matched approach point and resumed a gravitational coast.",
                 "primary-change" => $"Pathfinder changed gravity primary to {celestialPositions.Bodies[movement.PrimaryOf(ShipId)].Name} without thrust.",
                 _ => flyby is null ? "Pathfinder changed gravitational primary at a committed patch boundary."
                     : $"Pathfinder completed a gravity assist at {celestialPositions.Bodies[flyby.BodyId].Name}."

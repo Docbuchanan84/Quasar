@@ -58,13 +58,14 @@ public class FiniteCourseTests
         Assert.True(lab.Advance(TimeSpan.FromDays(30)));
         Assert.True(restored.Advance(TimeSpan.FromDays(30)));
         Assert.Equal(course.ArrivalTicks, restored.ElapsedTicks);
-        Assert.Equal("course-arrival", restored.LastEventKind);
+        Assert.Equal("course-approach-complete", restored.LastEventKind);
         Assert.Equal(course.StateAt(course.ArrivalTicks), restored.ShipStateAt(restored.ElapsedTicks));
         Assert.Equal(lab.ShipStateAt(lab.ElapsedTicks), restored.ShipStateAt(restored.ElapsedTicks));
         Assert.Equal(finite.RemainingPropellantKg, restored.Snapshot().Ship.Propulsion!.AvailablePropellantKg);
         Assert.Equal(predictedCoast, restored.TargetStateAt("spacecraft", SystemLab.ShipId, afterArrivalTicks));
         Assert.Null(restored.Snapshot().Trajectory);
         Assert.Equal("Coasting", RoundTrip(restored).Snapshot().Ship.Status);
+        AssertOlderV6ArrivalRestores(restored, "Pathfinder completed braking at the approach point and resumed a gravitational coast.");
     }
 
     [Fact]
@@ -158,10 +159,24 @@ public class FiniteCourseTests
         while (lab.ElapsedTicks < plan.ArrivalTicks) AdvanceTo(lab, plan.ArrivalTicks);
         var achieved = RoundTrip(lab);
         Assert.Contains("entered the requested orbit", achieved.LastEvent.Message);
+        Assert.Equal("orbit", achieved.Snapshot().Ship.ArrivalKind);
+        Assert.Equal("Orbital insertion complete", achieved.LastEvent.ArrivalLabel);
         var position = achieved.ShipStateAt(plan.ArrivalTicks).PositionKm;
         var earth = achieved.CelestialPositions.GetState(SolarSystem.Earth, plan.ArrivalTicks).PositionKm;
         Assert.Equal(finite.Arrival.TargetRadiusKm, position.DistanceTo(earth), 2);
         Assert.Equal(SolarSystem.Earth, achieved.TargetStateAt("spacecraft", SystemLab.ShipId, plan.ArrivalTicks).ReferenceBodyId);
+        AssertOlderV6ArrivalRestores(achieved, "Pathfinder completed braking and entered the requested orbit.");
+    }
+
+    private static void AssertOlderV6ArrivalRestores(SystemLab lab, string oldMessage)
+    {
+        var state = lab.ExportState();
+        var old = state.History[^1] with { Kind = "course-arrival", Message = oldMessage };
+        var legacy = state with { History = state.History.SetItem(state.History.Length - 1, old) };
+        var restored = SystemLab.RestoreState(SimulationStateJson.Deserialize(SimulationStateJson.Serialize(legacy)));
+        Assert.Equal(lab.LastEventKind, restored.LastEventKind);
+        Assert.Equal(lab.LastEvent.ArrivalLabel, restored.LastEvent.ArrivalLabel);
+        Assert.Equal(lab.Snapshot().Ship.ArrivalKind, restored.Snapshot().Ship.ArrivalKind);
     }
 
     private static CourseSearchResult Find(SystemLab lab) => lab.CaptureCourseSearch(SolarSystem.Earth)(CancellationToken.None);

@@ -129,6 +129,7 @@ export default function CoursePanel({
                   <span>{formatDuration(route.trajectory.travelSeconds)} · {number(route.trajectory.requiredDeltaVKmPerSecond)} km/s</span>
                   <span>ETA {formatTime(route.trajectory.arrivalTicks)} · {route.trajectory.flyby
                     ? 'via ' + route.trajectory.flyby.bodyName : 'Direct'}</span>
+                  {route.trajectory.criticalBrakingReserve && <span className="course-reserve">Critically low propellant reserve</span>}
                 </button>
               ))}
             </div>
@@ -158,7 +159,7 @@ export default function CoursePanel({
               <dd>{formatDuration(trajectory.travelSeconds)}</dd>
             </div>
             <div>
-              <dt>Arrival ETA</dt>
+              <dt>{trajectory.arrival?.kind === 'orbit' ? 'Orbit insertion ETA' : 'Approach ETA'}</dt>
               <dd>{formatTime(trajectory.arrivalTicks)}</dd>
             </div>
             <div>
@@ -184,7 +185,18 @@ export default function CoursePanel({
               <ul>{trajectory.burnSchedule?.map((burn) => (
                 <li key={burn.phase}>{burn.phase} · {formatTime(burn.startTicks)} · {number(burn.durationSeconds)} s · {number(burn.propellantKg)} kg</li>
               ))}</ul>
-              <p>Braking margin {number(trajectory.brakingMarginKg ?? 0)} kg remaining after cutoff</p>
+              {trajectory.brakingMarginKg != null && (
+                <p>Braking margin {number(trajectory.brakingMarginKg)} kg remaining after cutoff
+                  {trajectory.brakingMarginPercent != null && (
+                    <> ({trajectory.brakingMarginPercent < 0.01 ? '<0.01' : trajectory.brakingMarginPercent.toLocaleString(undefined, { maximumFractionDigits: 2 })}% of departure propellant)</>
+                  )}
+                </p>
+              )}
+              {trajectory.criticalBrakingReserve && (
+                <p className="course-reserve course-reserve-alert" role="alert">
+                  Critically low propellant reserve. This course leaves less than 1% of departure propellant for later maneuvers.
+                </p>
+              )}
             </>
           )}
           {trajectory.fuel.unavailableReason && (

@@ -73,7 +73,9 @@ public sealed class CampaignLifecycleTests : IDisposable
         };
         var (session, lifecycle, store) = Start(settings);
         var campaign = lifecycle.Create(Version(session), "Triggered").Campaign!;
-        Command(session, "travel", destination: "planet-earth");
+        var preview = Assert.IsType<CoursePreview>(session.PreviewAutomaticCourse(SolarSystem.Earth, null, CancellationToken.None).Fastest);
+        var current = session.Snapshot();
+        session.Execute(new(current.InstanceId, current.Revision, Guid.NewGuid().ToString(), "commit-course", PreviewId: preview.PreviewId));
         Command(session, "cancel-travel");
         lifecycle.CheckAutosave();
         Assert.Equal(1, store.GetCampaign(campaign.Id).HeadSequence);

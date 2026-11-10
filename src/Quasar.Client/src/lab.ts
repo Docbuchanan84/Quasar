@@ -15,6 +15,8 @@ export type Trajectory = {
   } | null
   burnSchedule?: { phase: string; startTicks: string; durationSeconds: number; propellantKg: number }[] | null
   brakingMarginKg?: number | null
+  brakingMarginPercent?: number
+  criticalBrakingReserve?: boolean
   flyby?: { bodyId: string; bodyName: string; atTicks: string; closestApproachKm: number } | null
   points: {
     atTicks: string
@@ -47,6 +49,7 @@ type LabEvent = {
   kind: string
   objectId: string
   message: string
+  arrivalLabel?: string
 }
 
 export type Snapshot = {

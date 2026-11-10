@@ -5,7 +5,7 @@ namespace Quasar.Server;
 public sealed record LabCommand(string InstanceId, long Revision, string ClientId, string Operation,
     int? DurationSeconds = null, string? Mode = null, string? DestinationId = null, int? FlightSeconds = null,
     string? PreviewId = null, string? BurnDirection = null, int? BurnSeconds = null);
-public sealed record CoursePreview(string PreviewId, string InstanceId, long Revision, string ShipId,
+public sealed record CoursePreview(string? PreviewId, string InstanceId, long Revision, string ShipId,
     string DestinationId, double SampledDistanceKm, string[] Warnings, TrajectoryDisplay Trajectory);
 public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePreview? LowestManeuverCost, string[] InfeasibleReasons);
 public sealed record SessionSnapshot(string InstanceId, long Revision, bool Running, string StopReason,
@@ -61,8 +61,9 @@ public sealed partial class LabSession(bool startWithWorld = true)
         lock (gate)
         {
             if (running) throw new InvalidOperationException("Stop time processing before plotting a course.");
-            var plan = RequireWorld().PreviewTravel(destinationId, flightSeconds, maneuverBudget);
-            return RetainPreview(destinationId, plan);
+            var activeWorld = RequireWorld();
+            var plan = activeWorld.PreviewTravel(destinationId, flightSeconds, maneuverBudget);
+            return PresentPreview(destinationId, plan, executable: !activeWorld.HasModeledPropulsion);
         }
     }
 
@@ -89,25 +90,30 @@ public sealed partial class LabSession(bool startWithWorld = true)
                 throw new InvalidOperationException("State changed during planning. Refresh state and recalculate.");
             if (result.Choices is not { } choices) return new(null, null, result.InfeasibleReasons);
 
-            var fastest = RetainPreview(destinationId, choices.Fastest);
+            var fastest = PresentPreview(destinationId, choices.Fastest);
             var lowestCost = ReferenceEquals(choices.Fastest, choices.LowestManeuverCost)
                 ? null
-                : RetainPreview(destinationId, choices.LowestManeuverCost);
+                : PresentPreview(destinationId, choices.LowestManeuverCost);
             return new(fastest, lowestCost, []);
         }
     }
 
-    private CoursePreview RetainPreview(string destinationId, TrajectoryPlan plan)
+    private CoursePreview PresentPreview(string destinationId, TrajectoryPlan plan, bool executable = true)
     {
         var trajectory = SystemLab.Present(plan);
         var distance = trajectory.Points.Zip(trajectory.Points.Skip(1),
             (a, b) => a.PositionKm.DistanceTo(b.PositionKm)).Sum();
         // Bounded, disposable tokens retain solved plans, never client-provided geometry.
-        if (previews.Count >= 32) previews.Remove(previews.Keys.First());
-        var id = Guid.NewGuid().ToString();
-        previews.Add(id, (revision, plan));
+        string? id = null;
+        if (executable)
+        {
+            if (previews.Count >= 32) previews.Remove(previews.Keys.First());
+            id = Guid.NewGuid().ToString();
+            previews.Add(id, (revision, plan));
+        }
         return new(id, instanceId, revision, SystemLab.ShipId, destinationId, distance, trajectory.Arrival is null
-            ? ["Legacy test course with instantaneous maneuvers and no propulsion accounting."]
+            ? [executable ? "Legacy test course with instantaneous maneuvers and no propulsion accounting."
+                : "Advisory only. Use automatic course planning to issue an order for this spacecraft."]
             : ["Bounded search, with fixed-direction burns and one gravity primary. Faster or cheaper routes may exist."], trajectory);
     }
 
@@ -144,6 +150,7 @@ public sealed partial class LabSession(bool startWithWorld = true)
                     break;
                 case "travel":
                     if (running) throw new InvalidOperationException("Stop before issuing an order.");
+                    RequireLegacyOrderAllowed(activeWorld);
                     activeWorld.OrderTravel(command.DestinationId ?? "", command.FlightSeconds ?? 21600);
                     MarkWorldChanged(significant: true);
                     stopReason = "Course committed — ready to advance";
@@ -153,6 +160,7 @@ public sealed partial class LabSession(bool startWithWorld = true)
                     if (command.PreviewId is null || !previews.TryGetValue(command.PreviewId, out var preview)
                         || preview.Revision != revision)
                         throw new InvalidOperationException("Course preview expired. Recalculate and review before issuing an order.");
+                    if (!preview.Plan.UsesFiniteBurns) RequireLegacyOrderAllowed(activeWorld);
                     activeWorld.CommitTravel(preview.Plan);
                     MarkWorldChanged(significant: true);
                     stopReason = "Course committed — ready to advance";
@@ -198,12 +206,11 @@ public sealed partial class LabSession(bool startWithWorld = true)
                 {
                     running = false;
                     interrupt = interrupted ? activeWorld.LastEvent : null;
-                    stopReason = interrupt?.Kind switch
+                    stopReason = interrupt?.ArrivalLabel ?? interrupt?.Kind switch
                     {
                         null => "Advance complete",
                         "burn-complete" => "Burn complete — coasting",
                         "burn-exhausted" => "Propellant exhausted — coasting",
-                        "arrival" or "course-arrival" => "Arrival — awaiting orders",
                         "course-departure-cutoff" => "Departure burn complete — coasting",
                         "course-braking-start" => "Braking burn ready — resume to execute",
                         "patch" or "primary-change" => "Gravity primary changed — coasting",
@@ -222,6 +229,12 @@ public sealed partial class LabSession(bool startWithWorld = true)
     }
 
     private SessionSnapshot Read() => new(instanceId, revision, running, stopReason, durationSeconds, mode, RequireWorld().Snapshot(), interrupt);
+
+    private static void RequireLegacyOrderAllowed(SystemLab world)
+    {
+        if (world.HasModeledPropulsion)
+            throw new InvalidOperationException("This spacecraft requires a propulsion-aware course. Use automatic course planning.");
+    }
 }
 
 public sealed class LabRunner(LabSession session) : BackgroundService

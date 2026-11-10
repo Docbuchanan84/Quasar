@@ -25,7 +25,7 @@ public sealed partial class SystemLab
         ValidateHistory(state);
         var restored = new SystemLab(movement) { lastEventSequence = state.LastEventSequence };
         restored.events.AddRange(state.History.Select(entry =>
-            new LabEvent(entry.Sequence, entry.AtTicks, entry.Kind, entry.ObjectId, entry.Message)));
+            new LabEvent(entry.Sequence, entry.AtTicks, RestoredEventKind(entry), entry.ObjectId, entry.Message)));
         return restored;
     }
 
@@ -54,14 +54,15 @@ public sealed partial class SystemLab
                     && orderIndex >= 0 && entry.AtTicks > previousTicks
                     && state.History[i - 1].Kind == (entry.Kind == "course-departure-cutoff" ? "order" : "course-departure-cutoff"):
                     break;
-                case "course-arrival" when state.Simulation.FormatVersion >= 6 && orderIndex >= 0 && entry.AtTicks > previousTicks
+                case "course-arrival" or "course-approach-complete" or "course-orbit-inserted"
+                    when state.Simulation.FormatVersion >= 6 && orderIndex >= 0 && entry.AtTicks > previousTicks
                     && state.History[i - 1].Kind == "course-braking-start":
                 case "arrival" when orderIndex >= 0 && entry.AtTicks > previousTicks:
                 case "cancel" when orderIndex >= 0:
                     orderIndex = -1;
                     break;
                 case "burn-start" when state.Simulation.FormatVersion >= 4 && i > 0 && orderIndex < 0 && !burning
-                    && state.History[i - 1].Kind is ("created" or "cancel" or "burn-complete" or "burn-exhausted" or "burn-cutoff" or "primary-change" or "course-arrival"):
+                    && StartsFreeCoast(state.History[i - 1].Kind):
                     burning = true;
                     break;
                 case "burn-complete" or "burn-exhausted" when burning && entry.AtTicks > previousTicks:
@@ -69,7 +70,7 @@ public sealed partial class SystemLab
                     burning = false;
                     break;
                 case "primary-change" when state.Simulation.FormatVersion >= 5 && i > 0 && orderIndex < 0 && !burning
-                    && state.History[i - 1].Kind is ("created" or "cancel" or "burn-complete" or "burn-exhausted" or "burn-cutoff" or "primary-change" or "course-arrival"):
+                    && StartsFreeCoast(state.History[i - 1].Kind):
                     break;
                 default:
                     throw new InvalidDataException("Invalid System Lab event order.");
@@ -112,7 +113,18 @@ public sealed partial class SystemLab
             if (rendezvous.Destination.BodyId is null || last.Kind != "arrival" || last.AtTicks != rendezvous.ArrivalTicks)
                 throw new InvalidDataException("Rendezvous disagrees with System Lab history.");
         }
-        else if (last.Kind is not ("created" or "cancel" or "burn-complete" or "burn-exhausted" or "burn-cutoff" or "primary-change" or "course-arrival") || last.AtTicks != ship.FreeCoast!.EpochTicks)
+        else if (!StartsFreeCoast(last.Kind) || last.AtTicks != ship.FreeCoast!.EpochTicks)
             throw new InvalidDataException("Free coast disagrees with System Lab history.");
     }
+
+    private static bool StartsFreeCoast(string kind) => kind is "created" or "cancel" or "burn-complete"
+        or "burn-exhausted" or "burn-cutoff" or "primary-change" or "course-arrival" or "course-approach-complete" or "course-orbit-inserted";
+
+    // The first v6 builds saved both outcomes under one kind. Their generated messages distinguish them.
+    private static string RestoredEventKind(LabHistoryEntry entry) => (entry.Kind, entry.Message) switch
+    {
+        ("course-arrival", "Pathfinder completed braking and entered the requested orbit.") => "course-orbit-inserted",
+        ("course-arrival", "Pathfinder completed braking at the approach point and resumed a gravitational coast.") => "course-approach-complete",
+        _ => entry.Kind
+    };
 }

@@ -14,16 +14,8 @@ public sealed partial class MovementExecution
     {
         var primary = course.Coast.PrimaryBodyId;
         var coast = course.Coast.Coast;
-        var minimumRadius = Math.Max(1, catalogue.Bodies[primary].RadiusKm);
-        var parentSphere = catalogue.GetEnvironment(primary).SphereOfInfluenceRadiusKm;
-        var children = catalogue.Bodies.Values.Where(body => body.ParentId == primary && body.Orbit is not null
-                && body.GravitationalParameterKm3PerSecond2 > 0)
-            .Select(body => (body.Id, Sphere: catalogue.GetEnvironment(body.Id).SphereOfInfluenceRadiusKm))
-            .Where(body => body.Sphere is > 0).ToArray();
-        var outsideModel = false;
-        course.Departure.InspectPath(Inspect);
-        course.Braking.InspectPath(Inspect);
-        if (outsideModel) return true;
+        if (!PoweredPathIsClear(course.Departure, primary, cancellationToken)
+            || !PoweredPathIsClear(course.Braking, primary, cancellationToken)) return true;
 
         for (var from = course.Coast.StartTicks; from < course.Coast.EndTicks;)
         {
@@ -33,15 +25,53 @@ public sealed partial class MovementExecution
             from = through;
         }
         return false;
+    }
 
-        void Inspect(long ticks, Position3 position)
+    internal bool PoweredPathIsClear(PoweredTrajectory path, string primary, CancellationToken cancellationToken)
+    {
+        var minimumRadius = Math.Max(1, catalogue.Bodies[primary].RadiusKm);
+        var parentSphere = catalogue.GetEnvironment(primary).SphereOfInfluenceRadiusKm;
+        var children = catalogue.Bodies.Values.Where(body => body.ParentId == primary && body.Orbit is not null
+                && body.GravitationalParameterKm3PerSecond2 > 0)
+            .Select(body =>
+            {
+                var orbit = body.Orbit!;
+                var environment = catalogue.GetEnvironment(body.Id);
+                var sphere = environment.SphereOfInfluenceRadiusKm!.Value;
+                var periapsis = orbit.SemiMajorAxisKm * (1 - orbit.Eccentricity);
+                var apoapsis = orbit.SemiMajorAxisKm * (1 + orbit.Eccentricity);
+                return (body.Id, Sphere: sphere, Inner: periapsis - sphere, Outer: apoapsis + sphere,
+                    Acceleration: environment.RelativeGravitationalParameterKm3PerSecond2!.Value / periapsis / periapsis);
+            }).ToArray();
+        return path.HasClearPath(Inspect);
+
+        bool Inspect(long ticks, Vector3d position, Vector3d velocity, double step, double deviation)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (outsideModel) return;
-            var radius = Vector3d.From(position).Length;
-            outsideModel = radius <= minimumRadius || radius >= parentSphere
-                || children.Any(child => position.DistanceTo(catalogue.OrbitalOffsetAt(child.Id, ticks).Position) <= child.Sphere);
+            // The continuous path lies within ½ A t² of the initial tangent. Work in the
+            // child's moving frame by adding its maximum orbital acceleration to that bound.
+            var tangent = velocity * step;
+            var lowerRadius = DistanceToSegment(position, tangent) - deviation - BoundaryToleranceKm;
+            var upperRadius = Math.Max(position.Length, (position + tangent).Length) + deviation + BoundaryToleranceKm;
+            if (!(lowerRadius > minimumRadius) || upperRadius >= parentSphere) return false;
+            foreach (var child in children)
+            {
+                if (upperRadius < child.Inner || lowerRadius > child.Outer) continue;
+                var center = catalogue.OrbitalStateAt(child.Id, ticks);
+                var relative = position - Vector3d.From(center.PositionKm);
+                var relativeTangent = tangent - Vector3d.From(center.VelocityKmPerSecond) * step;
+                var relativeDeviation = deviation + child.Acceleration * step * step / 2 + BoundaryToleranceKm;
+                if (!(DistanceToSegment(relative, relativeTangent) > child.Sphere + relativeDeviation)) return false;
+            }
+            return true;
         }
+    }
+
+    private static double DistanceToSegment(Vector3d start, Vector3d displacement)
+    {
+        var lengthSquared = Vector3d.Dot(displacement, displacement);
+        var nearest = lengthSquared > 0 ? Math.Clamp(-Vector3d.Dot(start, displacement) / lengthSquared, 0, 1) : 0;
+        return (start + displacement * nearest).Length;
     }
 
     public OrbitalTargetState ResolveSpacecraftTarget(string id, long atTicks)
@@ -167,10 +197,7 @@ public sealed partial class MovementExecution
                 }
                 else
                 {
-                    var chord = highPosition - lowPosition;
-                    var lengthSquared = Vector3d.Dot(chord, chord);
-                    var nearest = lengthSquared > 0 ? Math.Clamp(-Vector3d.Dot(lowPosition, chord) / lengthSquared, 0, 1) : 0;
-                    if ((lowPosition + chord * nearest).Length - error >= radius) return null;
+                    if (DistanceToSegment(lowPosition, highPosition - lowPosition) - error >= radius) return null;
                 }
 
                 var mid = low + (high - low) / 2;

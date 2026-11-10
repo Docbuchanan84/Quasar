@@ -84,9 +84,9 @@ not apply to independent orbit and station targets.
 Commands take JSON `{instanceId, revision, clientId, operation}` plus operation
 arguments. The current UI uses `configure` with `durationSeconds` and `mode`
 (`once` or `continuous`), `play`, `stop`, `commit-course` with `previewId`,
-and `cancel-travel`. The compatible direct `travel` operation accepts
-`destinationId` and optional `flightSeconds`, defaulting to 21,600. The UI
-requires course review before issuing an order. While paused, use `start-burn`
+and `cancel-travel`. The legacy direct `travel` operation accepts `destinationId`
+and optional `flightSeconds`, defaulting to 21,600, for ships without modeled
+propulsion. Equipped ships require an automatic course preview. While paused, use `start-burn`
 with `burnDirection` (`prograde` or `retrograde`) and `burnSeconds` (1–3,600),
 or `cut-thrust` with no extra arguments. `world.ship.burnEndTicks` is the
 scheduled cutoff as a decimal tick string during an active burn.
