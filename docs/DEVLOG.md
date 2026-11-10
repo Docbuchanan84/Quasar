@@ -1,5 +1,18 @@
 # Development log
 
+## 2026-11-10 — Continuous play deployment
+
+- Published `main` at `347acc4` ([PR #32](https://github.com/Docbuchanan84/Quasar/pull/32))
+  to the existing private preview. The restarted host restored the same paused
+  checkpoint. Campaign database hashes, persistence settings, and Tailscale
+  Serve configuration matched the pre-deployment checks.
+- `scripts/Verify.ps1` passed 211 xUnit tests and 11 Node checks, plus formatting,
+  lint, renderer, and production build checks. Chromium loaded the private
+  HTTPS game using iPhone 17 Pro emulation.
+- On an isolated copy of a saved campaign, Continuous advanced 32 simulation
+  seconds over eight seconds with Chromium closed. Reopening the browser and
+  selecting Stop held the simulation clock steady.
+
 ## 2026-11-10 — Continuous play through browser disconnects
 
 - The host advances Continuous play through phone lock, tab closure, and lost
