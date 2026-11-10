@@ -1,5 +1,12 @@
 # Quasar decision record
 
+## Approved — propulsion foundation (issue #25)
+
+The approved sequence starts with component-derived conventional propulsion.
+The single-engine Pathfinder configuration is a provisional System Lab fixture.
+The [fixture contract](SOLAR_SYSTEM.md#pathfinder-propulsion) records its units
+and the boundary with finite-thrust execution.
+
 ## Approved — automatic course plotting (2026-11-09)
 
 The player chooses a modeled planet or moon and reviews the fastest and lowest

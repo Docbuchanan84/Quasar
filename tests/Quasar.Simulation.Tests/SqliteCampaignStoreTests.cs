@@ -56,6 +56,35 @@ public sealed class SqliteCampaignStoreTests : IDisposable
         Assert.Equal(lab.ShipStateAt(lab.ElapsedTicks), loaded.World.ShipStateAt(loaded.World.ElapsedTicks));
     }
 
+    [Fact]
+    public void InvalidPropulsionRecoversEarlierVersionTwoCheckpoint()
+    {
+        var store = Store();
+        var campaign = store.CreateCampaign("Propulsion");
+        var lab = new SystemLab();
+        var state = lab.ExportState();
+        var ship = state.Simulation.Spacecraft[0];
+        var legacy = state with
+        {
+            Simulation = state.Simulation with { FormatVersion = 2, Spacecraft = [ship with { Propulsion = null }] }
+        };
+        var previous = store.SaveRecovery(campaign.Id, 0, Build, legacy);
+        var current = store.SaveRecovery(campaign.Id, 1, Build, state);
+        Assert.Equal(lab.Snapshot().Ship.Propulsion,
+            store.LoadCheckpoint(campaign.Id, current.Id).World.Snapshot().Ship.Propulsion);
+
+        var payload = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(SimulationStateJson.Serialize(state))
+            .Replace("\"quantityKg\":10000", "\"quantityKg\":10001", StringComparison.Ordinal));
+        Execute(campaign.Id, "UPDATE checkpoints SET payload = $payload, sha256 = $hash WHERE sequence = 2;",
+            ("$payload", payload), ("$hash", SHA256.HashData(payload)));
+
+        Assert.Throws<InvalidDataException>(() => store.LoadCheckpoint(campaign.Id, current.Id));
+        var recovery = store.LoadLatestValidCheckpoint(campaign.Id);
+        Assert.Equal(previous, recovery.Checkpoint!.Info);
+        Assert.Equal(1, recovery.RejectedCount);
+        Assert.Null(recovery.Checkpoint.World.Snapshot().Ship.Propulsion);
+    }
+
     [Theory]
     [InlineData(long.MinValue)]
     [InlineData(-9007199254740993L)]

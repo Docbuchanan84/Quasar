@@ -275,7 +275,7 @@ public sealed class SimulationStateTests
             "missing nullable field" => payload.Replace(",\"rendezvous\":null", ""),
             "duplicate property" => payload.Replace("\"elapsedTicks\":\"0\"", "\"elapsedTicks\":\"0\",\"elapsedTicks\":\"0\""),
             "unknown property" => payload.Replace("\"elapsedTicks\":\"0\"", "\"elapsedTicks\":\"0\",\"preview\":0"),
-            "unsupported version" => payload.Replace("\"formatVersion\":2", "\"formatVersion\":999"),
+            "unsupported version" => payload.Replace($"\"formatVersion\":{SimulationState.CurrentFormatVersion}", "\"formatVersion\":999"),
             "truncated" => payload[..^1],
             _ => throw new ArgumentOutOfRangeException(nameof(corruption))
         };

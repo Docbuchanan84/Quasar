@@ -308,6 +308,24 @@ function App() {
                         </>
                       )}
                     </div>
+                    <h3>Propulsion</h3>
+                    {world.ship.propulsion ? (
+                      <dl>
+                        {[
+                          ['Dry mass', world.ship.propulsion.dryMassKg, 'kg'],
+                          ['Wet mass', world.ship.propulsion.wetMassKg, 'kg'],
+                          ['Available propellant', world.ship.propulsion.availablePropellantKg, 'kg'],
+                          ['Rated mass flow', world.ship.propulsion.ratedMassFlowKgPerSecond, 'kg/s'],
+                          ['Initial thrust acceleration', world.ship.propulsion.initialAccelerationMPerSecond2, 'm/s²'],
+                          ['Theoretical impulsive delta-v', world.ship.propulsion.theoreticalDeltaVMPerSecond / 1000, 'km/s'],
+                        ].map(([label, value, unit]) => (
+                          <div key={label}>
+                            <dt>{label}</dt>
+                            <dd>{value.toLocaleString()} <small>{unit}</small></dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : <p className="muted">Propulsion not modeled</p>}
                     <h3>Course orders</h3>
                     <button
                       disabled={disabled || snapshot?.running || !!plotting}

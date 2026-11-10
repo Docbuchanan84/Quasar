@@ -1,5 +1,18 @@
 # Development log
 
+## 2026-11-10 — Pathfinder propulsion foundation
+
+- [Issue #25](https://github.com/Docbuchanan84/Quasar/issues/25) gives new
+  Solar System Pathfinder ships one test chemical engine and tank. The
+  inspector shows C#-derived mass, flow, acceleration, and theoretical delta-v.
+- Checkpoint v3 stores the equipment and tank quantity. Versions 1 and 2
+  restore without propulsion. Existing impulsive courses retain their flight
+  and fuel-estimate behavior.
+- `scripts/Verify.ps1` passed with 205 xUnit tests. Disposable Chromium
+  checks covered 320 and 1440 CSS pixel widths, preview, order, advance,
+  named save and reload, and v2 in-flight restore without equipment.
+  Physical iPhone testing remains open.
+
 ## 2026-11-09 — System object tree
 
 - Replaced the object grid with a collapsible tree based on the campaign's

@@ -60,7 +60,8 @@ public sealed partial class MovementExecution
     private static SpacecraftState ExportShip(string id, Spacecraft ship) => new(id, ship.Primary,
         ship.Coast is { } coast ? ExportCoast(coast) : null,
         ship.Plan is { } plan ? ExportPlan(plan, ship.NextBoundary) : null,
-        ship.Rendezvous is { } rendezvous ? new(ExportDestination(rendezvous.Destination), rendezvous.ArrivalTicks) : null);
+        ship.Rendezvous is { } rendezvous ? new(ExportDestination(rendezvous.Destination), rendezvous.ArrivalTicks) : null,
+        ship.Propulsion);
 
     private static CoastState ExportCoast(TwoBodyTrajectory coast) =>
         new(coast.EpochTicks, KinematicState.From(coast.InitialState));
@@ -80,7 +81,8 @@ public sealed partial class MovementExecution
     {
         Require(state is not null && !string.IsNullOrWhiteSpace(state.Id), "Missing spacecraft identity.");
         PrimaryMu(state.PrimaryBodyId);
-        var ship = new Spacecraft(state.PrimaryBodyId, null);
+        state.Propulsion?.CalculatePerformance();
+        var ship = new Spacecraft(state.PrimaryBodyId, null, state.Propulsion);
         switch (state)
         {
             case { FreeCoast: { } coast, Trajectory: null, Rendezvous: null }:

@@ -14,6 +14,7 @@ automatic course planning, interactive maps, and persistent campaigns. The
 | Spacecraft movement | Lambert transfers, analytical coasting, impulses, and headless event execution |
 | Navigation | Collapsible system object tree, gesture-safe selection, pan/orbit/zoom, Reset View, and Focus Selected in both maps |
 | Course plotting | Planet and moon destinations, automatic fastest and lowest maneuver-cost routes, shared map preview, and revision-bound commit |
+| Propulsion 1/4 | Single chemical engine and tank, read-only Pathfinder performance, and compatible v3 checkpoints |
 | Campaigns | SQLite checkpoints, autosave, startup restore, and player-facing New Game, Save Game, Named Save, and Load Game |
 
 The [System Lab guide](SYSTEM_LAB.md), [integration record](AGENT_INTEGRATION.md),
@@ -51,7 +52,7 @@ landscape, background/reconnect, and cellular-only access separately.
 
 ## Open implementation and design work
 
-- Propulsion and mass modelling, finite thrust, fuel expenditure, fleets, collision,
+- Finite thrust and fuel expenditure ([issue #26](https://github.com/Docbuchanan84/Quasar/issues/26)), fleets, collision,
   docking, and player-facing moving-target/waypoint selection remain open. The
   headless trajectory planner already supports moving-target interception.
 - Permanent scheduling, variable fidelity, look-ahead, cross-platform determinism,

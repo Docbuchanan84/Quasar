@@ -75,19 +75,29 @@ public sealed class SolarSystemTests
         Assert.Equal(lab.CelestialPositions.GetState("planet-earth", plan.ArrivalTicks), plan.StateAt(plan.ArrivalTicks));
     }
 
-    [Fact]
-    public void VersionOneHeliosCourseRemainsReadable()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void LegacyHeliosCourseRemainsReadable(int version)
     {
         var lab = SystemLab.CreateLegacyFixture();
         lab.OrderTravel("planet-iris");
         var json = JsonNode.Parse(SimulationStateJson.Serialize(lab.ExportState()))!;
         var simulation = json["simulation"]!;
-        simulation["formatVersion"] = 1;
-        foreach (var body in simulation["bodies"]!.AsArray()) body!.AsObject().Remove("radiusKm");
-        simulation["spacecraft"]![0]!["trajectory"]!.AsObject().Remove("flyby");
+        simulation["formatVersion"] = version;
+        Assert.False(simulation["spacecraft"]![0]!.AsObject().ContainsKey("propulsion"));
+        if (version == 1)
+        {
+            foreach (var body in simulation["bodies"]!.AsArray()) body!.AsObject().Remove("radiusKm");
+            simulation["spacecraft"]![0]!["trajectory"]!.AsObject().Remove("flyby");
+        }
         var restored = SystemLab.RestoreState(SimulationStateJson.Deserialize(System.Text.Encoding.UTF8.GetBytes(json.ToJsonString())));
         Assert.Equal(lab.Snapshot().Objects, restored.Snapshot().Objects);
         Assert.Equal(lab.Snapshot().Trajectory!.Points, restored.Snapshot().Trajectory!.Points);
+        Assert.Null(restored.Snapshot().Ship.Propulsion);
+        Assert.True(lab.Advance(TimeSpan.FromDays(1)));
+        Assert.True(restored.Advance(TimeSpan.FromDays(1)));
+        Assert.Equal(lab.Snapshot().Events, restored.Snapshot().Events);
     }
 
     private static SystemLab RoundTrip(SystemLab lab) =>

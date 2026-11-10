@@ -7,7 +7,8 @@ public sealed record LabObject(string Id, string Name, string Kind, Position3 Po
 public sealed record LabEvent(long Sequence,
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long AtTicks, string Kind, string ObjectId, string Message);
 public sealed record ShipStatus(string Status, double SpeedKmPerSecond, string? DestinationId,
-    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long? ArrivalTicks, double RemainingDistanceKm);
+    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long? ArrivalTicks, double RemainingDistanceKm,
+    PropulsionPerformance? Propulsion = null);
 public sealed record LabSnapshot(
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long ElapsedTicks, LabObject[] Objects, ShipStatus Ship, LabEvent[] Events,
     TrajectoryDisplay? Trajectory = null, string? ReferenceEpoch = null);
@@ -43,7 +44,9 @@ public sealed partial class SystemLab
         var earth = celestialPositions.GetState(SolarSystem.Earth, 0);
         var radial = Vector3d.From(earth.PositionKm);
         var position = (radial + radial / radial.Length * 1_000_000).Position;
-        movement.AddSpacecraft(ShipId, new(position, earth.VelocityKmPerSecond), PrimaryId);
+        movement.AddSpacecraft(ShipId, new(position, earth.VelocityKmPerSecond), PrimaryId,
+            new(8000, new(1000, 3, 1.5, 200_000, 3000, "test-chemical"),
+                new(1000, 10_000, 10_000, "test-chemical")));
         Record("created", "Solar System initialized. Pathfinder coasting near Earth.");
     }
 
@@ -79,7 +82,7 @@ public sealed partial class SystemLab
         return new(ElapsedTicks,
             [.. bodies, new(ShipId, "Pathfinder", "spacecraft", ship.State.PositionKm, null, ship.State.VelocityKmPerSecond)],
             new(ship.Status, Vector3d.From(ship.State.VelocityKmPerSecond).Length, ship.DestinationId,
-                ship.ArrivalTicks, distance), [.. events], display is null ? null : display with { Points = [.. display.Points] },
+                ship.ArrivalTicks, distance, ship.Propulsion), [.. events], display is null ? null : display with { Points = [.. display.Points] },
             PrimaryId == SolarSystem.Sun ? SolarSystem.Epoch : null);
     }
 
