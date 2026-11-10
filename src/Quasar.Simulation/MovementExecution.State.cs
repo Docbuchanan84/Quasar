@@ -59,9 +59,9 @@ public sealed partial class MovementExecution
 
     private SpacecraftState ExportShip(string id, Spacecraft ship) => new(id, ship.Primary,
         ship.Coast is { } coast ? ExportCoast(coast) with { AutomaticPrimary = ship.AutomaticPrimary } : null,
-        ship.Plan is { } plan ? ExportPlan(plan, ship.NextBoundary) : null,
+        ship.Plan is { Finite: null } plan ? ExportPlan(plan, ship.NextBoundary) : null,
         ship.Rendezvous is { } rendezvous ? new(ExportDestination(rendezvous.Destination), rendezvous.ArrivalTicks) : null,
-        PropulsionAt(ship, ElapsedTicks), ship.Burn?.State);
+        PropulsionAt(ship, ElapsedTicks), ship.Burn?.State, ship.Plan?.Finite?.State);
 
     private static CoastState ExportCoast(TwoBodyTrajectory coast) =>
         new(coast.EpochTicks, KinematicState.From(coast.InitialState));
@@ -83,6 +83,20 @@ public sealed partial class MovementExecution
         PrimaryMu(state.PrimaryBodyId);
         state.Propulsion?.CalculatePerformance();
         var ship = new Spacecraft(state.PrimaryBodyId, null, state.Propulsion);
+        if (state.FiniteCourse is { } finite)
+        {
+            Require(state is { FreeCoast: null, Trajectory: null, Rendezvous: null, ActiveBurn: null, Propulsion: not null }
+                && finite.PrimaryBodyId == state.PrimaryBodyId, "Finite course must be the sole motion state.");
+            var course = FiniteCourse.Build(catalogue, finite);
+            Require(finite.DepartureTicks <= ElapsedTicks && ElapsedTicks < finite.ArrivalTicks
+                && state.Propulsion == WithPropellant(finite.Propulsion, course.PropellantAt(ElapsedTicks))
+                && !CourseCrossesPrimaryBoundary(course, CancellationToken.None), "Finite course disagrees with clock, fuel, or primary.");
+            ship.Plan = course.ToPlan();
+            ship.NextBoundary = ElapsedTicks < course.Departure.EndTicks ? 0 : ElapsedTicks < course.Braking.StartTicks ? 1 : 2;
+            Require(spacecraft.TryAdd(state.Id, ship), "Duplicate spacecraft identity.");
+            StateAt(state.Id, ElapsedTicks).RequireFinite();
+            return;
+        }
         switch (state)
         {
             case { FreeCoast: { } coast, Trajectory: null, Rendezvous: null, ActiveBurn: null }:

@@ -22,7 +22,8 @@ public sealed class CampaignHttpTests : IDisposable
     [InlineData("midflight")]
     [InlineData("arrived")]
     [InlineData("cancelled")]
-    [InlineData("moon")]
+    [InlineData("powered")]
+    [InlineData("powered-arrived")]
     public async Task RestartAndContinueRestoreExactMovementAndHistory(string scenario)
     {
         Guid campaignId;
@@ -30,23 +31,40 @@ public sealed class CampaignHttpTests : IDisposable
         JsonElement expectedWorld;
         JsonElement expectedShipState;
         long expectedTicks;
+        var powered = scenario.StartsWith("powered", StringComparison.Ordinal);
+        CampaignInfo? legacy = null;
+        if (!powered)
+        {
+            var fixture = new SystemLab();
+            fixture.OrderTravel(SolarSystem.Earth);
+            var state = fixture.ExportState();
+            legacy = new SqliteCampaignStore(root).CreateCampaign("Pathfinder", "test-v5",
+                state with { Simulation = state.Simulation with { FormatVersion = 5 } });
+        }
 
         await using (var host = await Start())
         {
-            var created = await host.Create("Pathfinder");
+            var created = legacy is null ? await host.Create("Pathfinder")
+                : await host.Post("/api/campaigns/continue", await host.Get(Status), new { campaignId = legacy.Id });
             campaignId = created.GetProperty("campaign").GetProperty("id").GetGuid();
             instanceId = created.GetProperty("instanceId").GetString()!;
-            var preview = scenario == "moon"
-                ? (await host.Get(Lab + "/course-preview?mode=auto&destinationId=moon-moon")).GetProperty("fastest")
-                : await host.Get(Lab + "/course-preview?destinationId=planet-earth");
-            await host.Command("commit-course", previewId: preview.GetProperty("previewId").GetString());
+            if (powered)
+            {
+                var preview = (await host.Get(Lab + "/course-preview?mode=auto&destinationId=planet-earth")).GetProperty("fastest");
+                await host.Command("commit-course", previewId: preview.GetProperty("previewId").GetString());
+            }
             if (scenario == "arrived")
             {
                 await host.Advance(1296000);
             }
+            else if (scenario == "powered-arrived")
+            {
+                foreach (var kind in new[] { "course-departure-cutoff", "course-braking-start", "course-approach-complete" })
+                    Assert.Equal(kind, (await host.Advance(1296000)).GetProperty("interrupt").GetProperty("kind").GetString());
+            }
             else
             {
-                await host.Advance(3600);
+                await host.Advance(scenario == "powered" ? 30 : 3600);
                 if (scenario == "cancelled")
                 {
                     await host.Command("cancel-travel");
@@ -68,7 +86,14 @@ public sealed class CampaignHttpTests : IDisposable
         var restored = await restarted.Get(Status);
         Assert.NotEqual(instanceId, restored.GetProperty("instanceId").GetString());
         Assert.False(restored.GetProperty("running").GetBoolean());
-        Assert.Equal(expectedWorld.GetRawText(), (await restarted.Get(Lab)).GetProperty("world").GetRawText());
+        var resumedLab = await restarted.Get(Lab);
+        Assert.Equal(expectedWorld.GetRawText(), resumedLab.GetProperty("world").GetRawText());
+        if (scenario is "arrived" or "powered-arrived")
+        {
+            var label = scenario == "arrived" ? "Legacy body-center arrival" : "Velocity-matched approach complete";
+            Assert.Equal(label, resumedLab.GetProperty("stopReason").GetString());
+            Assert.Equal(label, resumedLab.GetProperty("interrupt").GetProperty("arrivalLabel").GetString());
+        }
         Assert.Equal(expectedShipState.GetRawText(),
             (await restarted.Get(Lab + "/spacecraft/state?atTicks=" + expectedTicks)).GetRawText());
 
@@ -83,6 +108,33 @@ public sealed class CampaignHttpTests : IDisposable
                 world.GetProperty("elapsedTicks").GetString());
             Assert.Single(world.GetProperty("events").EnumerateArray(), entry => entry.GetProperty("kind").GetString() == "arrival");
         }
+    }
+
+    [Fact]
+    public async Task EquippedCampaignRejectsBothLegacyOrderPathsForSixHourEarthTransfer()
+    {
+        await using var host = await Start();
+        await host.Create("Equipped Pathfinder");
+        var before = await host.Get(Lab);
+        var stateBefore = await host.Get(Lab + "/spacecraft/state?atTicks=0");
+        var preview = await host.Get(Lab + "/course-preview?destinationId=planet-earth&flightSeconds=21600");
+        Assert.Equal(92.592883, preview.GetProperty("trajectory").GetProperty("requiredDeltaVKmPerSecond").GetDouble(), 6);
+        Assert.Equal(JsonValueKind.Null, preview.GetProperty("previewId").ValueKind);
+        Assert.Contains("Advisory only", preview.GetProperty("warnings")[0].GetString());
+
+        var clientId = Guid.NewGuid();
+        await host.Post(Lab + "/commands", before, new { clientId, operation = "commit-course", previewId = (string?)null }, HttpStatusCode.Conflict);
+        await host.Post(Lab + "/commands", before, new { clientId, operation = "commit-course", previewId = Guid.NewGuid() }, HttpStatusCode.Conflict);
+        var rejected = await host.Post(Lab + "/commands", before, new
+        {
+            clientId,
+            operation = "travel",
+            destinationId = SolarSystem.Earth,
+            flightSeconds = 21600
+        }, HttpStatusCode.Conflict);
+        Assert.Contains("propulsion-aware", rejected.GetProperty("error").GetString());
+        Assert.Equal(before.GetRawText(), (await host.Get(Lab)).GetRawText());
+        Assert.Equal(stateBefore.GetRawText(), (await host.Get(Lab + "/spacecraft/state?atTicks=0")).GetRawText());
     }
 
     [Fact]
@@ -117,7 +169,7 @@ public sealed class CampaignHttpTests : IDisposable
         var second = await host.Create("Second campaign");
         var campaignId = first.GetProperty("campaign").GetProperty("id").GetGuid();
         var checkpointId = first.GetProperty("lastCheckpoint").GetProperty("id").GetGuid();
-        var preview = await host.Get(Lab + "/course-preview?destinationId=planet-earth");
+        var preview = (await host.Get(Lab + "/course-preview?mode=auto&destinationId=planet-earth")).GetProperty("fastest");
         await host.Command("configure", duration: 1, mode: "continuous");
         await host.Command("play");
 

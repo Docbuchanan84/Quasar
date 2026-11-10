@@ -2,35 +2,45 @@
 
 Select Pathfinder and open **Plot Course** while simulation time is stopped.
 Choose a planet or moon from either map, the object list, or the destination
-picker. Quasar searches from the current departure state and shows the
+picker. Choose **Velocity-matched approach** or **Orbit preset**. Quasar
+searches from the current departure state and shows the executable
 **Fastest** route and the **Lowest maneuver cost** route it finds. The fastest
 route is selected initially. If both criteria pick the same trajectory, the
 panel shows a single option. Select a route to see it on the map, then use
 **Issue Order** to commit it or **Cancel preview** to close the panel.
 
-The route options show calculated travel duration, ETA, required delta-v, and
-any gravity assist. **Advanced** holds the Solar System test maneuver budget,
-which defaults to 25 km/s. Delta-v measures maneuver cost in this fixture.
-If the search finds no route, choose another destination or adjust the test
-budget and retry. Results depend on Pathfinder's current position and velocity
-and on the destination's motion. Arrival matches the destination body's modeled
-position and velocity.
+The course panel shows the arrival condition and error, burn start times and
+durations, expected propellant spent, and the propellant reserve after braking.
+Reserve is shown in kilograms and as a percentage of departure propellant.
+Below 1%, the option and confirmation panel warn about the small margin for
+later maneuvers. The warning leaves the decision to the player.
+**Advanced** applies an additional delta-v limit. The installed engine and
+propellant inventory always constrain the search. Infeasible results identify
+fuel, thrust, geometry, or arrival conditions that prevented a course.
 
 The planner checks 40 whole-second durations over a range of one second to ten
 Julian years, then checks additional times around the earliest feasible and
-lowest-cost results. It evaluates both direct arcs and, in the Solar System,
-supported single-planet assists. This bounded search can miss narrow transfer
-windows. See [trajectory limits](SPACECRAFT_TRAJECTORIES.md).
+lowest-cost results. It refines direct Lambert arcs into two fixed-direction
+burns and one analytical coast in the current gravity primary. The approach
+endpoint lies at 110% of the target's Laplace SOI on the outward radial, with
+the velocity of that moving point. Earth and Moon orbit presets require the
+ship to be in the destination body's primary already. The search can miss narrow
+windows. Multi-primary capture and finite flybys remain unsupported. See
+[trajectory limits](SPACECRAFT_TRAJECTORIES.md#propulsion-aware-courses).
 
 ## Exact confirmation and stale state
 
 `GET /api/lab/course-preview?mode=auto&destinationId=...` returns a
-`fastest` preview and an optional distinct `lowestManeuverCost` preview.
-Both are null when no candidate satisfies the search. Each preview carries an
+`fastest` preview and an optional distinct `lowestManeuverCost` preview. Pass
+`arrivalKind=approach` (default) or `arrivalKind=orbit`.
+Both previews are null when no candidate satisfies the search, with details in
+`infeasibleReasons`. Each preview carries an
 opaque `previewId`, host instance and revision, ship and destination IDs,
-warnings, and trajectory samples. An optional `maneuverBudget` sets the
-test limit in km/s. Fixed-duration callers can continue using `flightSeconds`
-without `mode=auto` and receive the original single-preview response.
+warnings, trajectory samples, burn schedule, and arrival conditions. An optional
+`maneuverBudget` sets an additional limit in km/s. Fixed-duration callers can
+continue using `flightSeconds` without `mode=auto` for a legacy impulsive
+calculation. For a spacecraft with modeled propulsion the result is advisory
+and `previewId` is null.
 Automatic search uses captured departure state outside the session lock and
 checks that the session still matches before registering tokens.
 
@@ -46,10 +56,12 @@ An expired/evicted token receives HTTP 409 and requires recalculation/review.
 `commit-course` on the existing same-origin JSON command endpoint accepts only
 `previewId` in addition to the normal instance/revision/client envelope. It commits
 the retained **solved plan**, never browser geometry or a newly solved plan from
-potentially changed inputs. Execution's exact departure-state/time/catalogue
-validation still applies. A successful commit consumes all outstanding previews.
-Existing direct `travel`, query and `cancel-travel` APIs remain compatible, but
-the player UI no longer bypasses preview with immediate travel buttons.
+potentially changed inputs. Execution also validates the departure state, time,
+catalogue and installed propulsion. A successful commit consumes all outstanding previews.
+Direct `travel` returns a conflict for ships with modeled propulsion. Previously
+saved impulsive courses still load and execute, and ships from campaigns without
+modeled propulsion retain the legacy order API. Use `cancel-travel` to cancel a
+committed course.
 
 The React hook keys results by host instance/revision, ship, destination, maneuver
 budget and explicit retry. Old overlays and confirmation eligibility disappear
@@ -88,9 +100,9 @@ ship motion, advances time or sends a command from its camera/render loop.
 ## Verification
 
 `scripts/Verify.ps1` covers the headless search, exact selected-route commit,
-and moon-course checkpoint reload alongside the existing suite. The browser
-scenario exercises Jupiter and the Moon, default and alternate route selection,
-2D/3D review, portrait layout, and exact order confirmation.
+and finite-course checkpoint reload. The browser scenario exercises an
+infeasible Jupiter route, unsupported Earth capture, default and alternate Earth
+approach options, 2D/3D review, portrait layout, and exact order confirmation.
 
 Run the browser scenario against an isolated same-origin host serving the built
 client. Set a disposable persistence data root before starting the host, and
@@ -103,6 +115,6 @@ npx --yes --package @playwright/cli@0.1.23 playwright-cli -s=quasar-course run-c
 npx --yes --package @playwright/cli@0.1.23 playwright-cli -s=quasar-course close
 ```
 
-The scenario commits a Moon course. Use a fresh disposable campaign for each
+The scenario commits an Earth approach. Use a fresh disposable campaign for each
 run. See [mobile validation](MOBILE_AND_REMOTE_ACCESS.md) for hosted portrait
 checks and physical-device coverage.

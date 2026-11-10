@@ -16,11 +16,10 @@ coordinates by 1/1,000,000 and draw illustrative reference circles and enlarged
 symbols. React shares selection, inspection, orders, and event history across
 views. Rendering and camera controls operate on snapshots.
 
-Pathfinder starts coasting under stellar gravity. The planner searches Lambert
-transfers from the current state to a selected planet or moon and can evaluate
-single-planet flybys in the Solar System. A committed plan applies impulsive
-departure and arrival changes with analytical coasting in
-between. Arrival interrupts at the exact event tick, records an event, and
+Pathfinder starts coasting under stellar gravity. Automatic planning refines
+Lambert transfers to the requested arrival condition with a finite departure
+burn, analytical coast, and finite braking burn. Arrival interrupts at the
+exact event tick, records an event, and
 discards the unused advance time. Cancelling a committed course retains position
 and velocity and starts an unforced coast. The reusable
 [celestial service](CELESTIAL_MECHANICS.md) and
@@ -33,10 +32,10 @@ exact reviewed plan while the host instance and revision match. Previewing or
 cancelling a preview preserves the simulation and any existing course. Both
 views draw the same sampled preview or committed path. Departure and arrival
 markers use the planned positions.
-Route fuel estimates remain unavailable for these impulsive plans. The
-[finite engine burn](SOLAR_SYSTEM.md#pathfinder-propulsion) spends propellant
-and is mutually exclusive with a committed course. The snapshot and course
-preview report `arrivalKind: "body-center"` for those orders.
+Automatic courses spend propellant while burning. A manual
+[engine burn](SOLAR_SYSTEM.md#pathfinder-propulsion) requires a free coast.
+Legacy impulsive test orders report `arrivalKind: "body-center"` and leave
+propellant unchanged.
 
 ## Clock and execution
 
@@ -51,7 +50,7 @@ limit. Locking the phone, closing the tab, or losing the browser connection
 does not stop the host. The visible client polls every 500 ms and refreshes on
 return. Any connected browser can inspect or Stop the shared run.
 
-Arrivals, gravity assists, automatic coast primary changes, and burn completion
+Arrivals, legacy gravity assists, automatic coast primary changes, and course burn boundaries
 pause at the event tick. The host includes the triggering event in
 `interrupt` so the clock can display its time and message, including after a
 reconnect or reload. The notice clears on Play or campaign replacement. The
@@ -68,7 +67,7 @@ the camera.
 | --- | --- |
 | `GET /api/health` | Readiness and the `system-lab` stage |
 | `GET /api/lab` | Instance/revision, run controls, latest run interrupt, objects and velocities, ship status, events, and any committed trajectory |
-| `GET /api/lab/course-preview?mode=auto&destinationId=…` | Search a stopped-world departure for the fastest and lowest maneuver-cost routes and return revision-bound previews |
+| `GET /api/lab/course-preview?mode=auto&destinationId=…&arrivalKind=…` | Search a stopped-world departure for executable courses to an approach or orbit and return revision-bound previews or infeasibility reasons |
 | `GET /api/lab/course-preview?destinationId=…&flightSeconds=…` | Solve a single fixed-duration course for existing callers |
 | `GET /api/lab/trajectory-preview?destinationId=…&flightSeconds=…` | Compatibility query for an advisory trajectory without a confirmation ID |
 | `GET /api/lab/celestial/{bodyId}/state?atTicks=…` | Read celestial state at a signed Int64 timestamp |
@@ -85,9 +84,9 @@ not apply to independent orbit and station targets.
 Commands take JSON `{instanceId, revision, clientId, operation}` plus operation
 arguments. The current UI uses `configure` with `durationSeconds` and `mode`
 (`once` or `continuous`), `play`, `stop`, `commit-course` with `previewId`,
-and `cancel-travel`. The compatible direct `travel` operation accepts
-`destinationId` and optional `flightSeconds`, defaulting to 21,600. The UI
-requires course review before issuing an order. While paused, use `start-burn`
+and `cancel-travel`. The legacy direct `travel` operation accepts `destinationId`
+and optional `flightSeconds`, defaulting to 21,600, for ships without modeled
+propulsion. Equipped ships require an automatic course preview. While paused, use `start-burn`
 with `burnDirection` (`prograde` or `retrograde`) and `burnSeconds` (1–3,600),
 or `cut-thrust` with no extra arguments. `world.ship.burnEndTicks` is the
 scheduled cutoff as a decimal tick string during an active burn.

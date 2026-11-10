@@ -18,7 +18,8 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   `History` entries. `SimulationState` contains `FormatVersion`,
   `ElapsedTicks`, `Bodies`, and `Spacecraft`. The nested
   `Simulation.FormatVersion` versions the entire checkpoint. The current version
-  is `SimulationState.CurrentFormatVersion` (5). Version 5 records automatic
+  is `SimulationState.CurrentFormatVersion` (6). Version 6 adds finite courses.
+  Version 5 records automatic
   primary selection on eligible free coasts. Older free coasts keep their
   stored primary until a new coast is created by cancellation or burn cutoff.
   Version 4 added an optional active finite burn. Version 3 stores optional propulsion and current propellant.
@@ -28,7 +29,7 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   reference state and epoch, and orbital elements and epoch. `SpacecraftState`
   carries the ship ID, gravity primary (last primary while in rendezvous), and
   exactly one of `CoastState`, `CommittedTrajectoryState`, `RendezvousState`,
-  or `ActiveBurnState`.
+  `ActiveBurnState`, or `FiniteCourseState`.
 - A coast stores its epoch and initial primary-relative position and velocity.
   A committed plan stores its departure state, target, ordered conic segments,
   impulses, fuel estimate, and zero-based `NextBoundaryIndex`. The segment
@@ -40,6 +41,14 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   ship also stores the quantity remaining at the checkpoint clock. Restore
   reconstructs the powered segment from ignition, verifies the current quantity
   and active interval, and schedules the cutoff or exhaustion event once.
+- A finite course stores both burn vectors and durations, its exact departure
+  state and ignition equipment/fuel, the gravity primary, and requested
+  arrival state. Restore rebuilds the burns and analytical coast, checks the
+  endpoint and current propellant, and schedules the next boundary from the
+  clock. Completed finite courses store a free coast at the achieved state.
+  History distinguishes a completed approach, an orbital insertion, and a
+  legacy body-center arrival. Older v6 histories used one kind for both finite
+  outcomes. Restore resolves those from the original generated event text.
 - Export is a detached immutable capture. Bodies and ships are exported in
   ordinal ID order. History, segments, and burns retain their execution order.
   Use the same single-writer synchronization as for world commands. Encoding can
@@ -47,7 +56,8 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
 - Use `SimulationStateJson` for UTF-8 JSON. Fields use camel case, every signed
   64-bit field uses an invariant decimal string (including ticks and event
   sequence), and celestial kinds use camel-case enum names. Nullable fields
-  are generally present with JSON null when unused. Absent propulsion and active burns are omitted. The decoder rejects missing,
+  are generally present with JSON null when unused. Absent propulsion, active
+  burns, and finite courses are omitted. The decoder rejects missing,
   unknown, or duplicate fields, invalid tick strings, and unsupported versions.
   It checks the format and shape. The restore factory checks the relationships
   and physics. Malformed payloads and invalid state throw `InvalidDataException`.

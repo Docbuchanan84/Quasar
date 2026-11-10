@@ -5,6 +5,18 @@ export type Trajectory = {
   travelSeconds: number
   requiredDeltaVKmPerSecond: number
   fuel: { propellantMassKg: number | null; unavailableReason: string | null }
+  arrivalKind?: string | null
+  arrival?: {
+    kind: 'approach' | 'orbit'
+    targetRadiusKm: number
+    primaryBodyId: string
+    positionErrorKm: number
+    velocityErrorKmPerSecond: number
+  } | null
+  burnSchedule?: { phase: string; startTicks: string; durationSeconds: number; propellantKg: number }[] | null
+  brakingMarginKg?: number | null
+  brakingMarginPercent?: number
+  criticalBrakingReserve?: boolean
   flyby?: { bodyId: string; bodyName: string; atTicks: string; closestApproachKm: number } | null
   points: {
     atTicks: string
@@ -37,6 +49,7 @@ type LabEvent = {
   kind: string
   objectId: string
   message: string
+  arrivalLabel?: string
 }
 
 export type Snapshot = {
@@ -91,6 +104,7 @@ export type CoursePreview = {
 export type AutomaticCoursePreview = {
   fastest: CoursePreview | null
   lowestManeuverCost: CoursePreview | null
+  infeasibleReasons: string[]
 }
 
 export type CourseLayer = {

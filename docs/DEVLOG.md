@@ -1,5 +1,38 @@
 # Development log
 
+## 2026-11-10 — Propulsion-aware automatic courses
+
+- [Issue #28](https://github.com/Docbuchanan84/Quasar/issues/28) makes automatic
+  course confirmation depend on the installed engine, current mass and fuel,
+  and forward verification of the requested arrival state.
+- The course panel shows departure and braking burns, propellant cost and
+  reserve, and arrival conditions. The bounded search supports direct
+  approaches and same-primary Earth or Moon orbit presets.
+- Finite courses interrupt at burn boundaries and coast from the state
+  achieved at final cutoff. Checkpoint v6 restores the same active course and
+  remaining propellant across departure, coast, and braking.
+- `scripts/Verify.ps1` passed 236 xUnit tests and 11 Node checks. The focused
+  planner, confirmation, and HTTP restart run passed 19 cases. Disposable
+  Chromium covered feasibility, exact selected-route confirmation, desktop
+  2D/3D review, and a 393 px portrait viewport. All seven disposable campaign
+  browser phases passed. The next phone check is a
+  complete approach from preview to final cutoff on the physical device.
+- The merge review added coverage for JSON restore and cancellation at burn
+  boundaries, executed orbital insertion, Continuous interrupts, and the search
+  evaluation ceiling. `scripts/Verify.ps1` passed 244 xUnit tests and 11 Node
+  checks. The review found two remaining issues in PR #34. Legacy orders can
+  bypass fuel accounting in a propulsion-equipped campaign, and one-second
+  powered samples can miss a brief gravity boundary crossing.
+- The follow-up closes both order paths for equipped ships and verifies powered
+  clearance between samples. The fastest stock Earth approach displays its
+  10.141 kg reserve and a warning below 1% of departure propellant. Approach,
+  orbital insertion, and legacy arrival have distinct clock and history labels.
+- `scripts/Verify.ps1` passed 250 xUnit tests and 11 Node checks. Chromium passed
+  the course flow on desktop and at 393 px and all seven legacy campaign phases
+  with a checkpoint written by the pre-fix server. On the same workstation,
+  warm Earth preview p95 fell from 21.2 to 14.4 ms and the 3 kN fixture from
+  260.9 to 45.8 ms. These are fixture measurements.
+
 ## 2026-11-10 — Automatic SOI crossing audit
 
 - Integrated host-owned Continuous play from PR #32. An automatic primary

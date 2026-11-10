@@ -321,15 +321,20 @@ async (page) => {
   const priorShipX = await page.evaluate(
     () => globalThis.testScene.getMeshByName('ship-pathfinder').position.x,
   )
-  await page.getByRole('button', { name: 'Plot Course', exact: true }).click()
-  await page.getByLabel('Course destination').selectOption('planet-nereid')
-  await page.waitForFunction(
-    () =>
-      ![...document.querySelectorAll('button')].find(
-        (b) => b.textContent === 'Issue Order',
-      )?.disabled,
-  )
-  await page.getByRole('button', { name: 'Issue Order', exact: true }).click()
+  // The Helios fixture has no modeled propulsion. Use a legacy test transfer.
+  const ordered = await page.evaluate(async () => {
+    const response = await fetch('/api/lab/course-preview?destinationId=planet-nereid&flightSeconds=21600')
+    if (!response.ok) return false
+    const { instanceId, revision, previewId } = await response.json()
+    const order = await fetch('/api/lab/commands', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instanceId, revision, previewId, clientId: crypto.randomUUID(), operation: 'commit-course' }),
+    })
+    return order.ok
+  })
+  check(ordered, 'Legacy map fixture course committed')
+  await page.getByRole('button', { name: 'Cancel committed course', exact: true }).waitFor()
   await page
     .getByRole('combobox', { name: 'Advance interval' })
     .selectOption('3600')

@@ -40,7 +40,7 @@ async function campaignBrowserScenario(page) {
     const solar = world.objects.some((body) => body.id === 'star-sun')
     if (solar) {
       await page.getByText('Advanced', { exact: true }).click()
-      await page.getByLabel('Test maneuver budget').press('End')
+      await page.getByLabel('Additional delta-v limit').press('End')
     }
     const destination = solar ? 'planet-earth' : 'planet-iris'
     await page.getByLabel('Course destination').selectOption(destination)
@@ -146,11 +146,11 @@ async function campaignBrowserScenario(page) {
     await click('Close')
     await click('Plot Course')
     await selectTestCourse()
-    await show(text('PREVIEW · NOT ORDERED'))
+    await show(page.getByRole('region', { name: 'Course plotting' }))
     await click('Load Game')
     await load('Continue')
     await show(text('Campaign loaded. Time is paused.'))
-    await hide(text('PREVIEW · NOT ORDERED'))
+    await hide(page.getByRole('region', { name: 'Course plotting' }))
     await show(clock('03:00:00'))
     await show(button('▶ Play'))
     await show(page.getByText(/^Destination: (Earth|Iris)/))
@@ -193,11 +193,13 @@ async function campaignBrowserScenario(page) {
     await click('▶ Play')
     await show(clock('06:00:00'))
     await show(page.locator('.event-kind.arrival'))
+    await show(page.locator('.clock').getByText('Legacy body-center arrival', { exact: true }))
     await show(page.getByText(/Body-center arrival\. Pathfinder applied/).first())
     await save('Arrival')
     await click('Load Game')
     await load('Load Arrival #4')
     await show(page.locator('.event-kind.arrival'))
+    await show(page.locator('.clock').getByText('Legacy body-center arrival', { exact: true }))
     await show(clock('06:00:00'))
     await save('Corrupt test checkpoint')
   } else if (phase === 'recover') {

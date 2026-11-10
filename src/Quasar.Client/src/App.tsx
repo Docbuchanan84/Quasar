@@ -233,7 +233,7 @@ function App() {
           </div>
           <p className="course-legend">
             <span>━━ Committed</span> · <span>┄┄ Preview</span> · □ Departure ·
-            ◇ Body-center arrival / future destination
+            ◇ Course endpoint / future destination
           </p>
           <p className="map-note">
             Symbols enlarged for readability · {world.referenceEpoch ? `Orbital epoch ${world.referenceEpoch}` : 'Legacy reference guides'}
@@ -294,7 +294,7 @@ function App() {
                 {selected.kind === 'spacecraft' ? (
                   <>
                     <div className="ship-state">
-                      <strong>{world.ship.status === 'Arrived' ? 'Body-center arrival' : world.ship.status}</strong>
+                      <strong>{world.ship.status === 'Arrived' ? 'Legacy body-center arrival' : world.ship.status}</strong>
                       <p>
                         Speed: {world.ship.speedKmPerSecond.toFixed(3)} km/s
                       </p>
@@ -316,7 +316,9 @@ function App() {
                             )}{' '}
                             km
                           </p>
-                          <p>Body-center arrival: {formatTime(world.ship.arrivalTicks!)}</p>
+                          <p>{world.trajectory?.arrivalKind === 'body-center' ? 'Legacy body-center arrival'
+                            : world.trajectory?.arrivalKind === 'orbit' ? 'Planned orbital insertion' : 'Planned approach'}{' '}
+                            {formatTime(world.ship.arrivalTicks!)}</p>
                         </>
                       )}
                     </div>
@@ -382,6 +384,7 @@ function App() {
                         setPlotting({
                           shipId: selected.id,
                           destinationId: '',
+                          arrivalKind: 'approach',
                           maneuverBudget: world.referenceEpoch ? 25 : undefined,
                         })
                       }
@@ -439,7 +442,7 @@ function App() {
             .map((event) => (
               <li key={event.sequence}>
                 <time>{formatTime(event.atTicks)}</time>
-                <span className={`event-kind ${event.kind}`}>{event.kind === 'arrival' ? 'Body-center arrival' : event.kind}</span>
+                <span className={`event-kind ${event.kind}`}>{event.arrivalLabel ?? (event.kind === 'arrival' ? 'Legacy body-center arrival' : event.kind)}</span>
                 <span>{event.message}</span>
               </li>
             ))}

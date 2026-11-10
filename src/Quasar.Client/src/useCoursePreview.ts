@@ -4,6 +4,7 @@ import type { AutomaticCoursePreview, Snapshot } from './lab'
 export type PlotInputs = {
   shipId: string
   destinationId: string
+  arrivalKind: 'approach' | 'orbit'
   maneuverBudget?: number
 }
 
@@ -29,7 +30,8 @@ export function useCoursePreview(
     [ready, instanceId, revision, inputs, attempt],
   )
   const destinationId = inputs?.destinationId,
-    shipId = inputs?.shipId
+    shipId = inputs?.shipId,
+    arrivalKind = inputs?.arrivalKind
   useEffect(() => {
     if (!key) return
     const controller = new AbortController()
@@ -40,6 +42,7 @@ export function useCoursePreview(
             `/api/lab/course-preview?${new URLSearchParams({
               destinationId: destinationId!,
               mode: 'auto',
+              arrivalKind: arrivalKind!,
               ...(maneuverBudget === undefined ? {} : { maneuverBudget: String(maneuverBudget) }),
             })}`,
             {
@@ -83,7 +86,7 @@ export function useCoursePreview(
       clearTimeout(timer)
       controller.abort()
     }
-  }, [key, destinationId, instanceId, revision, shipId, maneuverBudget])
+  }, [key, destinationId, instanceId, revision, shipId, maneuverBudget, arrivalKind])
   const current = result?.key === key ? result : null
   return {
     routes: current?.routes ?? null,

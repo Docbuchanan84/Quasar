@@ -7,9 +7,9 @@ namespace Quasar.Simulation;
 public sealed record SimulationState(int FormatVersion, long ElapsedTicks,
     ImmutableArray<CelestialBodyState> Bodies, ImmutableArray<SpacecraftState> Spacecraft)
 {
-    public const int CurrentFormatVersion = 5;
+    public const int CurrentFormatVersion = 6;
 
-    public static bool SupportsFormatVersion(int version) => version is 1 or 2 or 3 or 4 or CurrentFormatVersion;
+    public static bool SupportsFormatVersion(int version) => version is >= 1 and <= CurrentFormatVersion;
 
     internal void RequireSupportedVersion()
     {
@@ -21,6 +21,8 @@ public sealed record SimulationState(int FormatVersion, long ElapsedTicks,
             throw new InvalidDataException("Active burns require simulation state version 4.");
         if (FormatVersion < 5 && !Spacecraft.IsDefault && Spacecraft.Any(ship => ship?.FreeCoast?.AutomaticPrimary == true))
             throw new InvalidDataException("Automatic gravity transitions require simulation state version 5.");
+        if (FormatVersion < 6 && !Spacecraft.IsDefault && Spacecraft.Any(ship => ship?.FiniteCourse is not null))
+            throw new InvalidDataException("Finite courses require simulation state version 6.");
     }
 }
 
@@ -40,7 +42,13 @@ public sealed record SpacecraftState(string Id, string PrimaryBodyId, CoastState
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     SpacecraftPropulsion? Propulsion = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    ActiveBurnState? ActiveBurn = null);
+    ActiveBurnState? ActiveBurn = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    FiniteCourseState? FiniteCourse = null);
+public sealed record FiniteCourseState(string PrimaryBodyId, string TargetId, string ArrivalKind,
+    long DepartureTicks, long ArrivalTicks, KinematicState InitialState, KinematicState TargetLocalState,
+    SpacecraftPropulsion Propulsion, CartesianState DepartureDirection, long DepartureDurationTicks,
+    CartesianState BrakingDirection, long BrakingDurationTicks);
 public sealed record ActiveBurnState(long StartTicks, int DurationSeconds, KinematicState InitialRelativeState,
     CartesianState UnitDirection, double IgnitionPropellantKg);
 public sealed record CoastState(long EpochTicks, KinematicState InitialRelativeState,

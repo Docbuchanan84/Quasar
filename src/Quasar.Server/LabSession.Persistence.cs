@@ -75,10 +75,11 @@ public sealed partial class LabSession
             instanceId = Guid.NewGuid().ToString();
             revision = 0;
             running = false;
-            stopReason = "Campaign loaded — paused";
+            stopReason = world.LastEvent.ArrivalLabel ?? "Campaign loaded — paused";
             durationSeconds = 3600;
             mode = "once";
-            interrupt = null;
+            interrupt = world.LastEvent.ArrivalLabel is not null && world.LastEvent.AtTicks == world.ElapsedTicks
+                ? world.LastEvent : null;
             previews.Clear();
         }
     }

@@ -15,10 +15,11 @@ the simulation clock. Select Earth and use **Focus Selected** in either map for
 the local view. See the [Solar System guide](docs/SOLAR_SYSTEM.md).
 
 1. Select Pathfinder in either map or the object list. Stop time processing before plotting.
-2. Choose **Plot Course** and select a planet or moon. Quasar calculates the
-   fastest and lowest-maneuver-cost routes it finds, including eligible single
-   flybys. **Advanced** lets you adjust the Solar System test maneuver budget.
-3. Review the route, travel time, ETA, and delta-v. Select **Issue Order** to
+2. Choose **Plot Course**, select a planet or moon, and choose an arrival
+   condition. Quasar searches for the fastest and lowest-maneuver-cost routes
+   the installed engine and remaining fuel can execute. Start with an Earth
+   approach in a fresh campaign.
+3. Review the route, burn schedule, ETA, propellant, and braking reserve. Select **Issue Order** to
    commit that course. **Cancel preview** keeps the existing movement state.
    Gold dashes show previews and green shows
    committed paths. Both views show departure and future arrival markers.
@@ -31,13 +32,12 @@ Drag or swipe to pan in 2D. In 3D, drag to orbit and use right/middle/Ctrl-drag 
 two fingers to pan. Both views support wheel/pinch zoom and **Reset View**.
 **Focus Selected** tracks the selected object in either view.
 
-C# owns the simulation clock and movement. The lab uses gravitational Lambert
-transfers, impulsive departure/arrival, and analytical coasts. The reusable
+C# owns the simulation clock and movement. Automatic courses refine Lambert
+transfer guesses into finite burns connected by an analytical coast. The reusable
 simulation also supports hierarchical celestial queries and moving targets.
 The browser exposes one ship. Use **Engine burn** on Pathfinder to command a
-prograde or retrograde burn while paused and freely coasting. Timed cutoff or
-propellant exhaustion interrupts time processing. Route fuel estimates remain
-unavailable for impulsive course orders.
+prograde or retrograde burn while paused and freely coasting. Course burn
+boundaries, timed cutoff, and propellant exhaustion interrupt time processing.
 The lab is shared across browsers. The host restores SQLite checkpoints
 and exposes **New Game**, **Save Game**, **Named Save**, and **Load Game**.
 Choose **Continue** inside Load Game to recover the latest readable save.

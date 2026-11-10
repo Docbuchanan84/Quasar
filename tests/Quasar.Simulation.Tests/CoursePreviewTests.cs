@@ -91,12 +91,19 @@ public class CoursePreviewTests
     {
         var session = new LabSession();
         var before = session.Snapshot();
-        var options = session.PreviewAutomaticCourse("planet-jupiter", 25, CancellationToken.None);
+        var options = session.PreviewAutomaticCourse("planet-earth", 25, CancellationToken.None);
         var fastest = Assert.IsType<CoursePreview>(options.Fastest);
         var lowestCost = Assert.IsType<CoursePreview>(options.LowestManeuverCost);
         Assert.True(fastest.Trajectory.TravelSeconds < lowestCost.Trajectory.TravelSeconds);
         Assert.True(lowestCost.Trajectory.RequiredDeltaVKmPerSecond < fastest.Trajectory.RequiredDeltaVKmPerSecond);
         Assert.InRange(fastest.Trajectory.RequiredDeltaVKmPerSecond, 0, 25);
+        Assert.True(fastest.Trajectory.Fuel.PropellantMassKg > lowestCost.Trajectory.Fuel.PropellantMassKg);
+        Assert.Equal("approach", fastest.Trajectory.Arrival!.Kind);
+        Assert.Equal(10.141, fastest.Trajectory.BrakingMarginKg!.Value, 3);
+        Assert.Equal(0.1014, fastest.Trajectory.BrakingMarginPercent!.Value, 4);
+        Assert.True(fastest.Trajectory.CriticalBrakingReserve);
+        Assert.False(lowestCost.Trajectory.CriticalBrakingReserve);
+        Assert.Equal(2, fastest.Trajectory.BurnSchedule!.Length);
         Assert.Equal(before.Revision, session.Snapshot().Revision);
         Assert.Null(session.Snapshot().World.Trajectory);
 
@@ -108,13 +115,54 @@ public class CoursePreviewTests
     }
 
     [Fact]
-    public void AutomaticSearchCanChooseAGravityAssist()
+    public void AutomaticSearchReportsUnsupportedArrivalWithoutAnOrderToken()
     {
         var session = new LabSession();
-        var options = session.PreviewAutomaticCourse("planet-mercury", 25, CancellationToken.None);
-        var fastest = Assert.IsType<CoursePreview>(options.Fastest);
-        Assert.Equal("planet-venus", fastest.Trajectory.Flyby?.BodyId);
-        Assert.InRange(fastest.Trajectory.RequiredDeltaVKmPerSecond, 0, 25);
+        var options = session.PreviewAutomaticCourse("planet-earth", 25, CancellationToken.None, "orbit");
+        Assert.Null(options.Fastest);
+        Assert.Contains("Cross-primary capture", Assert.Single(options.InfeasibleReasons));
+    }
+
+    [Fact]
+    public void ContinuousStopsExactlyAtEachFiniteBoundaryAndApproachFinishesOutsideEarth()
+    {
+        var session = new LabSession();
+        var initial = session.Snapshot();
+        session.Execute(new(initial.InstanceId, initial.Revision, Client, "configure",
+            DurationSeconds: 2592000, Mode: "continuous"));
+        var preview = Assert.IsType<CoursePreview>(session.PreviewAutomaticCourse(SolarSystem.Earth, null, CancellationToken.None).Fastest);
+        var schedule = preview.Trajectory.BurnSchedule!;
+        Send(session, "commit-course", preview.PreviewId);
+        var departureCutoff = long.Parse(schedule[0].StartTicks) + (long)Math.Round(schedule[0].DurationSeconds * TimeSpan.TicksPerSecond);
+        foreach (var (kind, ticks) in new[]
+        {
+            ("course-departure-cutoff", departureCutoff),
+            ("course-braking-start", long.Parse(schedule[1].StartTicks)),
+            ("course-approach-complete", long.Parse(preview.Trajectory.ArrivalTicks))
+        })
+        {
+            Assert.True(Send(session, "play").Running);
+            session.Tick();
+            var interrupted = session.Snapshot();
+            Assert.False(interrupted.Running);
+            Assert.Equal(kind, interrupted.Interrupt!.Kind);
+            Assert.Equal(ticks, interrupted.Interrupt.AtTicks);
+            Assert.Equal(ticks, interrupted.World.ElapsedTicks);
+            session.Tick();
+            Assert.Equal(interrupted.Revision, session.Snapshot().Revision);
+        }
+
+        var after = session.Snapshot();
+        var spacecraft = after.World.Objects.Single(body => body.Id == SystemLab.ShipId);
+        var earth = after.World.Objects.Single(body => body.Id == SolarSystem.Earth);
+        Assert.Equal(preview.Trajectory.Points[^1].PositionKm, spacecraft.Position);
+        Assert.InRange(spacecraft.Position.DistanceTo(earth.Position), 1_000_000, 1_030_000);
+        Assert.Equal("Coasting", after.World.Ship.Status);
+        Assert.Equal("approach", after.World.Ship.ArrivalKind);
+        Assert.Equal("Velocity-matched approach complete", after.StopReason);
+        Assert.Equal(after.StopReason, after.Interrupt!.ArrivalLabel);
+        Assert.Contains("approach point", after.Interrupt!.Message);
+        Assert.Equal(preview.Trajectory.BrakingMarginKg, after.World.Ship.Propulsion!.AvailablePropellantKg);
     }
 
     [Fact]
@@ -125,6 +173,7 @@ public class CoursePreviewTests
         var result = session.PreviewAutomaticCourse("planet-jupiter", 1, CancellationToken.None);
         Assert.Null(result.Fastest);
         Assert.Null(result.LowestManeuverCost);
+        Assert.Contains(result.InfeasibleReasons, reason => reason.Contains("Insufficient propellant"));
         Assert.Throws<OperationCanceledException>(() =>
             session.PreviewAutomaticCourse("planet-jupiter", 25, new CancellationToken(canceled: true)));
         Assert.Equal(before.Revision, session.Snapshot().Revision);
@@ -162,6 +211,21 @@ public class CoursePreviewTests
             return null;
         }, cancellation.Token));
         Assert.Equal(1, count);
+    }
+
+    [Fact]
+    public void SearchKeepsEvaluationCountBoundedWhenRefiningFeasibleDurations()
+    {
+        var sampled = new HashSet<int>();
+        var plan = SystemLab.CreateLegacyFixture().PreviewTravel("planet-iris");
+        var options = CourseSearch.Find(seconds =>
+        {
+            Assert.True(sampled.Add(seconds));
+            return seconds >= 200_000 ? plan : null;
+        }, CancellationToken.None);
+
+        Assert.NotNull(options);
+        Assert.InRange(sampled.Count, 41, 56);
     }
 
     private static SessionSnapshot Send(LabSession session, string operation, string? previewId = null)

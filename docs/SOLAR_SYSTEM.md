@@ -56,19 +56,11 @@ resumes from the saved clock and tank quantity when you press **Play** again.
 
 ## Pathfinder flight
 
-Select Mercury in **Plot Course** to compare the fastest and lowest
-maneuver-cost routes found within the default 25 km/s test budget. At the
-starting epoch, the search can find routes via Venus. The ship's speed changes
-along each solar coast. At the flyby the two arcs meet at Venus's center in the
-simplified model. The predicted closest approach describes the implied
-hyperbola. The map depicts the two coasts at system scale.
-
-The [course planner](COURSE_PLOTTING.md) checks direct and one-planet routes
-across candidate arrival times, including short and long zero-revolution arcs.
-A flyby needs matching planet-relative excess speeds within 0.001 km/s and a
-predicted closest approach at least 1,000 km above the reference radius. The
-planner uses instantaneous test maneuvers. Finite engine burns are separate
-orders and spend propellant only as simulation time advances.
+Select Earth in **Plot Course** to compare the fastest and lowest-maneuver-cost
+approaches available to Pathfinder at the starting epoch. Review the propellant
+cost and reserve before confirming. The [course planner](COURSE_PLOTTING.md)
+reports when Pathfinder's installed engine and fuel cannot execute a candidate.
+Older impulsive courses may include a simplified single-planet flyby.
 
 Checkpoint format 2 stores body radii and the optional flyby encounter.
 Version 1 checkpoints retain their original catalogue and courses when loaded.

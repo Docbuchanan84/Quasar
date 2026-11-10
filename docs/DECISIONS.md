@@ -1,5 +1,12 @@
 # Quasar decision record
 
+## Approved — propulsion-aware course planning scope (issue #28)
+
+Automatic course confirmation requires an executable finite departure and
+braking schedule for the installed engine and current propellant. This slice
+uses a bounded, single-primary search for approaches and existing orbit presets.
+See the [implemented model](SPACECRAFT_TRAJECTORIES.md#propulsion-aware-courses).
+
 ## Approved — orbital navigation task scope (issue #27)
 
 The initial navigation slice exposes target states and clarifies body-center

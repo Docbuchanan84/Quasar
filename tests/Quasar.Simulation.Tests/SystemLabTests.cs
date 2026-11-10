@@ -260,7 +260,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
         var stopped = session.Snapshot();
         Assert.False(stopped.Running);
         Assert.Equal(arrival, stopped.World.ElapsedTicks);
-        Assert.Contains("Arrival", stopped.StopReason);
+        Assert.Equal("Legacy body-center arrival", stopped.StopReason);
         Assert.Equal(Assert.Single(stopped.World.Events, e => e.Kind == "arrival"), stopped.Interrupt);
         Assert.Equal(stopped.StopReason, Send(session, "stop").StopReason);
         session.Tick();
