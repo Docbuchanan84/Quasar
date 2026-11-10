@@ -1,5 +1,16 @@
 # Development log
 
+## 2026-11-10 — Finite-thrust calculation started
+
+- The first [issue #26](https://github.com/Docbuchanan84/Quasar/issues/26)
+  slice computes a full-thrust segment under central gravity using Pathfinder's
+  installed propulsion and decreasing mass. RK4 uses one-second steps anchored
+  to ignition, with a partial final step through physical depletion.
+- Headless tests cover the vacuum rocket-equation limit, gravity, timed
+  propellant use, deterministic queries, and empty-tank rejection. The next
+  slice will connect the segment to the movement clock and rebuild burn-end
+  events on restore, addressing the missed boundary identified in PR #19.
+
 ## 2026-11-10 — Pathfinder propulsion foundation
 
 - [Issue #25](https://github.com/Docbuchanan84/Quasar/issues/25) gives new
