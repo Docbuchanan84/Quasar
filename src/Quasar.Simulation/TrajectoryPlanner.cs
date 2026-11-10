@@ -59,29 +59,33 @@ public sealed class TrajectoryPlan
 {
     internal TrajectoryPlan(CelestialPositionService catalogue, CelestialState initial,
         TrajectoryDestination destination, TrajectorySegment[] segments, TrajectoryBurn[] burns,
-        TransferFuelEstimate fuel, FlybyEncounter? flyby = null)
+        TransferFuelEstimate fuel, FlybyEncounter? flyby = null, FiniteCourse? finite = null)
     {
         Catalogue = catalogue; InitialState = initial; Destination = destination;
         Segments = Array.AsReadOnly(segments); Burns = Array.AsReadOnly(burns); Fuel = fuel;
         Flyby = flyby;
+        Finite = finite;
         RequiredDeltaVKmPerSecond = burns.Where(b => flyby is null || b.Phase != "patch").Sum(b => b.DeltaVKmPerSecond);
     }
     internal CelestialPositionService Catalogue { get; }
     public CelestialState InitialState { get; }
     public TrajectoryDestination Destination { get; }
+    public string? TargetBodyId => Finite?.State.TargetId ?? Destination.BodyId;
     public ReadOnlyCollection<TrajectorySegment> Segments { get; }
     public ReadOnlyCollection<TrajectoryBurn> Burns { get; }
     public TransferFuelEstimate Fuel { get; }
     public FlybyEncounter? Flyby { get; }
-    public long DepartureTicks => Segments[0].StartTicks;
-    public long ArrivalTicks => Segments[^1].EndTicks;
+    internal FiniteCourse? Finite { get; }
+    public long DepartureTicks => Finite?.Departure.StartTicks ?? Segments[0].StartTicks;
+    public long ArrivalTicks => Finite?.Braking.EndTicks ?? Segments[^1].EndTicks;
     public double TravelSeconds => (double)(((decimal)ArrivalTicks - DepartureTicks) / TimeSpan.TicksPerSecond);
     public double RequiredDeltaVKmPerSecond { get; }
 
-    /// <summary>Right-continuous at impulses: departure/patch velocity is post-burn; arrival matches the target.</summary>
+    /// <summary>Finite courses return integrated states. Legacy impulses are right-continuous.</summary>
     public CelestialState StateAt(long atTicks)
     {
         if (atTicks < DepartureTicks || atTicks > ArrivalTicks) throw new ArgumentOutOfRangeException(nameof(atTicks));
+        if (Finite is { } finite) return finite.StateAt(atTicks);
         if (atTicks == ArrivalTicks) return Destination.StateAt(Catalogue, atTicks);
         var low = 0; var high = Segments.Count - 1;
         while (low < high)
@@ -97,6 +101,7 @@ public sealed class TrajectoryPlan
         if (pointCount is < 2 or > 1025) throw new ArgumentOutOfRangeException(nameof(pointCount), "Choose 2 to 1025 samples.");
         // Always include patch epochs even when uniform samples miss them.
         var ticks = new SortedSet<long>(Segments.Select(s => s.StartTicks)) { ArrivalTicks };
+        if (Finite is { } finite) ticks.Add(finite.Braking.StartTicks);
         for (var i = 0; i < pointCount; i++)
             ticks.Add(DepartureTicks + (long)(((decimal)ArrivalTicks - DepartureTicks) * i / (pointCount - 1)));
         return ticks.Select(t => new TrajectoryPoint(t, StateAt(t))).ToArray();

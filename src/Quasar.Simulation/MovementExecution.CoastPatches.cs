@@ -10,6 +10,40 @@ public sealed partial class MovementExecution
 
     internal string PrimaryOf(string id) => spacecraft[id].Primary;
 
+    internal bool CourseCrossesPrimaryBoundary(FiniteCourse course, CancellationToken cancellationToken)
+    {
+        var primary = course.Coast.PrimaryBodyId;
+        var coast = course.Coast.Coast;
+        var minimumRadius = Math.Max(1, catalogue.Bodies[primary].RadiusKm);
+        var parentSphere = catalogue.GetEnvironment(primary).SphereOfInfluenceRadiusKm;
+        var children = catalogue.Bodies.Values.Where(body => body.ParentId == primary && body.Orbit is not null
+                && body.GravitationalParameterKm3PerSecond2 > 0)
+            .Select(body => (body.Id, Sphere: catalogue.GetEnvironment(body.Id).SphereOfInfluenceRadiusKm))
+            .Where(body => body.Sphere is > 0).ToArray();
+        var outsideModel = false;
+        course.Departure.InspectPath(Inspect);
+        course.Braking.InspectPath(Inspect);
+        if (outsideModel) return true;
+
+        for (var from = course.Coast.StartTicks; from < course.Coast.EndTicks;)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var through = from + Math.Min(SearchWindow, course.Coast.EndTicks - from);
+            if (FindCoastPatch(coast, primary, from, through, cancellationToken) is not null) return true;
+            from = through;
+        }
+        return false;
+
+        void Inspect(long ticks, Position3 position)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (outsideModel) return;
+            var radius = Vector3d.From(position).Length;
+            outsideModel = radius <= minimumRadius || radius >= parentSphere
+                || children.Any(child => position.DistanceTo(catalogue.OrbitalOffsetAt(child.Id, ticks).Position) <= child.Sphere);
+        }
+    }
+
     public OrbitalTargetState ResolveSpacecraftTarget(string id, long atTicks)
     {
         if (!spacecraft.TryGetValue(id, out var ship))
@@ -45,10 +79,12 @@ public sealed partial class MovementExecution
         return (primary, OrbitalNavigation.ToSystem(catalogue, primary, atTicks, coast.StateAt(atTicks)));
     }
 
-    private CoastPatch? FindCoastPatch(TwoBodyTrajectory coast, string primary, long from, long through)
+    private CoastPatch? FindCoastPatch(TwoBodyTrajectory coast, string primary, long from, long through,
+        CancellationToken? courseCancellation = null)
     {
         if (through < from) return null;
         CoastPatch? chosen = null;
+        var samples = 0;
         foreach (var boundary in SphereBoundaries(coast, primary))
         {
             // Exit precedes ordered child IDs, so only an earlier tick can replace the winner.
@@ -74,6 +110,8 @@ public sealed partial class MovementExecution
                 }
                 var crossing = FirstOnSide(cursor, left, limit, right, boundary.IsExit);
                 if (crossing is null) break;
+                if (courseCancellation.HasValue)
+                    return new(crossing.Value, boundary.NextPrimary, coast);
                 var system = OrbitalNavigation.ToSystem(catalogue, primary, crossing.Value, coast.StateAt(crossing.Value));
                 var local = OrbitalNavigation.ToLocal(catalogue, boundary.NextPrimary, crossing.Value, system);
                 try
@@ -93,6 +131,11 @@ public sealed partial class MovementExecution
 
             CoastSample SampleAt(long ticks)
             {
+                if (courseCancellation is { } token)
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (++samples > 8192) throw new InvalidOperationException("Course gravity-boundary check exceeded its work limit.");
+                }
                 var local = coast.StateAt(ticks);
                 var position = Vector3d.From(local.PositionKm);
                 return new(local, boundary.IsExit ? position : position - catalogue.OrbitalOffsetAt(boundary.BodyId, ticks));

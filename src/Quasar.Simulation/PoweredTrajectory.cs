@@ -14,6 +14,10 @@ internal sealed class PoweredTrajectory
 
     public PoweredTrajectory(CelestialState initial, Velocity3 unitDirection, double mu,
         SpacecraftPropulsion propulsion, long startTicks, int durationSeconds)
+        : this(initial, unitDirection, mu, propulsion, startTicks, (long)durationSeconds * TimeSpan.TicksPerSecond) { }
+
+    internal PoweredTrajectory(CelestialState initial, Velocity3 unitDirection, double mu,
+        SpacecraftPropulsion propulsion, long startTicks, long durationTicks)
     {
         initial.RequireFinite();
         direction = Vector3d.From(unitDirection);
@@ -21,8 +25,8 @@ internal sealed class PoweredTrajectory
             throw new ArgumentException("Burn direction must be a finite unit vector.", nameof(unitDirection));
         if (!double.IsFinite(mu) || mu <= 0)
             throw new ArgumentOutOfRangeException(nameof(mu));
-        if (durationSeconds is < 1 or > MaximumDurationSeconds)
-            throw new ArgumentOutOfRangeException(nameof(durationSeconds));
+        if (durationTicks is < 1 or > MaximumDurationSeconds * TimeSpan.TicksPerSecond)
+            throw new ArgumentOutOfRangeException(nameof(durationTicks));
 
         performance = propulsion.CalculatePerformance();
         if (performance.AvailablePropellantKg == 0)
@@ -32,11 +36,13 @@ internal sealed class PoweredTrajectory
         this.mu = mu;
         thrust = propulsion.Engine.ThrustN;
         StartTicks = startTicks;
+        var durationSeconds = durationTicks / (double)TimeSpan.TicksPerSecond;
         var fuelSeconds = performance.AvailablePropellantKg / performance.RatedMassFlowKgPerSecond;
         ExhaustsPropellant = fuelSeconds <= durationSeconds;
         poweredSeconds = Math.Min(durationSeconds, fuelSeconds);
         // Round the event up to a simulation tick. Integrate thrust only through physical depletion.
-        EndTicks = checked(StartTicks + Math.Max(1L, (long)Math.Ceiling(poweredSeconds * TimeSpan.TicksPerSecond)));
+        EndTicks = checked(StartTicks + (ExhaustsPropellant
+            ? Math.Max(1L, (long)Math.Ceiling(poweredSeconds * TimeSpan.TicksPerSecond)) : durationTicks));
     }
 
     public long StartTicks { get; }
@@ -51,15 +57,24 @@ internal sealed class PoweredTrajectory
             : Math.Max(0, performance.AvailablePropellantKg - seconds * performance.RatedMassFlowKgPerSecond);
     }
 
-    public CelestialState StateAt(long atTicks)
+    public CelestialState StateAt(long atTicks) => Integrate(initial, 0, SecondsAt(atTicks));
+
+    internal CelestialState InitialStateFor(CelestialState end) => Integrate(end, poweredSeconds, 0);
+
+    internal void InspectPath(Action<long, Position3> inspect) =>
+        Integrate(initial, 0, poweredSeconds, (time, position) => inspect(StartTicks + (long)Math.Round(time * TimeSpan.TicksPerSecond), position));
+
+    private CelestialState Integrate(CelestialState state, double from, double to, Action<double, Position3>? inspect = null)
     {
-        var seconds = SecondsAt(atTicks);
-        var r = Vector3d.From(initial.PositionKm);
-        var v = Vector3d.From(initial.VelocityKmPerSecond);
+        var r = Vector3d.From(state.PositionKm);
+        var v = Vector3d.From(state.VelocityKmPerSecond);
+        inspect?.Invoke(from, r.Position);
+        var directionOfTime = Math.Sign(to - from);
         // Anchor every substep to ignition so queries and caller advance partitions agree.
-        for (double time = 0; time < seconds;)
+        for (var time = from; time != to;)
         {
-            var step = Math.Min(StepSeconds, seconds - time);
+            var next = Math.Abs(to - time) <= StepSeconds ? to : time + directionOfTime * StepSeconds;
+            var step = next - time;
             var half = step / 2;
             var a1 = Acceleration(r, time);
             var v2 = v + a1 * half;
@@ -70,12 +85,13 @@ internal sealed class PoweredTrajectory
             var a4 = Acceleration(r + v3 * step, time + step);
             r += (v + v2 * 2 + v3 * 2 + v4) * (step / 6);
             v += (a1 + a2 * 2 + a3 * 2 + a4) * (step / 6);
-            time += step;
+            time = next;
+            inspect?.Invoke(time, r.Position);
         }
 
-        var state = new CelestialState(r.Position, v.Velocity);
-        state.RequireFinite();
-        return state;
+        var result = new CelestialState(r.Position, v.Velocity);
+        result.RequireFinite();
+        return result;
     }
 
     private double SecondsAt(long atTicks)

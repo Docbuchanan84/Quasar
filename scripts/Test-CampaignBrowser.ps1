@@ -78,7 +78,12 @@ function ConvertTo-ComparableWorld($World) {
     $json = $World | ConvertTo-Json -Depth 30 -Compress | ConvertFrom-Json -AsHashtable
     # Orbital navigation adds presentation metadata to the existing trajectory.
     $null = $json.ship.Remove('arrivalKind')
-    if ($json.trajectory) { $null = $json.trajectory.Remove('arrivalKind') }
+    if ($json.trajectory) {
+        $null = $json.trajectory.Remove('arrivalKind')
+        foreach ($field in 'arrival', 'burnSchedule', 'brakingMarginKg') {
+            if ($null -eq $json.trajectory[$field]) { $null = $json.trajectory.Remove($field) }
+        }
+    }
     if (!$json.referenceEpoch) {
         $json.Remove('referenceEpoch')
         foreach ($body in $json.objects) {

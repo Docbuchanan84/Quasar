@@ -22,7 +22,7 @@ public sealed class CampaignHttpTests : IDisposable
     [InlineData("midflight")]
     [InlineData("arrived")]
     [InlineData("cancelled")]
-    [InlineData("moon")]
+    [InlineData("powered")]
     public async Task RestartAndContinueRestoreExactMovementAndHistory(string scenario)
     {
         Guid campaignId;
@@ -36,8 +36,8 @@ public sealed class CampaignHttpTests : IDisposable
             var created = await host.Create("Pathfinder");
             campaignId = created.GetProperty("campaign").GetProperty("id").GetGuid();
             instanceId = created.GetProperty("instanceId").GetString()!;
-            var preview = scenario == "moon"
-                ? (await host.Get(Lab + "/course-preview?mode=auto&destinationId=moon-moon")).GetProperty("fastest")
+            var preview = scenario == "powered"
+                ? (await host.Get(Lab + "/course-preview?mode=auto&destinationId=planet-earth")).GetProperty("fastest")
                 : await host.Get(Lab + "/course-preview?destinationId=planet-earth");
             await host.Command("commit-course", previewId: preview.GetProperty("previewId").GetString());
             if (scenario == "arrived")
@@ -46,7 +46,7 @@ public sealed class CampaignHttpTests : IDisposable
             }
             else
             {
-                await host.Advance(3600);
+                await host.Advance(scenario == "powered" ? 30 : 3600);
                 if (scenario == "cancelled")
                 {
                     await host.Command("cancel-travel");

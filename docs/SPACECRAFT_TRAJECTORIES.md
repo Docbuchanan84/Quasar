@@ -134,7 +134,7 @@ state explicitly. No mutable definition command or automatic midflight catalogue
 replacement exists in the lab. Changed state/time/target/arc/clearance/budget
 changes the planner cache key.
 
-The planner reports required delta-v and an unavailable route fuel estimate.
+The legacy impulsive planner reports required delta-v and an unavailable route fuel estimate.
 The [Pathfinder propulsion model](SOLAR_SYSTEM.md#pathfinder-propulsion) reports
 separate equipment-derived performance. Impulsive course execution does not debit
 its tank.
@@ -191,6 +191,28 @@ For the tested 150-second full-tank case at 150 million km under solar gravity,
 the endpoint is within 1 mm and 0.01 mm/s of an independent 0.01-second RK4
 reference. These tolerances cover that fixture. Close approaches, primary
 switching during burns, and general error guarantees require further modeling.
+
+## Propulsion-aware courses
+
+Automatic courses start from direct zero-revolution Lambert guesses. The
+rocket equation converts the departure and braking vectors into durations
+using the installed thrust, exhaust velocity, mass flow, and changing wet
+mass. Each burn is limited to one hour. Up to 16 iterations propagate the
+departure burn forward and the desired arrival state backward through the
+braking burn, then update both burn vectors from a new Lambert coast.
+
+The accepted path is rebuilt entirely forward with the powered-flight RK4
+integrator. It must retain propellant after braking and reach the requested
+position within 10 m and velocity within 1 mm/s in the model. Orbit insertion
+also requires an achieved bound orbit above the surface and inside the SOI.
+Clearance checks use whole-conic periapsis, bounded coast SOI checks, and
+one-second samples on powered legs. These are approximations of the single-primary
+model. Cross-primary maneuvers and flybys require a different refinement.
+
+The departure cutoff, braking ignition, and final cutoff are separate clock
+interrupts. At final cutoff the ship coasts from its integrated state. Cancelling
+or replacing the course uses the current position, velocity, and remaining
+propellant. See [checkpoint version 6](SIMULATION_STATE.md).
 
 ## Performance and validation
 

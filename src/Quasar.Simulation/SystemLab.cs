@@ -17,7 +17,9 @@ public sealed record LabSnapshot(
 public sealed record TrajectoryDisplayPoint(string AtTicks, Position3 PositionKm, Velocity3 VelocityKmPerSecond);
 public sealed record TrajectoryDisplay(string DepartureTicks, string ArrivalTicks, double TravelSeconds,
     double RequiredDeltaVKmPerSecond, TransferFuelEstimate Fuel, TrajectoryDisplayPoint[] Points, FlybyDisplay? Flyby = null,
-    string? ArrivalKind = null);
+    string? ArrivalKind = null, CourseArrival? Arrival = null, CourseBurnDisplay[]? BurnSchedule = null,
+    double? BrakingMarginKg = null);
+public sealed record CourseBurnDisplay(string Phase, string StartTicks, double DurationSeconds, double PropellantKg);
 public sealed record FlybyDisplay(string BodyId, string BodyName, string AtTicks, double ClosestApproachKm);
 
 /// <summary>Headless fixture using the planner/execution contracts available to future fleet systems.</summary>
@@ -81,12 +83,14 @@ public sealed partial class SystemLab
             .ThenBy(body => body.Id, StringComparer.Ordinal).ToArray();
         var ship = movement.View(ShipId);
         if (display is null && movement.CommittedPlan(ShipId) is { } plan) display = Present(plan);
-        var distance = ship.DestinationId is null ? 0 : ship.State.PositionKm.DistanceTo(states[ship.DestinationId].PositionKm);
+        var distance = ship.DestinationId is null ? 0 : ship.State.PositionKm.DistanceTo(display?.Arrival is not null
+            ? display.Points[^1].PositionKm : states[ship.DestinationId].PositionKm);
         return new(ElapsedTicks,
             [.. bodies, new(ShipId, "Pathfinder", "spacecraft", ship.State.PositionKm, null, ship.State.VelocityKmPerSecond)],
             new(ship.Status, Vector3d.From(ship.State.VelocityKmPerSecond).Length, ship.DestinationId,
                 ship.ArrivalTicks, distance, ship.Propulsion, ship.BurnEndTicks,
-                ship.DestinationId is not null || ship.Status == "Arrived" ? "body-center" : null), [.. events], display is null ? null : display with { Points = [.. display.Points] },
+                display?.ArrivalKind ?? (ship.Status == "Arrived" ? "body-center" : null)), [.. events],
+            display is null ? null : display with { Points = [.. display.Points], BurnSchedule = display.BurnSchedule?.ToArray() },
             PrimaryId == SolarSystem.Sun ? SolarSystem.Epoch : null);
     }
 
@@ -99,20 +103,6 @@ public sealed partial class SystemLab
         return maneuverBudget is { } budget && leg.PrimaryBodyId == SolarSystem.Sun
             ? planner.PlanWithFlyby(state, departure, leg, budget)
             : planner.Plan(new(state, departure, leg, maneuverBudget));
-    }
-
-    // The captured search reads the immutable catalogue and departure inputs, never the live world.
-    public Func<CancellationToken, CourseChoices?> CaptureCourseSearch(string destinationId, double? maneuverBudget = null)
-    {
-        var (state, departure, leg) = CaptureDeparture(destinationId);
-        var includeFlybys = leg.PrimaryBodyId == SolarSystem.Sun;
-        maneuverBudget ??= includeFlybys ? 25 : null;
-        TrajectoryPlanner.ValidateManeuverBudget(maneuverBudget);
-        return cancellationToken => CourseSearch.Find(seconds =>
-        {
-            var arrival = leg with { ArrivalTicks = checked(departure + (long)seconds * TimeSpan.TicksPerSecond) };
-            return planner.FindRoute(state, departure, arrival, maneuverBudget, includeFlybys, cancellationToken);
-        }, cancellationToken);
     }
 
     private (CelestialState State, long Departure, TransferLeg Leg) CaptureDeparture(string destinationId)
@@ -132,7 +122,7 @@ public sealed partial class SystemLab
 
     public void OrderTravel(string destinationId, int flightSeconds = 21600)
     {
-        if (movement.CommittedPlan(ShipId)?.Destination.BodyId == destinationId)
+        if (movement.CommittedPlan(ShipId)?.TargetBodyId == destinationId)
             throw new InvalidOperationException("Already travelling to that destination.");
         var plan = PreviewTravel(destinationId, flightSeconds);
         CommitTravel(plan);
@@ -140,12 +130,14 @@ public sealed partial class SystemLab
 
     public void CommitTravel(TrajectoryPlan plan)
     {
-        var destinationId = plan.Destination.BodyId;
+        var destinationId = plan.TargetBodyId;
         if (destinationId is null || !celestialPositions.Bodies.ContainsKey(destinationId))
             throw new ArgumentException("Choose a celestial destination in this system.");
         var presentation = Present(plan);
         movement.Commit(ShipId, plan); display = presentation;
-        Record("order", $"Pathfinder transfer committed to {celestialPositions.Bodies[destinationId].Name}; departure impulse applied.");
+        var name = celestialPositions.Bodies[destinationId].Name;
+        Record("order", plan.Finite is null ? $"Pathfinder transfer committed to {name}; departure impulse applied."
+            : $"Pathfinder began the planned departure burn toward {name}.");
     }
 
     public void CancelTravel()
@@ -199,20 +191,33 @@ public sealed partial class SystemLab
         plan.Sample().Select(p => new TrajectoryDisplayPoint(Ticks(p.AtTicks), p.State.PositionKm, p.State.VelocityKmPerSecond)).ToArray(),
         plan.Flyby is { } flyby ? new(flyby.BodyId, plan.Catalogue.Bodies[flyby.BodyId].Name,
             Ticks(plan.Segments[0].EndTicks), flyby.ClosestApproachKm) : null,
-        plan.Destination.BodyId is not null ? "body-center" : "waypoint");
+        plan.Finite?.Arrival.Kind ?? (plan.Destination.BodyId is not null ? "body-center" : "waypoint"),
+        plan.Finite?.Arrival, plan.Finite is { } finite ?
+        [new("Departure", Ticks(finite.Departure.StartTicks), Seconds(finite.Departure),
+            finite.State.Propulsion.Tank.QuantityKg - finite.Departure.RemainingPropellantKg(finite.Departure.EndTicks)),
+         new("Braking", Ticks(finite.Braking.StartTicks), Seconds(finite.Braking), finite.BrakingPropellantKg)] : null,
+        plan.Finite?.RemainingPropellantKg);
+
+    private static double Seconds(PoweredTrajectory burn) => (burn.EndTicks - burn.StartTicks) / (double)TimeSpan.TicksPerSecond;
 
     public bool Advance(TimeSpan duration)
     {
-        var flyby = movement.CommittedPlan(ShipId)?.Flyby;
+        var plan = movement.CommittedPlan(ShipId);
+        var flyby = plan?.Flyby;
         var consequences = movement.Advance(duration);
         foreach (var consequence in consequences)
         {
-            if (consequence.Kind == "arrival") display = null;
+            if (consequence.Kind is "arrival" or "course-arrival") display = null;
             Record(consequence.Kind, consequence.Kind switch
             {
                 "burn-complete" => "Pathfinder completed its timed burn and resumed an unforced coast.",
                 "burn-exhausted" => "Pathfinder exhausted its propellant and resumed an unforced coast.",
                 "arrival" => "Body-center arrival. Pathfinder applied the planned velocity-matching impulse.",
+                "course-departure-cutoff" => "Pathfinder completed the departure burn and began the transfer coast.",
+                "course-braking-start" => "Pathfinder began the planned braking burn.",
+                "course-arrival" => plan?.Finite?.Arrival.Kind == "orbit"
+                    ? "Pathfinder completed braking and entered the requested orbit."
+                    : "Pathfinder completed braking at the approach point and resumed a gravitational coast.",
                 "primary-change" => $"Pathfinder changed gravity primary to {celestialPositions.Bodies[movement.PrimaryOf(ShipId)].Name} without thrust.",
                 _ => flyby is null ? "Pathfinder changed gravitational primary at a committed patch boundary."
                     : $"Pathfinder completed a gravity assist at {celestialPositions.Bodies[flyby.BodyId].Name}."

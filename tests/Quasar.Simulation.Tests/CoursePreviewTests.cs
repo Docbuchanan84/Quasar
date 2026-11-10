@@ -91,12 +91,15 @@ public class CoursePreviewTests
     {
         var session = new LabSession();
         var before = session.Snapshot();
-        var options = session.PreviewAutomaticCourse("planet-jupiter", 25, CancellationToken.None);
+        var options = session.PreviewAutomaticCourse("planet-earth", 25, CancellationToken.None);
         var fastest = Assert.IsType<CoursePreview>(options.Fastest);
         var lowestCost = Assert.IsType<CoursePreview>(options.LowestManeuverCost);
         Assert.True(fastest.Trajectory.TravelSeconds < lowestCost.Trajectory.TravelSeconds);
         Assert.True(lowestCost.Trajectory.RequiredDeltaVKmPerSecond < fastest.Trajectory.RequiredDeltaVKmPerSecond);
         Assert.InRange(fastest.Trajectory.RequiredDeltaVKmPerSecond, 0, 25);
+        Assert.True(fastest.Trajectory.Fuel.PropellantMassKg > lowestCost.Trajectory.Fuel.PropellantMassKg);
+        Assert.Equal("approach", fastest.Trajectory.Arrival!.Kind);
+        Assert.Equal(2, fastest.Trajectory.BurnSchedule!.Length);
         Assert.Equal(before.Revision, session.Snapshot().Revision);
         Assert.Null(session.Snapshot().World.Trajectory);
 
@@ -108,13 +111,12 @@ public class CoursePreviewTests
     }
 
     [Fact]
-    public void AutomaticSearchCanChooseAGravityAssist()
+    public void AutomaticSearchReportsUnsupportedArrivalWithoutAnOrderToken()
     {
         var session = new LabSession();
-        var options = session.PreviewAutomaticCourse("planet-mercury", 25, CancellationToken.None);
-        var fastest = Assert.IsType<CoursePreview>(options.Fastest);
-        Assert.Equal("planet-venus", fastest.Trajectory.Flyby?.BodyId);
-        Assert.InRange(fastest.Trajectory.RequiredDeltaVKmPerSecond, 0, 25);
+        var options = session.PreviewAutomaticCourse("planet-earth", 25, CancellationToken.None, "orbit");
+        Assert.Null(options.Fastest);
+        Assert.Contains("Cross-primary capture", Assert.Single(options.InfeasibleReasons));
     }
 
     [Fact]
@@ -125,6 +127,7 @@ public class CoursePreviewTests
         var result = session.PreviewAutomaticCourse("planet-jupiter", 1, CancellationToken.None);
         Assert.Null(result.Fastest);
         Assert.Null(result.LowestManeuverCost);
+        Assert.Contains(result.InfeasibleReasons, reason => reason.Contains("Insufficient propellant"));
         Assert.Throws<OperationCanceledException>(() =>
             session.PreviewAutomaticCourse("planet-jupiter", 25, new CancellationToken(canceled: true)));
         Assert.Equal(before.Revision, session.Snapshot().Revision);

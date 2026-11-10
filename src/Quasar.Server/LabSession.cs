@@ -7,7 +7,7 @@ public sealed record LabCommand(string InstanceId, long Revision, string ClientI
     string? PreviewId = null, string? BurnDirection = null, int? BurnSeconds = null);
 public sealed record CoursePreview(string PreviewId, string InstanceId, long Revision, string ShipId,
     string DestinationId, double SampledDistanceKm, string[] Warnings, TrajectoryDisplay Trajectory);
-public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePreview? LowestManeuverCost);
+public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePreview? LowestManeuverCost, string[] InfeasibleReasons);
 public sealed record SessionSnapshot(string InstanceId, long Revision, bool Running, string StopReason,
     int DurationSeconds, string Mode, LabSnapshot World, LabEvent? Interrupt);
 
@@ -67,33 +67,33 @@ public sealed partial class LabSession(bool startWithWorld = true)
     }
 
     public AutomaticCoursePreview PreviewAutomaticCourse(string destinationId, double? maneuverBudget,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, string arrivalKind = "approach")
     {
         string departureInstance;
         long departureRevision;
-        Func<CancellationToken, CourseChoices?> search;
+        Func<CancellationToken, CourseSearchResult> search;
         lock (gate)
         {
             if (running) throw new InvalidOperationException("Stop time processing before plotting a course.");
-            search = RequireWorld().CaptureCourseSearch(destinationId, maneuverBudget);
+            search = RequireWorld().CaptureCourseSearch(destinationId, maneuverBudget, arrivalKind);
             departureInstance = instanceId;
             departureRevision = revision;
         }
 
-        var choices = search(cancellationToken);
+        var result = search(cancellationToken);
 
         lock (gate)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (running || switchingCampaign || shuttingDown || departureInstance != instanceId || departureRevision != revision)
                 throw new InvalidOperationException("State changed during planning. Refresh state and recalculate.");
-            if (choices is null) return new(null, null);
+            if (result.Choices is not { } choices) return new(null, null, result.InfeasibleReasons);
 
             var fastest = RetainPreview(destinationId, choices.Fastest);
             var lowestCost = ReferenceEquals(choices.Fastest, choices.LowestManeuverCost)
                 ? null
                 : RetainPreview(destinationId, choices.LowestManeuverCost);
-            return new(fastest, lowestCost);
+            return new(fastest, lowestCost, []);
         }
     }
 
@@ -106,9 +106,9 @@ public sealed partial class LabSession(bool startWithWorld = true)
         if (previews.Count >= 32) previews.Remove(previews.Keys.First());
         var id = Guid.NewGuid().ToString();
         previews.Add(id, (revision, plan));
-        return new(id, instanceId, revision, SystemLab.ShipId, destinationId, distance,
-            ["Analytical solar coasts and instantaneous test maneuvers. A flyby uses an approximate encounter boundary.",
-             "Delta-v is a calculated requirement, not a verified spacecraft capability."], trajectory);
+        return new(id, instanceId, revision, SystemLab.ShipId, destinationId, distance, trajectory.Arrival is null
+            ? ["Legacy test course with instantaneous maneuvers and no propulsion accounting."]
+            : ["Bounded search, with fixed-direction burns and one gravity primary. Faster or cheaper routes may exist."], trajectory);
     }
 
     public SessionSnapshot Execute(LabCommand command)
@@ -203,7 +203,9 @@ public sealed partial class LabSession(bool startWithWorld = true)
                         null => "Advance complete",
                         "burn-complete" => "Burn complete — coasting",
                         "burn-exhausted" => "Propellant exhausted — coasting",
-                        "arrival" => "Arrival — awaiting orders",
+                        "arrival" or "course-arrival" => "Arrival — awaiting orders",
+                        "course-departure-cutoff" => "Departure burn complete — coasting",
+                        "course-braking-start" => "Braking burn ready — resume to execute",
                         "patch" or "primary-change" => "Gravity primary changed — coasting",
                         _ => "Game event — awaiting orders"
                     };

@@ -1,5 +1,22 @@
 # Development log
 
+## 2026-11-10 — Propulsion-aware automatic courses
+
+- [Issue #28](https://github.com/Docbuchanan84/Quasar/issues/28) makes automatic
+  course confirmation depend on the installed engine, current mass and fuel,
+  and forward verification of the requested arrival state.
+- The course panel shows departure and braking burns, propellant cost and
+  reserve, and arrival conditions. The bounded search supports direct
+  approaches and same-primary Earth or Moon orbit presets.
+- Finite courses interrupt at burn boundaries and coast from the state
+  achieved at final cutoff. Checkpoint v6 restores the same active course and
+  remaining propellant across departure, coast, and braking.
+- `scripts/Verify.ps1` passed 236 xUnit tests and 11 Node checks. The focused
+  planner, confirmation, and HTTP restart run passed 19 cases. Disposable
+  Chromium covered feasibility, exact selected-route confirmation, desktop
+  2D/3D review, and a 393 px portrait viewport. The next phone check is a
+  complete approach from preview to final cutoff on the physical device.
+
 ## 2026-11-10 — Automatic SOI crossing audit
 
 - Integrated host-owned Continuous play from PR #32. An automatic primary

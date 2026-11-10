@@ -54,10 +54,13 @@ public sealed partial class MovementExecution
     }
 
     private static SpacecraftPropulsion WithPropellant(SpacecraftPropulsion propulsion, double quantityKg) =>
-        propulsion with { Tank = propulsion.Tank with { QuantityKg = quantityKg } };
+        FiniteCourse.WithPropellant(propulsion, quantityKg);
 
-    private static SpacecraftPropulsion? PropulsionAt(Spacecraft ship, long atTicks) =>
-        ship.Burn is { } burn ? WithPropellant(ship.Propulsion!, burn.Path.RemainingPropellantKg(atTicks)) : ship.Propulsion;
+    internal SpacecraftPropulsion? PropulsionOf(string id) => PropulsionAt(spacecraft[id], ElapsedTicks);
+
+    private static SpacecraftPropulsion? PropulsionAt(Spacecraft ship, long atTicks) => ship.Burn is { } burn
+        ? WithPropellant(ship.Propulsion!, burn.Path.RemainingPropellantKg(atTicks))
+        : ship.Plan?.Finite is { } finite ? WithPropellant(finite.State.Propulsion, finite.PropellantAt(atTicks)) : ship.Propulsion;
 
     private static void EndBurn(Spacecraft ship, long atTicks, TwoBodyTrajectory coast)
     {

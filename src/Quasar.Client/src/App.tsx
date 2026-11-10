@@ -233,7 +233,7 @@ function App() {
           </div>
           <p className="course-legend">
             <span>━━ Committed</span> · <span>┄┄ Preview</span> · □ Departure ·
-            ◇ Body-center arrival / future destination
+            ◇ Course endpoint / future destination
           </p>
           <p className="map-note">
             Symbols enlarged for readability · {world.referenceEpoch ? `Orbital epoch ${world.referenceEpoch}` : 'Legacy reference guides'}
@@ -316,7 +316,8 @@ function App() {
                             )}{' '}
                             km
                           </p>
-                          <p>Body-center arrival: {formatTime(world.ship.arrivalTicks!)}</p>
+                          <p>{world.trajectory?.arrivalKind === 'body-center' ? 'Body-center arrival' : 'Planned arrival'}{' '}
+                            {formatTime(world.ship.arrivalTicks!)}</p>
                         </>
                       )}
                     </div>
@@ -382,6 +383,7 @@ function App() {
                         setPlotting({
                           shipId: selected.id,
                           destinationId: '',
+                          arrivalKind: 'approach',
                           maneuverBudget: world.referenceEpoch ? 25 : undefined,
                         })
                       }
@@ -439,7 +441,7 @@ function App() {
             .map((event) => (
               <li key={event.sequence}>
                 <time>{formatTime(event.atTicks)}</time>
-                <span className={`event-kind ${event.kind}`}>{event.kind === 'arrival' ? 'Body-center arrival' : event.kind}</span>
+                <span className={`event-kind ${event.kind}`}>{event.kind === 'arrival' ? 'Body-center arrival' : event.kind === 'course-arrival' ? 'Arrival' : event.kind}</span>
                 <span>{event.message}</span>
               </li>
             ))}

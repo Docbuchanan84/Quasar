@@ -13,7 +13,7 @@ automatic course planning, interactive maps, and persistent campaigns. The
 | Celestial mechanics | Analytical hierarchical position and velocity queries and sphere-of-influence data |
 | Spacecraft movement | Lambert transfers, analytical coasting, impulses, and headless event execution |
 | Navigation | Collapsible system object tree, gesture-safe selection, pan/orbit/zoom, Reset View, and Focus Selected in both maps |
-| Course plotting | Planet and moon destinations, automatic fastest and lowest maneuver-cost routes, shared map preview, and revision-bound commit |
+| Course plotting | Propulsion-aware fastest and lowest maneuver-cost routes, finite burns, approach and same-primary orbit arrival conditions, shared map preview, and revision-bound commit |
 | Propulsion 1/4 | Single chemical engine and tank, read-only Pathfinder performance, and compatible v3 checkpoints |
 | Propulsion 2/4 | Finite burns, fuel depletion, clock interrupts, and active-burn v4 checkpoints |
 | Navigation 1/2 | Orbital target states, automatic coast primary changes, and checkpoint v5 |
@@ -27,8 +27,8 @@ recorded in [mobile validation](MOBILE_AND_REMOTE_ACCESS.md).
 ## Solar System starter
 
 New campaigns use the [Solar System fixture](SOLAR_SYSTEM.md), with analytical
-planet and satellite motion, two fictional stations, and automatic single-flyby
-course tests. Existing Helios campaigns retain their original world when loaded.
+planet and satellite motion, two fictional stations, and a finite-course test
+ship. Existing Helios campaigns retain their original world when loaded.
 
 ## Next validation
 
@@ -54,8 +54,7 @@ landscape, background/reconnect, and cellular-only access separately.
 
 ## Open implementation and design work
 
-- Propulsion-aware course planning ([issue #28](https://github.com/Docbuchanan84/Quasar/issues/28)),
-  fleets, collision,
+- Cross-primary finite courses, fleets, collision,
   docking, and player-facing moving-target/waypoint selection remain open. The
   headless trajectory planner already supports moving-target interception.
 - Phone push delivery for game interrupts remains open.

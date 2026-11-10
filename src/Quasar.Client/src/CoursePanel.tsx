@@ -79,12 +79,20 @@ export default function CoursePanel({
             ))}
         </select>
       </label>
+      <label>
+        Arrival condition
+        <select value={inputs.arrivalKind} disabled={disabled}
+          onChange={(e) => onChange({ ...inputs, arrivalKind: e.target.value === 'orbit' ? 'orbit' : 'approach' })}>
+          <option value="approach">Velocity-matched approach</option>
+          <option value="orbit">Orbit preset (Earth or Moon)</option>
+        </select>
+      </label>
       {inputs.maneuverBudget !== undefined && (
         <details>
           <summary>Advanced</summary>
           <label>
-            Test maneuver budget · {inputs.maneuverBudget} km/s
-            <input aria-label="Test maneuver budget" type="range" min="1" max="100"
+            Additional delta-v limit · {inputs.maneuverBudget} km/s
+            <input aria-label="Additional delta-v limit" type="range" min="1" max="100"
               value={inputs.maneuverBudget} disabled={disabled}
               onChange={(e) => onChange({ ...inputs, maneuverBudget: Number(e.target.value) })}
             />
@@ -99,11 +107,12 @@ export default function CoursePanel({
       {loading && <p role="status">Calculating course…</p>}
       {error && <p role="alert">{error}</p>}
       {routes && !routes.fastest && (
-        <p role="status">
-          {inputs.maneuverBudget === undefined
-            ? 'No route found for the flight times searched.'
-            : 'No route found within the test maneuver budget for the flight times searched.'}
-        </p>
+        <div role="status">
+          <p>No executable course found in the bounded search.</p>
+          {!!routes.infeasibleReasons?.length && (
+            <ul>{routes.infeasibleReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+          )}
+        </div>
       )}
       {routes?.fastest && (
         <>
@@ -149,7 +158,7 @@ export default function CoursePanel({
               <dd>{formatDuration(trajectory.travelSeconds)}</dd>
             </div>
             <div>
-              <dt>Body-center arrival ETA</dt>
+              <dt>Arrival ETA</dt>
               <dd>{formatTime(trajectory.arrivalTicks)}</dd>
             </div>
             <div>
@@ -165,6 +174,19 @@ export default function CoursePanel({
               </dd>
             </div>
           </dl>
+          {trajectory.arrival && (
+            <>
+              <p>{trajectory.arrival.kind === 'orbit' ? 'Bound orbit' : 'Velocity-matched approach'}
+                {' · '}{number(trajectory.arrival.targetRadiusKm)} km from target center
+                {' · '}gravity primary {objects.find((o) => o.id === trajectory.arrival?.primaryBodyId)?.name}</p>
+              <p>Arrival error {number(trajectory.arrival.positionErrorKm * 1000)} m · {number(trajectory.arrival.velocityErrorKmPerSecond * 1000)} m/s</p>
+              <h3>Estimated burn schedule</h3>
+              <ul>{trajectory.burnSchedule?.map((burn) => (
+                <li key={burn.phase}>{burn.phase} · {formatTime(burn.startTicks)} · {number(burn.durationSeconds)} s · {number(burn.propellantKg)} kg</li>
+              ))}</ul>
+              <p>Braking margin {number(trajectory.brakingMarginKg ?? 0)} kg remaining after cutoff</p>
+            </>
+          )}
           {trajectory.fuel.unavailableReason && (
             <p className="muted">{trajectory.fuel.unavailableReason}</p>
           )}
