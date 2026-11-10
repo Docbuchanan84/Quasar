@@ -36,6 +36,8 @@ public class FiniteCourseTests
         var initial = lab.ShipStateAt(0);
         lab.CommitTravel(course);
         Assert.Equal(initial, lab.ShipStateAt(0));
+        var afterArrivalTicks = course.ArrivalTicks + TimeSpan.FromDays(1).Ticks;
+        var predictedCoast = lab.TargetStateAt("spacecraft", SystemLab.ShipId, afterArrivalTicks);
 
         AdvanceTo(lab, finite.Departure.StartTicks + finite.State.DepartureDurationTicks / 2);
         Assert.InRange(lab.Snapshot().Ship.Propulsion!.AvailablePropellantKg, 0, 9999);
@@ -60,6 +62,7 @@ public class FiniteCourseTests
         Assert.Equal(course.StateAt(course.ArrivalTicks), restored.ShipStateAt(restored.ElapsedTicks));
         Assert.Equal(lab.ShipStateAt(lab.ElapsedTicks), restored.ShipStateAt(restored.ElapsedTicks));
         Assert.Equal(finite.RemainingPropellantKg, restored.Snapshot().Ship.Propulsion!.AvailablePropellantKg);
+        Assert.Equal(predictedCoast, restored.TargetStateAt("spacecraft", SystemLab.ShipId, afterArrivalTicks));
         Assert.Null(restored.Snapshot().Trajectory);
         Assert.Equal("Coasting", RoundTrip(restored).Snapshot().Ship.Status);
     }

@@ -60,6 +60,11 @@ public sealed partial class MovementExecution
             var (primary, state) = PredictCoast(burn.EndCoast, ship.Primary, atTicks, burn.Path.EndTicks);
             return new("spacecraft", id, primary, atTicks, state);
         }
+        if (ship.Plan?.Finite is { } course && atTicks > course.Braking.EndTicks)
+        {
+            var (primary, state) = PredictCoast(course.ArrivalCoast, ship.Primary, atTicks, course.Braking.EndTicks);
+            return new("spacecraft", id, primary, atTicks, state);
+        }
         var primaryId = ship.Plan?.Segments.LastOrDefault(segment => segment.StartTicks <= atTicks)?.PrimaryBodyId ?? ship.Primary;
         return new("spacecraft", id, primaryId, atTicks, StateAt(id, atTicks));
     }

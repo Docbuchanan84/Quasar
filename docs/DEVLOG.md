@@ -14,7 +14,8 @@
 - `scripts/Verify.ps1` passed 236 xUnit tests and 11 Node checks. The focused
   planner, confirmation, and HTTP restart run passed 19 cases. Disposable
   Chromium covered feasibility, exact selected-route confirmation, desktop
-  2D/3D review, and a 393 px portrait viewport. The next phone check is a
+  2D/3D review, and a 393 px portrait viewport. All seven disposable campaign
+  browser phases passed. The next phone check is a
   complete approach from preview to final cutoff on the physical device.
 
 ## 2026-11-10 — Automatic SOI crossing audit
