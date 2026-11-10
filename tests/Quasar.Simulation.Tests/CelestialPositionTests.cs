@@ -181,7 +181,7 @@ public sealed class CelestialPositionTests(ITestOutputHelper output)
             Assert.Equal(body.Position, state.PositionKm);
             Assert.Equal(body.VelocityKmPerSecond, state.VelocityKmPerSecond);
         }
-        var session = new LabSession(TimeProvider.System, SystemLab.CreateLegacyFixture());
+        var session = new LabSession(SystemLab.CreateLegacyFixture());
         var before = session.Snapshot();
         session.CelestialStateAt("planet-iris", long.MaxValue);
         session.CelestialStateAt("planet-iris", long.MinValue);

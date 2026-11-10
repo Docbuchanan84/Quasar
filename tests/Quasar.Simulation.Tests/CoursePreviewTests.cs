@@ -10,7 +10,7 @@ public class CoursePreviewTests
     [Fact]
     public void PreviewAndDiscardLeaveAllCanonicalStateUntouched()
     {
-        var session = new LabSession(TimeProvider.System, SystemLab.CreateLegacyFixture());
+        var session = new LabSession(SystemLab.CreateLegacyFixture());
         var before = session.Snapshot();
         var preview = session.PreviewCourse("planet-iris", 21600);
         var after = session.Snapshot();
@@ -30,7 +30,7 @@ public class CoursePreviewTests
     [Fact]
     public void ConfirmationCommitsExactlyReviewedSamplesAndMovesWithoutAnyMap()
     {
-        var session = new LabSession(TimeProvider.System, SystemLab.CreateLegacyFixture());
+        var session = new LabSession(SystemLab.CreateLegacyFixture());
         var preview = session.PreviewCourse("planet-nereid", 21600);
         var ordered = Send(session, "commit-course", preview.PreviewId);
         Assert.Equal(preview.Trajectory.Points, ordered.World.Trajectory!.Points);
@@ -49,7 +49,7 @@ public class CoursePreviewTests
     [Fact]
     public void ChangedStateRejectsOldTokenEvenWithLatestCommandRevision()
     {
-        var session = new LabSession(TimeProvider.System, SystemLab.CreateLegacyFixture());
+        var session = new LabSession(SystemLab.CreateLegacyFixture());
         var preview = session.PreviewCourse("planet-iris", 21600);
         Send(session, "configure");
         var before = session.Snapshot();
@@ -61,9 +61,9 @@ public class CoursePreviewTests
     [Fact]
     public void TokensAreInstanceBoundBoundedAndSingleUse()
     {
-        var session = new LabSession(TimeProvider.System, SystemLab.CreateLegacyFixture());
+        var session = new LabSession(SystemLab.CreateLegacyFixture());
         var first = session.PreviewCourse("planet-iris", 21600);
-        Assert.Throws<InvalidOperationException>(() => Send(new LabSession(TimeProvider.System, SystemLab.CreateLegacyFixture()), "commit-course", first.PreviewId));
+        Assert.Throws<InvalidOperationException>(() => Send(new LabSession(SystemLab.CreateLegacyFixture()), "commit-course", first.PreviewId));
         CoursePreview last = first;
         for (var i = 0; i < 32; i++) last = session.PreviewCourse("planet-iris", 21600);
         Assert.Throws<InvalidOperationException>(() => Send(session, "commit-course", first.PreviewId));
@@ -74,7 +74,7 @@ public class CoursePreviewTests
     [Fact]
     public void InvalidInputsAndRunningPreviewDoNotIssueOrders()
     {
-        var session = new LabSession(TimeProvider.System, SystemLab.CreateLegacyFixture());
+        var session = new LabSession(SystemLab.CreateLegacyFixture());
         Assert.Throws<ArgumentException>(() => session.PreviewCourse("missing", 21600));
         Assert.Throws<ArgumentException>(() => session.PreviewCourse("planet-iris", 0));
         Assert.Throws<ArgumentException>(() => session.PreviewCourse("planet-iris", 315576001));
@@ -89,7 +89,7 @@ public class CoursePreviewTests
     [InlineData(true)]
     public void AutomaticOptionsCommitExactlyTheSelectedTrajectory(bool chooseLowestCost)
     {
-        var session = new LabSession(TimeProvider.System);
+        var session = new LabSession();
         var before = session.Snapshot();
         var options = session.PreviewAutomaticCourse("planet-jupiter", 25, CancellationToken.None);
         var fastest = Assert.IsType<CoursePreview>(options.Fastest);
@@ -110,7 +110,7 @@ public class CoursePreviewTests
     [Fact]
     public void AutomaticSearchCanChooseAGravityAssist()
     {
-        var session = new LabSession(TimeProvider.System);
+        var session = new LabSession();
         var options = session.PreviewAutomaticCourse("planet-mercury", 25, CancellationToken.None);
         var fastest = Assert.IsType<CoursePreview>(options.Fastest);
         Assert.Equal("planet-venus", fastest.Trajectory.Flyby?.BodyId);
@@ -120,7 +120,7 @@ public class CoursePreviewTests
     [Fact]
     public void NoRouteAndCancellationLeaveTheSessionUntouched()
     {
-        var session = new LabSession(TimeProvider.System);
+        var session = new LabSession();
         var before = session.Snapshot();
         var result = session.PreviewAutomaticCourse("planet-jupiter", 1, CancellationToken.None);
         Assert.Null(result.Fastest);

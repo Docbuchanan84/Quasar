@@ -1,5 +1,20 @@
 # Development log
 
+## 2026-11-10 — Continuous play through browser disconnects
+
+- The host advances Continuous play through phone lock, tab closure, and lost
+  connections. Stop from a connected browser or a game interrupt pauses it.
+  Once still advances one selected interval, with interrupts able to end it early.
+- The clock shows the interrupt message and simulation time, including on
+  reconnect. Event history retains the event. Phone push delivery remains open.
+- `scripts/Verify.ps1` passed with 211 xUnit cases and 11 Node checks. The
+  disposable HTTP test ran for six seconds without browser requests and stopped
+  the run using a different client and an older snapshot.
+- An iPhone-sized Chromium session advanced exactly five seconds in Once,
+  disconnected during Continuous play, then showed the exact burn cutoff at
+  35 seconds after reconnect and reload. The broader campaign browser script
+  stopped at an outdated course-form selector before reaching its arrival check.
+
 ## 2026-11-10 — Finite-thrust burns
 
 - The first [issue #26](https://github.com/Docbuchanan84/Quasar/issues/26)

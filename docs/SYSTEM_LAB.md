@@ -45,10 +45,16 @@ query timestamps use decimal strings across HTTP.
 
 The nine supported intervals are 1, 5, 30, 60, 3,600, 86,400, 432,000,
 1,296,000, and 2,592,000 seconds. Once processes one interval. Continuous uses
-one interval per 250 ms host tick until Stop, an interrupt, clock overflow, or
-expiry of the initiating browser's five-second lease. The visible client polls
-every 500 ms and renews its run lease every second. A refreshed browser gets a
-new controller ID. Another connected browser can inspect or Stop the shared run.
+one interval per 250 ms host tick until Stop, a game interrupt, or the clock
+limit. Locking the phone, closing the tab, or losing the browser connection
+does not stop the host. The visible client polls every 500 ms and refreshes on
+return. Any connected browser can inspect or Stop the shared run.
+
+Interrupts such as an arrival, gravity assist boundary, or burn completion
+pause at the exact event time. The host includes the triggering event in
+`interrupt` so the clock can display its time and message, including after a
+reconnect or reload. The notice clears on Play or campaign replacement. The
+event remains in campaign history. Phone push delivery remains open.
 
 The host restores the last valid checkpoint paused on restart. Use **New Game**
 on first run, or use **Load Game** and **Continue** to restore a campaign. See
@@ -60,14 +66,13 @@ the camera.
 | Request | Purpose |
 | --- | --- |
 | `GET /api/health` | Readiness and the `system-lab` stage |
-| `GET /api/lab` | Instance/revision, run controls, objects and velocities, ship status, events, and any committed trajectory |
+| `GET /api/lab` | Instance/revision, run controls, latest run interrupt, objects and velocities, ship status, events, and any committed trajectory |
 | `GET /api/lab/course-preview?mode=auto&destinationId=…` | Search a stopped-world departure for the fastest and lowest maneuver-cost routes and return revision-bound previews |
 | `GET /api/lab/course-preview?destinationId=…&flightSeconds=…` | Solve a single fixed-duration course for existing callers |
 | `GET /api/lab/trajectory-preview?destinationId=…&flightSeconds=…` | Compatibility query for an advisory trajectory without a confirmation ID |
 | `GET /api/lab/celestial/{bodyId}/state?atTicks=…` | Read celestial state at a signed Int64 timestamp |
 | `GET /api/lab/spacecraft/state?atTicks=…` | Read Pathfinder's current or predicted future state |
 | `POST /api/lab/commands` | Apply a revision-checked command |
-| `POST /api/lab/lease` | Renew the active controller lease using `instanceId` and `clientId` |
 
 Commands take JSON `{instanceId, revision, clientId, operation}` plus operation
 arguments. The current UI uses `configure` with `durationSeconds` and `mode`

@@ -31,6 +31,14 @@ export type LabObject = {
 export const isCourseDestination = (object: LabObject) =>
   object.kind === 'planet' || object.kind === 'moon'
 
+type LabEvent = {
+  sequence: number
+  atTicks: string
+  kind: string
+  objectId: string
+  message: string
+}
+
 export type Snapshot = {
   instanceId: string
   revision: number
@@ -38,6 +46,7 @@ export type Snapshot = {
   stopReason: string
   durationSeconds: number
   mode: 'once' | 'continuous'
+  interrupt?: LabEvent | null
   world: {
     trajectory: Trajectory | null
     elapsedTicks: string
@@ -59,13 +68,7 @@ export type Snapshot = {
         theoreticalDeltaVMPerSecond: number
       } | null
     }
-    events: {
-      sequence: number
-      atTicks: string
-      kind: string
-      objectId: string
-      message: string
-    }[]
+    events: LabEvent[]
   }
 }
 export type MapProps = {

@@ -85,7 +85,7 @@ Advancement stops at the first patch/arrival and handles all simultaneous events
 in stable ship-ID order. Obsolete events are discarded and periodically compacted.
 Negative durations and time overflow fail before clock mutation. No map or timer
 is required. Pause means no advancement; acceleration supplies larger/more
-advances. The existing host Once/Continuous/Stop/lease controls remain authoritative.
+advances. The host Once/Continuous/Stop controls remain authoritative.
 
 After arrival an abstract rendezvous attachment follows the target ephemeris.
 This is **not** a docking, landing, capture-orbit or stationkeeping model. It

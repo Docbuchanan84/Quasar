@@ -170,10 +170,10 @@ world. Use the campaign rollback procedure above for current releases. Existing
 browser pages should reload after deployment. A failed lazy map load leaves
 the controls and inspector available and offers **Reload display**.
 
-The app's continuous runner is active only after Play. It processes at most four
-selected intervals per second and stops on arrival or controller lease expiry
-(five seconds). A browser reload creates a new controller ID and does not silently
-resume the previous run. See the current process lifetime section for the running launcher.
+Continuous play starts on Play and processes at most four selected intervals per
+second. The host runs through browser reloads and disconnects, and pauses on Stop
+or a game interrupt. See the current process lifetime section for the running
+launcher.
 
 ## Requested reset and later acceptance (2026-11-08)
 
