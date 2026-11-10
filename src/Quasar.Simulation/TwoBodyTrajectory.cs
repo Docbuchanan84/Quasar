@@ -51,6 +51,20 @@ public sealed class TwoBodyTrajectory
         if (alpha > 0) PeriodSeconds = 2 * Math.PI / Math.Sqrt(mu * alpha * alpha * alpha);
     }
 
+    internal double MaximumAccelerationFrom(CelestialState state, double seconds)
+    {
+        // If the ship cannot reach half its starting radius even under the maximum
+        // acceleration up to that point, that tighter bound holds for the interval.
+        var startRadius = Vector3d.From(state.PositionKm).Length;
+        var speed = Vector3d.From(state.VelocityKmPerSecond).Length;
+        var halfRadius = startRadius / 2;
+        var localBound = mu / halfRadius / halfRadius;
+        var globalBound = mu / PeriapsisKm / PeriapsisKm;
+        return (speed + localBound * seconds / 2) * seconds < halfRadius
+            ? Math.Min(localBound, globalBound)
+            : globalBound;
+    }
+
     public CelestialState StateAt(long atTicks)
     {
         var seconds = ((decimal)atTicks - EpochTicks) / TimeSpan.TicksPerSecond;
@@ -69,6 +83,8 @@ public sealed class TwoBodyTrajectory
         }
         var low = 0d;
         var high = Math.Max(1, Math.Sqrt(radius));
+        // Start inside the finite hyperbolic Stumpff range, even for fast flybys.
+        if (alpha < 0) high = Math.Min(high, 1 / Math.Sqrt(-alpha));
         var bracketed = false;
         for (var i = 0; i < 128; i++)
         {

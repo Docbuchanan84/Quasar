@@ -38,9 +38,48 @@ async function campaignBrowserScenario(page) {
   const selectTestCourse = async () => {
     const world = (await lab()).world
     const solar = world.objects.some((body) => body.id === 'star-sun')
-    await page.getByLabel('Course destination').selectOption(solar ? 'planet-earth' : 'planet-iris')
-    await page.getByLabel('Flight duration (seconds)').fill('21600')
-    if (solar) await page.getByLabel('Test maneuver budget').press('End')
+    if (solar) {
+      await page.getByText('Advanced', { exact: true }).click()
+      await page.getByLabel('Test maneuver budget').press('End')
+    }
+    const destination = solar ? 'planet-earth' : 'planet-iris'
+    await page.getByLabel('Course destination').selectOption(destination)
+    return destination
+  }
+
+  const commitSixHourFixture = async (destinationId) => {
+    // Keep exact save/restart times while exercising the live preview and commit API.
+    const base = new URL(page.url()).origin
+    const response = await page.request.get(
+      base + '/api/lab/course-preview?destinationId=' + destinationId + '&flightSeconds=21600',
+    )
+    if (!response.ok()) throw new Error(await response.text())
+    const { previewId, instanceId, revision } = await response.json()
+    const committed = await page.request.post(base + '/api/lab/commands', {
+      headers: { Origin: base },
+      data: { instanceId, revision, clientId: '2452a5ee-f675-4f8b-b55a-2fbd75d4d053', operation: 'commit-course', previewId },
+    })
+    if (!committed.ok()) throw new Error(await committed.text())
+    await page.reload()
+    await click('Pathfinder')
+    await show(button('Cancel committed course'))
+  }
+
+  const checkPredictionLimit = async () => {
+    const before = await lab()
+    const base = new URL(page.url()).origin + '/api/lab/target-state?'
+    const horizon = BigInt(before.world.elapsedTicks) + 30n * 86400n * 10000000n
+    const ship = base + 'kind=spacecraft&targetId=ship-pathfinder&atTicks='
+    const exact = await page.request.get(ship + horizon)
+    if (!exact.ok() || (await exact.json()).atTicks !== horizon.toString())
+      throw new Error('The 30-day boundary should be accepted')
+    const outside = await page.request.get(ship + (horizon + 1n))
+    if (outside.status() !== 400 || !/up to 30 days/.test((await outside.json()).error))
+      throw new Error('An out-of-horizon coast prediction should explain the 30-day limit')
+    const orbit = await page.request.get(base + 'kind=orbit&targetId=planet-earth&atTicks=' + (horizon + 1n))
+    if (!orbit.ok()) throw new Error('An independent orbit should remain queryable beyond 30 days')
+    if (JSON.stringify(await lab()) !== JSON.stringify(before))
+      throw new Error('A target query changed the active world')
   }
 
   if (phase === 'create') {
@@ -70,9 +109,9 @@ async function campaignBrowserScenario(page) {
       await click('Pathfinder')
     }
     await click('Plot Course')
-    await selectTestCourse()
+    const destination = await selectTestCourse()
     await show(text('PREVIEW · NOT ORDERED'))
-    await click('Issue Order')
+    await commitSixHourFixture(destination)
     for (const time of ['01:00:00', '02:00:00', '03:00:00']) {
       await click('▶ Play')
       await show(clock(time))
@@ -114,8 +153,8 @@ async function campaignBrowserScenario(page) {
     await hide(text('PREVIEW · NOT ORDERED'))
     await show(clock('03:00:00'))
     await show(button('▶ Play'))
-    await show(page.getByText(/^Destination: (Earth|Iris)$/))
-  } else if (phase === 'arrival') {
+    await show(page.getByText(/^Destination: (Earth|Iris)/))
+  } else if (phase === 'coast') {
     await noOverflow(1440, 900)
     await show(clock('03:00:00'))
     await click('3D')
@@ -126,13 +165,35 @@ async function campaignBrowserScenario(page) {
     await hide(button('Cancel committed course'))
     await click('Save Game')
     await show(text('Saved “Manual save”.'))
+    await checkPredictionLimit()
+    // Give the cancelled centre-directed transfer enough transverse velocity for a supported conic.
+    await click('Ignite engine')
+    await show(button('Cut thrust'))
+    await page.getByLabel('Advance interval').selectOption('5')
+    await click('▶ Play')
+    await show(clock('03:00:05'))
+    await click('Cut thrust')
+    await hide(button('Cut thrust'))
+    await page.getByLabel('Processing mode').selectOption('continuous')
+    const accepted = page.waitForResponse(response =>
+      response.url().endsWith('/api/lab/commands') && response.request().postDataJSON().operation === 'play')
+    await click('▶ Play')
+    if (!(await accepted).ok()) throw new Error('Host rejected Continuous play')
+  } else if (phase === 'arrival') {
+    await show(page.getByText(/Gravity primary changed/).first())
+    const stopped = await lab()
+    if (stopped.running || stopped.interrupt?.kind !== 'primary-change')
+      throw new Error('Host did not stop Continuous play at an automatic primary change')
+    await show(page.getByText(/Paused at D000 03:00:05/))
     await click('Load Game')
     await load('Load Midflight #2')
     await show(button('Cancel committed course'))
+    await page.getByLabel('Processing mode').selectOption('once')
     await page.getByLabel('Advance interval').selectOption('86400')
     await click('▶ Play')
     await show(clock('06:00:00'))
     await show(page.locator('.event-kind.arrival'))
+    await show(page.getByText(/Body-center arrival\. Pathfinder applied/).first())
     await save('Arrival')
     await click('Load Game')
     await load('Load Arrival #4')

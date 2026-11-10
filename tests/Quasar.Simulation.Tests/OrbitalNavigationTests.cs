@@ -90,6 +90,150 @@ public sealed class OrbitalNavigationTests
         Assert.Equal(before + TimeSpan.FromSeconds(30).Ticks, lab.ElapsedTicks);
     }
 
+    [Theory]
+    [InlineData(-0.01, true)]
+    [InlineData(0, false)]
+    [InlineData(0.01, false)]
+    public void ResolvesBriefFlyThroughAndRejectsGrazingContacts(double offsetKm, bool enters)
+    {
+        var catalogue = SolarSystem.CreateCatalogue();
+        var initial = EarthFlyby(catalogue, offsetKm);
+        MovementExecution Create(bool automatic)
+        {
+            var movement = new MovementExecution(catalogue);
+            movement.AddSpacecraft("test", initial, SolarSystem.Sun, automaticPrimary: automatic);
+            return movement;
+        }
+
+        var unchanged = Create(false);
+        var radius = catalogue.GetEnvironment(SolarSystem.Earth).SphereOfInfluenceRadiusKm!.Value * .99;
+        double Distance(int seconds) => unchanged.StateAt("test", seconds * TimeSpan.TicksPerSecond)
+            .PositionKm.DistanceTo(catalogue.GetState(SolarSystem.Earth, seconds * TimeSpan.TicksPerSecond).PositionKm);
+        Assert.True(Distance(0) > radius && Distance(60) > radius);
+        if (enters) Assert.True(Distance(30) < radius);
+
+        const long end = 10 * TimeSpan.TicksPerMinute;
+        var large = Create(true);
+        var events = large.Advance(TimeSpan.FromMinutes(1));
+        if (enters)
+        {
+            var entry = Assert.Single(events);
+            Assert.InRange(entry.AtTicks, 29 * TimeSpan.TicksPerSecond, 30 * TimeSpan.TicksPerSecond);
+            AssertNear(unchanged.StateAt("test", entry.AtTicks), large.StateAt("test", entry.AtTicks));
+            Assert.Equal(SolarSystem.Earth, large.PrimaryOf("test"));
+            Assert.Equal("primary-change", Assert.Single(large.Advance(TimeSpan.FromTicks(end - large.ElapsedTicks))).Kind);
+            Assert.Equal(SolarSystem.Sun, large.PrimaryOf("test"));
+        }
+        else Assert.Empty(events);
+
+        Assert.Empty(large.Advance(TimeSpan.FromTicks(end - large.ElapsedTicks)));
+        var small = Create(true);
+        while (small.ElapsedTicks < end)
+            small.Advance(TimeSpan.FromTicks(Math.Min(7 * TimeSpan.TicksPerSecond, end - small.ElapsedTicks)));
+        Assert.Equal(large.ExportState().Spacecraft[0], small.ExportState().Spacecraft[0]);
+        AssertNear(large.StateAt("test", large.ElapsedTicks), small.StateAt("test", small.ElapsedTicks));
+    }
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(0.00002, true)]
+    public void DistinguishesGrazingApoapsisFromABriefExit(double offsetKm, bool exits)
+    {
+        var catalogue = SolarSystem.CreateCatalogue();
+        var earth = SolarSystem.Earth;
+        const long midpoint = 30 * TimeSpan.TicksPerSecond;
+        var exitRadius = catalogue.GetEnvironment(earth).SphereOfInfluenceRadiusKm!.Value * 1.01;
+        var radius = exitRadius + offsetKm;
+        var mu = catalogue.GetEnvironment(earth).GravitationalParameterKm3PerSecond2;
+        var coast = new TwoBodyTrajectory(new(new(radius, 0, 0), new(0, .7 * Math.Sqrt(mu / radius), 0)), midpoint, mu);
+        Assert.True(Vector3d.From(coast.StateAt(0).PositionKm).Length < exitRadius);
+        Assert.True(Vector3d.From(coast.StateAt(2 * midpoint).PositionKm).Length < exitRadius);
+        var movement = new MovementExecution(catalogue);
+        movement.AddSpacecraft("test", OrbitalNavigation.ToSystem(catalogue, earth, 0, coast.StateAt(0)), earth,
+            automaticPrimary: true);
+        var events = movement.Advance(TimeSpan.FromMinutes(1));
+        if (exits)
+        {
+            Assert.InRange(Assert.Single(events).AtTicks, 1, midpoint);
+            Assert.Equal(SolarSystem.Sun, movement.PrimaryOf("test"));
+        }
+        else Assert.Empty(events);
+    }
+
+    [Theory]
+    [InlineData(1, "a-earth")]
+    [InlineData(1.001, SolarSystem.Earth)]
+    public void OrdersOverlappingSpheresByFirstCrossingThenBodyIdAndProcessesAllShips(double earthMassFactor, string expectedPrimary)
+    {
+        var solar = SolarSystem.CreateCatalogue();
+        var earth = solar.Bodies[SolarSystem.Earth];
+        var catalogue = new CelestialPositionService(solar.Bodies.Values
+            .Where(body => body.Id != earth.Id)
+            .Append(earth with { Id = "a-earth" })
+            .Append(earth with { GravitationalParameterKm3PerSecond2 = earth.GravitationalParameterKm3PerSecond2 * earthMassFactor }));
+        var initial = EarthFlyby(catalogue, -.01);
+        var movement = new MovementExecution(catalogue);
+        movement.AddSpacecraft("z-ship", initial, SolarSystem.Sun, automaticPrimary: true);
+        movement.AddSpacecraft("a-ship", initial, SolarSystem.Sun, automaticPrimary: true);
+        var events = movement.Advance(TimeSpan.FromMinutes(1));
+        Assert.Equal(new[] { "a-ship", "z-ship" }, events.Select(e => e.SpacecraftId));
+        Assert.All(events, e =>
+        {
+            Assert.Equal(movement.ElapsedTicks, e.AtTicks);
+            Assert.Equal("primary-change", e.Kind);
+            Assert.Equal(expectedPrimary, movement.PrimaryOf(e.SpacecraftId));
+        });
+    }
+
+    [Fact]
+    public void QueuedArrivalAndAutomaticEntryAtTheSameTickBothInterrupt()
+    {
+        var catalogue = SolarSystem.CreateCatalogue();
+        var initial = EarthFlyby(catalogue, -.01);
+        var movement = new MovementExecution(catalogue);
+        movement.AddSpacecraft("coast", initial, SolarSystem.Sun, automaticPrimary: true);
+        var probe = MovementExecution.RestoreState(movement.ExportState());
+        var at = Assert.Single(probe.Advance(TimeSpan.FromMinutes(1))).AtTicks;
+
+        const double moonMu = 4902.8;
+        var orbit = new CelestialState(new(0, 2000, 0), new(0, 0, Math.Sqrt(moonMu / 2000)));
+        const string moon = "moon-moon";
+        var departure = OrbitalNavigation.ToSystem(catalogue, moon, 0, orbit);
+        var target = new TwoBodyTrajectory(orbit, 0, moonMu).StateAt(at);
+        movement.AddSpacecraft("arrival", departure, moon);
+        var plan = new TrajectoryPlanner(catalogue).Plan(new(departure, 0,
+            new(moon, at, new(null, OrbitalNavigation.ToSystem(catalogue, moon, at, target), at))));
+        movement.Commit("arrival", plan);
+
+        var events = movement.Advance(TimeSpan.FromDays(1));
+        Assert.Equal(new MovementEvent[] { new(at, "arrival", "arrival"), new(at, "coast", "primary-change") }, events);
+    }
+
+    [Fact]
+    public void AutomaticTargetPredictionHasAnInclusiveThirtyDayHorizonWithoutChangingTheWorld()
+    {
+        var lab = new SystemLab();
+        lab.Advance(TimeSpan.FromSeconds(1));
+        var before = SimulationStateJson.Serialize(lab.ExportState());
+        var horizon = lab.ElapsedTicks + 30 * TimeSpan.TicksPerDay;
+        Assert.Equal(horizon, lab.TargetStateAt("spacecraft", SystemLab.ShipId, horizon).AtTicks);
+        var error = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            lab.TargetStateAt("spacecraft", SystemLab.ShipId, horizon + 1));
+        Assert.Contains("up to 30 days", error.Message);
+        Assert.Equal(horizon + 1, lab.TargetStateAt("orbit", SolarSystem.Earth, horizon + 1).AtTicks);
+        Assert.Equal(before, SimulationStateJson.Serialize(lab.ExportState()));
+    }
+
+    private static CelestialState EarthFlyby(CelestialPositionService catalogue, double offsetKm)
+    {
+        const long midpoint = 30 * TimeSpan.TicksPerSecond;
+        var radius = catalogue.GetEnvironment(SolarSystem.Earth).SphereOfInfluenceRadiusKm!.Value * .99;
+        var midpointState = OrbitalNavigation.ToSystem(catalogue, SolarSystem.Earth, midpoint,
+            new(new(0, 0, radius + offsetKm), new(500, 0, 0)));
+        return new TwoBodyTrajectory(midpointState, midpoint,
+            catalogue.GetEnvironment(SolarSystem.Sun).GravitationalParameterKm3PerSecond2).StateAt(0);
+    }
+
     private static void AssertNear(CelestialState expected, CelestialState actual)
     {
         Assert.InRange(expected.PositionKm.DistanceTo(actual.PositionKm), 0, 1e-6);

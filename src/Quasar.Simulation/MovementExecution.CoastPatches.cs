@@ -2,10 +2,11 @@ namespace Quasar.Simulation;
 
 public sealed partial class MovementExecution
 {
-    private const long SampleTicks = TimeSpan.TicksPerMinute;
+    private const double BoundaryToleranceKm = 1e-5;
     private const long SearchWindow = 30 * TimeSpan.TicksPerDay;
+    private readonly record struct CoastSample(CelestialState Local, Vector3d RelativePosition);
     private sealed record CoastPatch(long AtTicks, string Primary, TwoBodyTrajectory Coast);
-    private sealed record SphereBoundary(string BodyId, string NextPrimary, double RadiusKm, bool IsExit);
+    private sealed record SphereBoundary(string BodyId, string NextPrimary, double RadiusKm, bool IsExit, double ChildAcceleration = 0);
 
     internal string PrimaryOf(string id) => spacecraft[id].Primary;
 
@@ -47,59 +48,90 @@ public sealed partial class MovementExecution
     private CoastPatch? FindCoastPatch(TwoBodyTrajectory coast, string primary, long from, long through)
     {
         if (through < from) return null;
-        var boundaries = SphereBoundaries(coast, primary).ToArray();
-        if (boundaries.Length == 0) return null;
-
-        // Use the same bracketing endpoints even when the requested interval ends between them.
-        var elapsed = (decimal)from - coast.EpochTicks;
-        var left = from - (long)(elapsed % SampleTicks);
-        while (left <= through)
+        CoastPatch? chosen = null;
+        foreach (var boundary in SphereBoundaries(coast, primary))
         {
-            var right = left > long.MaxValue - SampleTicks ? long.MaxValue : left + SampleTicks;
-            var leftState = coast.StateAt(left);
-            var rightState = coast.StateAt(right);
-            CoastPatch? chosen = null;
-            var first = through;
-            foreach (var boundary in boundaries)
-            {
-                long crossing;
-                if (left == coast.EpochTicks && Reached(boundary, primary, left, leftState))
-                    crossing = left;
-                else if (!Reached(boundary, primary, left, leftState) && Reached(boundary, primary, right, rightState))
-                {
-                    var low = left;
-                    var high = right;
-                    while (high - low > 1)
-                    {
-                        var mid = low + (high - low) / 2;
-                        if (Reached(boundary, primary, mid, coast.StateAt(mid))) high = mid;
-                        else low = mid;
-                    }
-                    crossing = high;
-                }
-                else continue;
+            // Exit precedes ordered child IDs, so only an earlier tick can replace the winner.
+            if (chosen?.AtTicks == from) break;
+            var limit = chosen is null ? through : chosen.AtTicks - 1;
+            var radius = boundary.RadiusKm + (boundary.IsExit ? BoundaryToleranceKm : -BoundaryToleranceKm);
+            if (radius <= 0) continue;
+            var left = SampleAt(from);
+            var right = SampleAt(limit);
+            var cursor = from;
 
-                if (crossing < from || crossing > first || (crossing == first && chosen is not null)) continue;
-                var system = OrbitalNavigation.ToSystem(catalogue, primary, crossing, coast.StateAt(crossing));
-                var local = OrbitalNavigation.ToLocal(catalogue, boundary.NextPrimary, crossing, system);
-                TwoBodyTrajectory nextCoast;
+            // A coast created inside a child (or outside its primary) can patch at its epoch.
+            // Otherwise find a fresh crossing, including after an unsupported radial handoff.
+            var allowCurrent = from == coast.EpochTicks;
+            while (cursor <= limit)
+            {
+                if (!allowCurrent && OnSide(left.RelativePosition, boundary.IsExit))
+                {
+                    var opposite = FirstOnSide(cursor, left, limit, right, !boundary.IsExit);
+                    if (opposite is null) break;
+                    cursor = opposite.Value;
+                    left = SampleAt(cursor);
+                }
+                var crossing = FirstOnSide(cursor, left, limit, right, boundary.IsExit);
+                if (crossing is null) break;
+                var system = OrbitalNavigation.ToSystem(catalogue, primary, crossing.Value, coast.StateAt(crossing.Value));
+                var local = OrbitalNavigation.ToLocal(catalogue, boundary.NextPrimary, crossing.Value, system);
                 try
                 {
-                    nextCoast = new(local, crossing, PrimaryMu(boundary.NextPrimary));
+                    var next = new TwoBodyTrajectory(local, crossing.Value, PrimaryMu(boundary.NextPrimary));
+                    chosen = new(crossing.Value, boundary.NextPrimary, next);
+                    break;
                 }
                 catch (ArgumentException)
                 {
-                    // A centre-directed legacy course can leave a radial state the local solver cannot propagate.
-                    continue;
+                    // A centre-directed course can leave a radial state the local solver cannot propagate.
+                    cursor = crossing.Value;
+                    left = SampleAt(cursor);
+                    allowCurrent = false;
                 }
-                first = crossing;
-                chosen = new(crossing, boundary.NextPrimary, nextCoast);
             }
-            if (chosen is not null) return chosen;
-            if (right >= through) break;
-            left = right;
+
+            CoastSample SampleAt(long ticks)
+            {
+                var local = coast.StateAt(ticks);
+                var position = Vector3d.From(local.PositionKm);
+                return new(local, boundary.IsExit ? position : position - catalogue.OrbitalOffsetAt(boundary.BodyId, ticks));
+            }
+
+            bool OnSide(Vector3d position, bool outside) => outside ? position.Length >= radius : position.Length < radius;
+
+            long? FirstOnSide(long low, CoastSample lowSample, long high, CoastSample highSample, bool outside)
+            {
+                var lowPosition = lowSample.RelativePosition;
+                var highPosition = highSample.RelativePosition;
+                if (OnSide(lowPosition, outside)) return low;
+                if (low == high) return null;
+                if (high - low == 1) return OnSide(highPosition, outside) ? high : null;
+
+                // A curve with acceleration bounded by A stays within A * dt² / 8 of its chord.
+                // Reject an interval only if the whole chord, plus that error, misses the boundary.
+                var seconds = (double)(high - low) / TimeSpan.TicksPerSecond;
+                var acceleration = coast.MaximumAccelerationFrom(lowSample.Local, seconds) + boundary.ChildAcceleration;
+                var error = acceleration * seconds * seconds / 8 + BoundaryToleranceKm / 10;
+                if (outside)
+                {
+                    if (Math.Max(lowPosition.Length, highPosition.Length) + error < radius) return null;
+                }
+                else
+                {
+                    var chord = highPosition - lowPosition;
+                    var lengthSquared = Vector3d.Dot(chord, chord);
+                    var nearest = lengthSquared > 0 ? Math.Clamp(-Vector3d.Dot(lowPosition, chord) / lengthSquared, 0, 1) : 0;
+                    if ((lowPosition + chord * nearest).Length - error >= radius) return null;
+                }
+
+                var mid = low + (high - low) / 2;
+                var midSample = SampleAt(mid);
+                return FirstOnSide(low, lowSample, mid, midSample, outside)
+                    ?? FirstOnSide(mid, midSample, high, highSample, outside);
+            }
         }
-        return null;
+        return chosen;
     }
 
     private IEnumerable<SphereBoundary> SphereBoundaries(TwoBodyTrajectory coast, string primary)
@@ -115,18 +147,12 @@ public sealed partial class MovementExecution
             if (catalogue.GetEnvironment(child.Id).SphereOfInfluenceRadiusKm is not { } radius
                 || child.GravitationalParameterKm3PerSecond2 <= 0) continue;
             var entry = radius * 0.99;
-            if (child.Orbit is { } orbit
-                && (coast.PeriapsisKm > orbit.SemiMajorAxisKm * (1 + orbit.Eccentricity) + entry
-                    || coast.ApoapsisKm < orbit.SemiMajorAxisKm * (1 - orbit.Eccentricity) - entry)) continue;
-            yield return new(child.Id, child.Id, entry, false);
+            if (child.Orbit is not { } orbit) continue;
+            var periapsis = orbit.SemiMajorAxisKm * (1 - orbit.Eccentricity);
+            if (coast.PeriapsisKm > orbit.SemiMajorAxisKm * (1 + orbit.Eccentricity) + entry
+                || coast.ApoapsisKm < periapsis - entry) continue;
+            var mu = catalogue.GetEnvironment(child.Id).RelativeGravitationalParameterKm3PerSecond2!.Value;
+            yield return new(child.Id, child.Id, entry, false, mu / periapsis / periapsis);
         }
-    }
-
-    private bool Reached(SphereBoundary boundary, string primary, long ticks, CelestialState local)
-    {
-        if (boundary.IsExit)
-            return Vector3d.From(local.PositionKm).Length >= boundary.RadiusKm;
-        var child = OrbitalNavigation.ToLocal(catalogue, primary, ticks, catalogue.GetState(boundary.BodyId, ticks));
-        return local.PositionKm.DistanceTo(child.PositionKm) <= boundary.RadiusKm;
     }
 }
