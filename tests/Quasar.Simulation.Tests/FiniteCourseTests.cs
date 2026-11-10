@@ -87,6 +87,52 @@ public class FiniteCourseTests
         Assert.Null(RoundTrip(lab).Snapshot().Trajectory);
     }
 
+    [Theory]
+    [InlineData("departure-start")]
+    [InlineData("departure-cutoff")]
+    [InlineData("coast")]
+    [InlineData("braking-start")]
+    [InlineData("braking")]
+    [InlineData("last-powered-tick")]
+    public void RestoringThenCancellingPreservesStateAndFuelAndDropsFutureBurns(string phase)
+    {
+        var lab = new SystemLab();
+        var plan = Fastest(lab);
+        var finite = plan.Finite!;
+        var departureEnd = finite.Departure.EndTicks;
+        var brakingStart = finite.Braking.StartTicks;
+        var at = phase switch
+        {
+            "departure-start" => plan.DepartureTicks,
+            "departure-cutoff" => departureEnd,
+            "coast" => departureEnd + (brakingStart - departureEnd) / 2,
+            "braking-start" => brakingStart,
+            "braking" => brakingStart + (plan.ArrivalTicks - brakingStart) / 2,
+            "last-powered-tick" => plan.ArrivalTicks - 1,
+            _ => throw new ArgumentException(nameof(phase))
+        };
+        lab.CommitTravel(plan);
+        while (lab.ElapsedTicks < at) AdvanceTo(lab, at);
+
+        var state = lab.ShipStateAt(at);
+        var flow = finite.State.Propulsion.CalculatePerformance().RatedMassFlowKgPerSecond;
+        var firedTicks = Math.Min(at, departureEnd) - plan.DepartureTicks + Math.Max(0, at - brakingStart);
+        var expectedFuel = finite.State.Propulsion.Tank.QuantityKg - flow * (firedTicks / (double)TimeSpan.TicksPerSecond);
+        var restored = SystemLab.RestoreState(SimulationStateJson.Deserialize(SimulationStateJson.Serialize(lab.ExportState())));
+        Assert.Equal(plan.StateAt(at), restored.ShipStateAt(at));
+        Assert.Equal(expectedFuel, restored.Snapshot().Ship.Propulsion!.AvailablePropellantKg, 8);
+
+        restored.CancelTravel();
+        Assert.Equal(state, restored.ShipStateAt(at));
+        Assert.Equal(expectedFuel, restored.Snapshot().Ship.Propulsion!.AvailablePropellantKg, 8);
+        Assert.True(restored.ExportState().Simulation.Spacecraft[0].FreeCoast!.AutomaticPrimary);
+        var afterCancel = RoundTrip(restored);
+        var events = afterCancel.Snapshot().Events.Length;
+        while (afterCancel.ElapsedTicks <= plan.ArrivalTicks) AdvanceTo(afterCancel, plan.ArrivalTicks + 1);
+        Assert.DoesNotContain(afterCancel.Snapshot().Events.Skip(events), entry => entry.Kind.StartsWith("course-", StringComparison.Ordinal));
+        Assert.Equal(expectedFuel, afterCancel.Snapshot().Ship.Propulsion!.AvailablePropellantKg, 8);
+    }
+
     [Fact]
     public void SamePrimaryOrbitRequestEndsInABoundOrbit()
     {
@@ -107,6 +153,15 @@ public class FiniteCourseTests
         Assert.True(finite.ArrivalCoast.PeriapsisKm > 6378);
         Assert.InRange(finite.Arrival.PositionErrorKm, 0, FiniteCourse.PositionToleranceKm);
         Assert.InRange(finite.Arrival.VelocityErrorKmPerSecond, 0, FiniteCourse.VelocityToleranceKmPerSecond);
+
+        lab.CommitTravel(plan);
+        while (lab.ElapsedTicks < plan.ArrivalTicks) AdvanceTo(lab, plan.ArrivalTicks);
+        var achieved = RoundTrip(lab);
+        Assert.Contains("entered the requested orbit", achieved.LastEvent.Message);
+        var position = achieved.ShipStateAt(plan.ArrivalTicks).PositionKm;
+        var earth = achieved.CelestialPositions.GetState(SolarSystem.Earth, plan.ArrivalTicks).PositionKm;
+        Assert.Equal(finite.Arrival.TargetRadiusKm, position.DistanceTo(earth), 2);
+        Assert.Equal(SolarSystem.Earth, achieved.TargetStateAt("spacecraft", SystemLab.ShipId, plan.ArrivalTicks).ReferenceBodyId);
     }
 
     private static CourseSearchResult Find(SystemLab lab) => lab.CaptureCourseSearch(SolarSystem.Earth)(CancellationToken.None);

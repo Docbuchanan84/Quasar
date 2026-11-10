@@ -120,6 +120,45 @@ public class CoursePreviewTests
     }
 
     [Fact]
+    public void ContinuousStopsExactlyAtEachFiniteBoundaryAndApproachFinishesOutsideEarth()
+    {
+        var session = new LabSession();
+        var initial = session.Snapshot();
+        session.Execute(new(initial.InstanceId, initial.Revision, Client, "configure",
+            DurationSeconds: 2592000, Mode: "continuous"));
+        var preview = Assert.IsType<CoursePreview>(session.PreviewAutomaticCourse(SolarSystem.Earth, null, CancellationToken.None).Fastest);
+        var schedule = preview.Trajectory.BurnSchedule!;
+        Send(session, "commit-course", preview.PreviewId);
+        var departureCutoff = long.Parse(schedule[0].StartTicks) + (long)Math.Round(schedule[0].DurationSeconds * TimeSpan.TicksPerSecond);
+        foreach (var (kind, ticks) in new[]
+        {
+            ("course-departure-cutoff", departureCutoff),
+            ("course-braking-start", long.Parse(schedule[1].StartTicks)),
+            ("course-arrival", long.Parse(preview.Trajectory.ArrivalTicks))
+        })
+        {
+            Assert.True(Send(session, "play").Running);
+            session.Tick();
+            var interrupted = session.Snapshot();
+            Assert.False(interrupted.Running);
+            Assert.Equal(kind, interrupted.Interrupt!.Kind);
+            Assert.Equal(ticks, interrupted.Interrupt.AtTicks);
+            Assert.Equal(ticks, interrupted.World.ElapsedTicks);
+            session.Tick();
+            Assert.Equal(interrupted.Revision, session.Snapshot().Revision);
+        }
+
+        var after = session.Snapshot();
+        var spacecraft = after.World.Objects.Single(body => body.Id == SystemLab.ShipId);
+        var earth = after.World.Objects.Single(body => body.Id == SolarSystem.Earth);
+        Assert.Equal(preview.Trajectory.Points[^1].PositionKm, spacecraft.Position);
+        Assert.InRange(spacecraft.Position.DistanceTo(earth.Position), 1_000_000, 1_030_000);
+        Assert.Equal("Coasting", after.World.Ship.Status);
+        Assert.Contains("approach point", after.Interrupt!.Message);
+        Assert.Equal(preview.Trajectory.BrakingMarginKg, after.World.Ship.Propulsion!.AvailablePropellantKg);
+    }
+
+    [Fact]
     public void NoRouteAndCancellationLeaveTheSessionUntouched()
     {
         var session = new LabSession();
@@ -165,6 +204,21 @@ public class CoursePreviewTests
             return null;
         }, cancellation.Token));
         Assert.Equal(1, count);
+    }
+
+    [Fact]
+    public void SearchKeepsEvaluationCountBoundedWhenRefiningFeasibleDurations()
+    {
+        var sampled = new HashSet<int>();
+        var plan = SystemLab.CreateLegacyFixture().PreviewTravel("planet-iris");
+        var options = CourseSearch.Find(seconds =>
+        {
+            Assert.True(sampled.Add(seconds));
+            return seconds >= 200_000 ? plan : null;
+        }, CancellationToken.None);
+
+        Assert.NotNull(options);
+        Assert.InRange(sampled.Count, 41, 56);
     }
 
     private static SessionSnapshot Send(LabSession session, string operation, string? previewId = null)

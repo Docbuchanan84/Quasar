@@ -17,6 +17,12 @@
   2D/3D review, and a 393 px portrait viewport. All seven disposable campaign
   browser phases passed. The next phone check is a
   complete approach from preview to final cutoff on the physical device.
+- The merge review added coverage for JSON restore and cancellation at burn
+  boundaries, executed orbital insertion, Continuous interrupts, and the search
+  evaluation ceiling. `scripts/Verify.ps1` passed 244 xUnit tests and 11 Node
+  checks. The review found two remaining issues in PR #34. Legacy orders can
+  bypass fuel accounting in a propulsion-equipped campaign, and one-second
+  powered samples can miss a brief gravity boundary crossing.
 
 ## 2026-11-10 — Automatic SOI crossing audit
 
