@@ -86,6 +86,30 @@ public sealed class CampaignHttpTests : IDisposable
     }
 
     [Fact]
+    public async Task ContinuousRunsWithoutBrowserRequestsAndAnotherClientCanStopIt()
+    {
+        await using var host = await Start();
+        await host.Create("Unattended run");
+        await host.Command("configure", duration: 1, mode: "continuous");
+        var play = await host.Command("play");
+
+        // Exceed the former five-second browser lease with no requests at all.
+        await Task.Delay(TimeSpan.FromSeconds(6));
+        var reconnected = await host.Get(Lab);
+        Assert.True(reconnected.GetProperty("running").GetBoolean());
+        Assert.NotEqual(play.GetProperty("world").GetProperty("elapsedTicks").GetString(),
+            reconnected.GetProperty("world").GetProperty("elapsedTicks").GetString());
+
+        var stopped = await host.Post(Lab + "/commands", play, new { clientId = Guid.NewGuid(), operation = "stop" });
+        Assert.False(stopped.GetProperty("running").GetBoolean());
+        Assert.Equal("Player stopped", stopped.GetProperty("stopReason").GetString());
+        Assert.Equal(JsonValueKind.Null, stopped.GetProperty("interrupt").ValueKind);
+        await Task.Delay(TimeSpan.FromMilliseconds(350));
+        Assert.Equal(stopped.GetProperty("world").GetProperty("elapsedTicks").GetString(),
+            (await host.Get(Lab)).GetProperty("world").GetProperty("elapsedTicks").GetString());
+    }
+
+    [Fact]
     public async Task LoadingWhileRunningPausesAndRejectsOldCommandsAndPreviews()
     {
         await using var host = await Start();

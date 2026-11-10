@@ -166,7 +166,8 @@ public sealed partial class SystemLab
         Record("burn-cutoff", "Pathfinder cut thrust and resumed an unforced coast.");
     }
 
-    public string LastEventKind => events[^1].Kind;
+    public LabEvent LastEvent => events[^1];
+    public string LastEventKind => LastEvent.Kind;
 
     public OrbitalTargetState TargetStateAt(string kind, string targetId, long atTicks) => kind switch
     {

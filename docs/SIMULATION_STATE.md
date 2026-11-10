@@ -61,7 +61,7 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   ship. Later boundaries are scheduled as they are reached. It reconstructs
   conic coefficients from their saved initial conditions and GM. A Lambert solve
   is unnecessary. Planner/ephemeris caches and display samples are derived.
-  Preview tokens, leases, and browser state are outside the payload.
+  Preview tokens, run controls, and browser state are outside the payload.
 
 ## Storage handoff
 

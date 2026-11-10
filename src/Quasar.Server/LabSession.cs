@@ -9,14 +9,14 @@ public sealed record CoursePreview(string PreviewId, string InstanceId, long Rev
     string DestinationId, double SampledDistanceKm, string[] Warnings, TrajectoryDisplay Trajectory);
 public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePreview? LowestManeuverCost);
 public sealed record SessionSnapshot(string InstanceId, long Revision, bool Running, string StopReason,
-    int DurationSeconds, string Mode, LabSnapshot World);
+    int DurationSeconds, string Mode, LabSnapshot World, LabEvent? Interrupt);
 
 /// <summary>The host is the only writer. This gate also makes polling snapshots internally consistent.</summary>
-public sealed partial class LabSession(TimeProvider timeProvider, bool startWithWorld = true)
+public sealed partial class LabSession(bool startWithWorld = true)
 {
     private readonly object gate = new();
     private SystemLab? world = startWithWorld ? new() : null;
-    internal LabSession(TimeProvider timeProvider, SystemLab fixture) : this(timeProvider, false) => world = fixture;
+    internal LabSession(SystemLab fixture) : this(false) => world = fixture;
 
     private readonly Dictionary<string, (long Revision, TrajectoryPlan Plan)> previews = [];
     private string instanceId = Guid.NewGuid().ToString();
@@ -25,8 +25,7 @@ public sealed partial class LabSession(TimeProvider timeProvider, bool startWith
     private string stopReason = "Ready";
     private int durationSeconds = 3600;
     private string mode = "once";
-    private string? controller;
-    private DateTimeOffset leaseUntil;
+    private LabEvent? interrupt;
     public static readonly int[] Durations = [1, 5, 30, 60, 3600, 86400, 432000, 1296000, 2592000];
 
     public SessionSnapshot Snapshot()
@@ -133,12 +132,12 @@ public sealed partial class LabSession(TimeProvider timeProvider, bool startWith
                     break;
                 case "play":
                     if (running) throw new InvalidOperationException("Already processing time.");
-                    controller = command.ClientId;
-                    leaseUntil = timeProvider.GetUtcNow().AddSeconds(5);
+                    interrupt = null;
                     running = true;
                     stopReason = "Processing";
                     break;
                 case "stop":
+                    if (!running && interrupt is not null) return Read();
                     if (running) lastStopVersion = worldVersion;
                     running = false;
                     stopReason = "Player stopped";
@@ -184,57 +183,43 @@ public sealed partial class LabSession(TimeProvider timeProvider, bool startWith
         }
     }
 
-    public void RenewLease(string instance, string client)
-    {
-        lock (gate)
-        {
-            if (instance == instanceId && client == controller && running)
-                leaseUntil = timeProvider.GetUtcNow().AddSeconds(5);
-        }
-    }
-
     public void Tick()
     {
         lock (gate)
         {
             if (!running || switchingCampaign || shuttingDown) return;
-            if (timeProvider.GetUtcNow() >= leaseUntil)
+            try
             {
-                running = false;
-                stopReason = "Controller disconnected";
-            }
-            else
-            {
-                try
-                {
-                    var activeWorld = RequireWorld();
-                    var before = activeWorld.ElapsedTicks;
-                    var interrupted = activeWorld.Advance(TimeSpan.FromSeconds(durationSeconds));
-                    if (interrupted || activeWorld.ElapsedTicks != before) MarkWorldChanged(significant: interrupted);
-                    if (interrupted || mode == "once")
-                    {
-                        running = false;
-                        stopReason = !interrupted ? "Advance complete" : activeWorld.LastEventKind switch
-                        {
-                            "burn-complete" => "Burn complete — coasting",
-                            "burn-exhausted" => "Propellant exhausted — coasting",
-                            "primary-change" => "Gravity primary changed — coasting",
-                            _ => "Body-center Arrival — awaiting orders"
-                        };
-                    }
-                }
-                catch (OverflowException)
+                var activeWorld = RequireWorld();
+                var before = activeWorld.ElapsedTicks;
+                var interrupted = activeWorld.Advance(TimeSpan.FromSeconds(durationSeconds));
+                if (interrupted || activeWorld.ElapsedTicks != before) MarkWorldChanged(significant: interrupted);
+                if (interrupted || mode == "once")
                 {
                     running = false;
-                    stopReason = "Simulation time limit reached";
+                    interrupt = interrupted ? activeWorld.LastEvent : null;
+                    stopReason = interrupt?.Kind switch
+                    {
+                        null => "Advance complete",
+                        "burn-complete" => "Burn complete — coasting",
+                        "burn-exhausted" => "Propellant exhausted — coasting",
+                        "arrival" => "Arrival — awaiting orders",
+                        "patch" or "primary-change" => "Gravity primary changed — coasting",
+                        _ => "Game event — awaiting orders"
+                    };
                 }
+            }
+            catch (OverflowException)
+            {
+                running = false;
+                stopReason = "Simulation time limit reached";
             }
             revision++;
             previews.Clear();
         }
     }
 
-    private SessionSnapshot Read() => new(instanceId, revision, running, stopReason, durationSeconds, mode, RequireWorld().Snapshot());
+    private SessionSnapshot Read() => new(instanceId, revision, running, stopReason, durationSeconds, mode, RequireWorld().Snapshot(), interrupt);
 }
 
 public sealed class LabRunner(LabSession session) : BackgroundService

@@ -149,10 +149,10 @@ public sealed class CampaignLifecycleTests : IDisposable
     }
 
     [Fact]
-    public void OldLeaseCannotExtendRunningTimeAfterCampaignReplacement()
+    public void CampaignReplacementPausesAndInvalidatesOldCommandsAndPreviews()
     {
         var (session, lifecycle, _) = Start(new());
-        var active = lifecycle.Create(Version(session), "Lease").Campaign!;
+        var active = lifecycle.Create(Version(session), "Replacement").Campaign!;
         var original = session.Snapshot();
         var oldPreview = session.PreviewCourse("planet-earth", 21600);
 
@@ -164,20 +164,12 @@ public sealed class CampaignLifecycleTests : IDisposable
             session.Execute(new(original.InstanceId, original.Revision, client, "stop")));
         Assert.Throws<InvalidOperationException>(() =>
             session.Execute(new(loaded.InstanceId, loaded.Revision, client, "commit-course", PreviewId: oldPreview.PreviewId)));
-
-        Command(session, "configure", duration: 1, mode: "continuous");
-        Command(session, "play");
-        clock.Advance(TimeSpan.FromSeconds(4));
-        session.RenewLease(original.InstanceId, client);
-        clock.Advance(TimeSpan.FromSeconds(1));
-        session.Tick();
-        Assert.Equal("Controller disconnected", session.Snapshot().StopReason);
-        Assert.Equal(0, session.Snapshot().World.ElapsedTicks);
+        Assert.Null(session.Snapshot().Interrupt);
     }
 
     private (LabSession, CampaignLifecycle, SqliteCampaignStore) Start(PersistenceSettings settings, ICampaignStore? overrideStore = null)
     {
-        var session = new LabSession(clock, startWithWorld: false);
+        var session = new LabSession(startWithWorld: false);
         var store = new SqliteCampaignStore(root, settings.Autosave.RecoveryCheckpoints);
         var lifecycle = new CampaignLifecycle(session, overrideStore ?? store, settings, clock,
             NullLogger<CampaignLifecycle>.Instance, root);

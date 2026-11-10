@@ -102,7 +102,7 @@ public sealed class FiniteBurnExecutionTests
     [Fact]
     public void HostStopsContinuousProcessingAtBurnCutoffAndRejectsStaleCommands()
     {
-        var session = new LabSession(TimeProvider.System);
+        var session = new LabSession();
         var client = Guid.NewGuid().ToString();
         var initial = session.Snapshot();
         LabCommand Command(SessionSnapshot snapshot, string operation) =>
@@ -117,6 +117,7 @@ public sealed class FiniteBurnExecutionTests
         Assert.False(stopped.Running);
         Assert.Equal(TimeSpan.FromSeconds(30).Ticks, stopped.World.ElapsedTicks);
         Assert.Equal("Burn complete — coasting", stopped.StopReason);
+        Assert.Equal(Assert.Single(stopped.World.Events, e => e.Kind == "burn-complete"), stopped.Interrupt);
     }
 
     private static SystemLab Restore(SystemLab lab) =>

@@ -23,8 +23,9 @@ the local view. See the [Solar System guide](docs/SOLAR_SYSTEM.md).
    Gold dashes show previews and green shows
    committed paths. Both views show departure and future arrival markers.
 4. Choose 1, 5, or 30 seconds, 1 minute, 1 hour, or 1, 5, 15, or 30 days.
-   Select **Once** or **Continuous** and press **Play**. Arrival interrupts
-   processing at the exact event time. **Stop** pauses time processing.
+   Select **Once** or **Continuous** and press **Play**. Continuous runs on the
+   host even when you lock your phone or close the browser. **Stop** or a game
+   interrupt pauses it. The clock displays the event and its simulation time.
 
 Drag or swipe to pan in 2D. In 3D, drag to orbit and use right/middle/Ctrl-drag or
 two fingers to pan. Both views support wheel/pinch zoom and **Reset View**.

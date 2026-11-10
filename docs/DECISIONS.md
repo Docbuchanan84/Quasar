@@ -6,6 +6,13 @@ The initial navigation slice exposes target states and clarifies body-center
 arrival wording. It uses bounded Laplace SOI crossings for new free coasts.
 See the [navigation contract](SPACECRAFT_TRAJECTORIES.md#orbital-destination-states-and-automatic-coast-transitions).
 
+## Approved — Continuous play without a connected browser (2026-11-10)
+
+The owner requested that the host continue advancing when the phone locks or
+disconnects. Continuous play pauses on Stop or a game interrupt. The game
+shows the interrupt and its simulation time when the player returns. Phone
+push delivery remains open. See the [clock contract](SYSTEM_LAB.md#clock-and-execution).
+
 ## Approved — finite-thrust task scope (issue #26)
 
 Pathfinder can burn under gravity using installed equipment and stored

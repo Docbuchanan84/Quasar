@@ -9,7 +9,7 @@ automatic course planning, interactive maps, and persistent campaigns. The
 | Delivered | Scope |
 | --- | --- |
 | System Lab | Solar System starter, Pathfinder, inspectable XYZ, shared 2D/3D selection, and event history |
-| Clock | Nine intervals, Once/Continuous, Stop, exact event interruption, and browser lease |
+| Clock | Nine intervals, host-owned Once/Continuous, Stop, exact event interruption, and in-game notices on reconnect |
 | Celestial mechanics | Analytical hierarchical position and velocity queries and sphere-of-influence data |
 | Spacecraft movement | Lambert transfers, analytical coasting, impulses, and headless event execution |
 | Navigation | Collapsible system object tree, gesture-safe selection, pan/orbit/zoom, Reset View, and Focus Selected in both maps |
@@ -58,6 +58,7 @@ landscape, background/reconnect, and cellular-only access separately.
   fleets, collision,
   docking, and player-facing moving-target/waypoint selection remain open. The
   headless trajectory planner already supports moving-target interception.
+- Phone push delivery for game interrupts remains open.
 - Permanent scheduling, variable fidelity, look-ahead, cross-platform determinism,
   terrain, and sustained large-world and phone performance require further work.
 - Private hosting uses manual startup after reboot. Unattended startup remains open.

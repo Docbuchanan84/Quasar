@@ -44,7 +44,7 @@ adds the player-facing controls.
 - **Load** opens a specific checkpoint and reports an error if that checkpoint
   fails validation. Successful New, Load, and Continue replace the active
   world, pause time, reset time controls to Once / 1 hour, and issue a fresh
-  instance ID with revision zero. They clear the controller lease and any
+  instance ID with revision zero. They clear the run interrupt notice and any
   course-preview IDs. Committed trajectories, exact pending boundaries, and
   event history are restored with the world.
 - Validation and disk work run outside the simulation lock. A campaign switch
@@ -156,8 +156,8 @@ Handled campaign failures return `{ code, error }`. Request rejection in the
 HTTP middleware or JSON binding may have an empty body. On first run
 `GET /api/lab` returns 409 and the client can render New Campaign. If startup
 recovery failed, the lab returns 422 and the client can offer campaign and
-checkpoint choices. After any successful replacement, discard pending preview
-and lease UI, then refresh `GET /api/lab` before sending further commands.
+checkpoint choices. After any successful replacement, discard pending previews
+and refresh `GET /api/lab` before sending further commands.
 Continue restores a paused world. Play remains a separate lab command.
 Refresh after a conflict or uncertain network response before deciding whether
 to issue another mutation.
