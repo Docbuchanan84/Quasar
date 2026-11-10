@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 
 namespace Quasar.Simulation;
 
@@ -6,9 +7,9 @@ namespace Quasar.Simulation;
 public sealed record SimulationState(int FormatVersion, long ElapsedTicks,
     ImmutableArray<CelestialBodyState> Bodies, ImmutableArray<SpacecraftState> Spacecraft)
 {
-    public const int CurrentFormatVersion = 3;
+    public const int CurrentFormatVersion = 4;
 
-    public static bool SupportsFormatVersion(int version) => version is 1 or 2 or CurrentFormatVersion;
+    public static bool SupportsFormatVersion(int version) => version is 1 or 2 or 3 or CurrentFormatVersion;
 
     internal void RequireSupportedVersion()
     {
@@ -16,6 +17,8 @@ public sealed record SimulationState(int FormatVersion, long ElapsedTicks,
             throw new InvalidDataException($"Unsupported simulation state version {FormatVersion}.");
         if (FormatVersion < 3 && !Spacecraft.IsDefault && Spacecraft.Any(ship => ship?.Propulsion is not null))
             throw new InvalidDataException("Propulsion requires simulation state version 3.");
+        if (FormatVersion < 4 && !Spacecraft.IsDefault && Spacecraft.Any(ship => ship?.ActiveBurn is not null))
+            throw new InvalidDataException("Active burns require simulation state version 4.");
     }
 }
 
@@ -32,8 +35,12 @@ public sealed record OrbitState(double SemiMajorAxisKm, double Eccentricity, dou
 
 public sealed record SpacecraftState(string Id, string PrimaryBodyId, CoastState? FreeCoast,
     CommittedTrajectoryState? Trajectory, RendezvousState? Rendezvous,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    SpacecraftPropulsion? Propulsion = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    SpacecraftPropulsion? Propulsion = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    ActiveBurnState? ActiveBurn = null);
+public sealed record ActiveBurnState(long StartTicks, int DurationSeconds, KinematicState InitialRelativeState,
+    CartesianState UnitDirection, double IgnitionPropellantKg);
 public sealed record CoastState(long EpochTicks, KinematicState InitialRelativeState);
 public sealed record CommittedTrajectoryState(KinematicState InitialState, DestinationState Destination,
     ImmutableArray<TrajectorySegmentState> Segments, ImmutableArray<TrajectoryBurnState> Burns,

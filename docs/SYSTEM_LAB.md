@@ -33,7 +33,9 @@ exact reviewed plan while the host instance and revision match. Previewing or
 cancelling a preview preserves the simulation and any existing course. Both
 views draw the same sampled preview or committed path. Departure and arrival
 markers use the planned positions.
-Fuel estimates remain unavailable until propulsion and mass data exist.
+Route fuel estimates remain unavailable for these impulsive plans. The
+[finite engine burn](SOLAR_SYSTEM.md#pathfinder-propulsion) spends propellant
+and is mutually exclusive with a committed course.
 
 ## Clock and execution
 
@@ -72,7 +74,10 @@ arguments. The current UI uses `configure` with `durationSeconds` and `mode`
 (`once` or `continuous`), `play`, `stop`, `commit-course` with `previewId`,
 and `cancel-travel`. The compatible direct `travel` operation accepts
 `destinationId` and optional `flightSeconds`, defaulting to 21,600. The UI
-requires course review before issuing an order.
+requires course review before issuing an order. While paused, use `start-burn`
+with `burnDirection` (`prograde` or `retrograde`) and `burnSeconds` (1–3,600),
+or `cut-thrust` with no extra arguments. `world.ship.burnEndTicks` is the
+scheduled cutoff as a decimal tick string during an active burn.
 
 The host retains up to 32 solved preview plans. A successful command or clock
 tick invalidates them. Automatic searches use a captured departure outside the
@@ -94,5 +99,5 @@ course previews. See [course plotting](COURSE_PLOTTING.md) for browser test repr
 Initial phone play and owner feedback are recorded in
 [mobile validation](MOBILE_AND_REMOTE_ACCESS.md). End-to-end course and campaign
 checks on the physical phone, 3D, lifecycle behavior, and measured performance
-remain open. Finite thrust, propellant use, collision, docking, and fleets are
-future work. See the [project plan](PROJECT_PLAN.md).
+remain open. Propulsion-aware course planning, collision, docking, and fleets
+are future work. See the [project plan](PROJECT_PLAN.md).

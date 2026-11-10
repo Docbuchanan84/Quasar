@@ -1,15 +1,20 @@
 # Development log
 
-## 2026-11-10 — Finite-thrust calculation started
+## 2026-11-10 — Finite-thrust burns
 
 - The first [issue #26](https://github.com/Docbuchanan84/Quasar/issues/26)
   slice computes a full-thrust segment under central gravity using Pathfinder's
   installed propulsion and decreasing mass. RK4 uses one-second steps anchored
   to ignition, with a partial final step through physical depletion.
-- Headless tests cover the vacuum rocket-equation limit, gravity, timed
-  propellant use, deterministic queries, and empty-tank rejection. The next
-  slice will connect the segment to the movement clock and rebuild burn-end
-  events on restore, addressing the missed boundary identified in PR #19.
+- Timed cutoff and exhaustion interrupt both Once and Continuous processing.
+  Manual cutoff preserves position and velocity, and the inspector reports
+  current propellant. Checkpoint v4 restores the active burn and re-enqueues its
+  completion boundary, addressing the missed restore event identified in PR #19.
+- `scripts/Verify.ps1` passed with 215 xUnit tests. Disposable Chromium checks
+  at 320 and 1440 CSS pixels covered ignition,
+  mid-burn save and host restart, exhaustion at 150 seconds during a 30-day
+  advance, manual cutoff, and an impulsive course after cutoff. Physical
+  iPhone testing remains open.
 
 ## 2026-11-10 — Pathfinder propulsion foundation
 

@@ -18,22 +18,26 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   `History` entries. `SimulationState` contains `FormatVersion`,
   `ElapsedTicks`, `Bodies`, and `Spacecraft`. The nested
   `Simulation.FormatVersion` versions the entire checkpoint. The current version
-  is `SimulationState.CurrentFormatVersion` (3). Version 3 adds optional
-  spacecraft propulsion inputs and current propellant quantity. Versions 1
-  and 2 remain readable and restore without propulsion. Version 2 added body
-  radii and optional flyby metadata. Legacy versions reject non-null propulsion
-  data, and restore never equips a saved ship from the new-game fixture.
+  is `SimulationState.CurrentFormatVersion` (4). Version 4 adds an optional
+  active finite burn. Version 3 stores optional propulsion and current propellant.
+  Versions 1 and 2 restore without propulsion and retain their original catalogue.
+  Version 2 introduced body radii and optional flyby metadata.
 - `CelestialBodyState` and `OrbitState` carry stable IDs, hierarchy, GM,
   reference state and epoch, and orbital elements and epoch. `SpacecraftState`
   carries the ship ID, gravity primary (last primary while in rendezvous), and
-  exactly one of `CoastState`, `CommittedTrajectoryState`, or
-  `RendezvousState`.
+  exactly one of `CoastState`, `CommittedTrajectoryState`, `RendezvousState`,
+  or `ActiveBurnState`.
 - A coast stores its epoch and initial primary-relative position and velocity.
   A committed plan stores its departure state, target, ordered conic segments,
   impulses, fuel estimate, and zero-based `NextBoundaryIndex`. The segment
   end ticks at and after that index are the pending patch and arrival
   boundaries. An arrived ship stores the target ephemeris or inertial waypoint
   and arrival tick, and follows the target's motion.
+- An active burn saves the ignition epoch, primary-relative initial state,
+  inertial unit direction, requested duration, and ignition propellant. The
+  ship also stores the quantity remaining at the checkpoint clock. Restore
+  reconstructs the powered segment from ignition, verifies the current quantity
+  and active interval, and schedules the cutoff or exhaustion event once.
 - Export is a detached immutable capture. Bodies and ships are exported in
   ordinal ID order. History, segments, and burns retain their execution order.
   Use the same single-writer synchronization as for world commands. Encoding can
@@ -41,7 +45,7 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
 - Use `SimulationStateJson` for UTF-8 JSON. Fields use camel case, every signed
   64-bit field uses an invariant decimal string (including ticks and event
   sequence), and celestial kinds use camel-case enum names. Nullable fields
-  are generally present with JSON null when unused. Absent propulsion is omitted. The decoder rejects missing,
+  are generally present with JSON null when unused. Absent propulsion and active burns are omitted. The decoder rejects missing,
   unknown, or duplicate fields, invalid tick strings, and unsupported versions.
   It checks the format and shape. The restore factory checks the relationships
   and physics. Malformed payloads and invalid state throw `InvalidDataException`.

@@ -3,7 +3,7 @@ namespace Quasar.Simulation;
 public sealed record MovementEvent(long AtTicks, string SpacecraftId, string Kind);
 public sealed record MovementView(string SpacecraftId, long AtTicks, CelestialState State, string Status,
     string? DestinationId, long? ArrivalTicks, double? RequiredDeltaVKmPerSecond, TransferFuelEstimate? Fuel,
-    PropulsionPerformance? Propulsion = null);
+    PropulsionPerformance? Propulsion = null, long? BurnEndTicks = null);
 
 /// <summary>
 /// Single-writer, headless movement owner. Advance examines ordered boundaries, not every spacecraft.
@@ -13,7 +13,8 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
 {
     private sealed class Spacecraft(string primary, TwoBodyTrajectory? coast, SpacecraftPropulsion? propulsion)
     {
-        public SpacecraftPropulsion? Propulsion { get; } = propulsion;
+        public SpacecraftPropulsion? Propulsion = propulsion;
+        public ActiveBurn? Burn;
         public string Primary = primary;
         public TwoBodyTrajectory? Coast = coast;
         public TrajectoryPlan? Plan;
@@ -39,6 +40,11 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
     {
         if (atTicks < ElapsedTicks) throw new ArgumentOutOfRangeException(nameof(atTicks), "Execution queries describe current/future state, not discarded order history.");
         var ship = spacecraft[id];
+        if (ship.Burn is { } burn)
+        {
+            var relative = atTicks < burn.Path.EndTicks ? burn.Path.StateAt(atTicks) : burn.EndCoast.StateAt(atTicks);
+            return TrajectoryPlanner.Add(relative, catalogue.GetState(ship.Primary, atTicks));
+        }
         if (ship.Plan is { } plan)
             return atTicks <= plan.ArrivalTicks ? plan.StateAt(atTicks) : plan.Destination.StateAt(catalogue, atTicks);
         if (ship.Rendezvous is { } target) return target.Destination.StateAt(catalogue, atTicks);
@@ -49,8 +55,9 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
     {
         var ship = spacecraft[id]; var plan = ship.Plan;
         return new(id, ElapsedTicks, StateAt(id, ElapsedTicks),
-            plan is not null ? "Underway" : ship.Rendezvous is not null ? "Arrived" : "Coasting",
-            plan?.Destination.BodyId, plan?.ArrivalTicks, plan?.RequiredDeltaVKmPerSecond, plan?.Fuel, ship.Propulsion?.CalculatePerformance());
+            ship.Burn is not null ? "Burning" : plan is not null ? "Underway" : ship.Rendezvous is not null ? "Arrived" : "Coasting",
+            plan?.Destination.BodyId, plan?.ArrivalTicks, plan?.RequiredDeltaVKmPerSecond, plan?.Fuel, PropulsionAt(ship, ElapsedTicks)?.CalculatePerformance(),
+            ship.Burn?.Path.EndTicks);
     }
 
     public TrajectoryPlan? CommittedPlan(string id) => spacecraft[id].Plan;
@@ -59,6 +66,7 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
     {
         ArgumentNullException.ThrowIfNull(plan);
         var ship = spacecraft[id];
+        if (ship.Burn is not null) throw new InvalidOperationException("Cut thrust before committing a course.");
         if (!ReferenceEquals(plan.Catalogue, catalogue))
             throw new InvalidOperationException("The celestial catalogue changed. Preview again before committing.");
         if (plan.DepartureTicks != ElapsedTicks || plan.InitialState != StateAt(id, ElapsedTicks))
@@ -94,7 +102,14 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
         {
             boundaries.Dequeue();
             var ship = spacecraft[entry.Id];
-            if (entry.Generation != ship.Generation || ship.Plan is not { } plan) continue;
+            if (entry.Generation != ship.Generation) continue;
+            if (ship.Burn is { } burn)
+            {
+                EndBurn(ship, at, burn.EndCoast);
+                events.Add(new(at, entry.Id, burn.Path.ExhaustsPropellant ? "burn-exhausted" : "burn-complete"));
+                continue;
+            }
+            if (ship.Plan is not { } plan) continue;
             ship.NextBoundary++;
             if (ship.NextBoundary == plan.Segments.Count)
             {
@@ -116,13 +131,19 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
         TrajectoryPlanner.Subtract(state, catalogue.GetState(primary, ElapsedTicks)), ElapsedTicks,
         catalogue.GetEnvironment(primary).GravitationalParameterKm3PerSecond2);
 
-    private void Schedule(string id, Spacecraft ship) => boundaries.Enqueue((id, ship.Generation),
-        (ship.Plan!.Segments[ship.NextBoundary].EndTicks, sequence++));
+    private static long? BoundaryTicks(Spacecraft ship) =>
+        ship.Burn?.Path.EndTicks ?? ship.Plan?.Segments[ship.NextBoundary].EndTicks;
+
+    private void Schedule(string id, Spacecraft ship)
+    {
+        if (BoundaryTicks(ship) is { } ticks)
+            boundaries.Enqueue((id, ship.Generation), (ticks, sequence++));
+    }
 
     private void DiscardObsolete()
     {
         while (boundaries.TryPeek(out var entry, out _)
-            && (spacecraft[entry.Id].Generation != entry.Generation || spacecraft[entry.Id].Plan is null))
+            && (spacecraft[entry.Id].Generation != entry.Generation || BoundaryTicks(spacecraft[entry.Id]) is null))
             boundaries.Dequeue();
     }
 
@@ -131,6 +152,6 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
         if (boundaries.Count <= spacecraft.Count * 2 + 1024) return;
         boundaries.Clear();
         foreach (var (id, ship) in spacecraft.OrderBy(pair => pair.Key, StringComparer.Ordinal))
-            if (ship.Plan is not null) Schedule(id, ship);
+            Schedule(id, ship);
     }
 }

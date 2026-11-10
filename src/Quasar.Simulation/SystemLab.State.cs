@@ -33,6 +33,7 @@ public sealed partial class SystemLab
     {
         var previousTicks = long.MinValue;
         var orderIndex = -1;
+        var burning = false;
         for (var i = 0; i < state.History.Length; i++)
         {
             var entry = state.History[i];
@@ -44,7 +45,7 @@ public sealed partial class SystemLab
             {
                 case "created" when i == 0:
                     break;
-                case "order" when i > 0:
+                case "order" when i > 0 && !burning:
                     orderIndex = i;
                     break;
                 case "patch" when orderIndex >= 0 && entry.AtTicks > previousTicks:
@@ -52,6 +53,14 @@ public sealed partial class SystemLab
                 case "arrival" when orderIndex >= 0 && entry.AtTicks > previousTicks:
                 case "cancel" when orderIndex >= 0:
                     orderIndex = -1;
+                    break;
+                case "burn-start" when state.Simulation.FormatVersion >= 4 && i > 0 && orderIndex < 0 && !burning
+                    && state.History[i - 1].Kind is ("created" or "cancel" or "burn-complete" or "burn-exhausted" or "burn-cutoff"):
+                    burning = true;
+                    break;
+                case "burn-complete" or "burn-exhausted" when burning && entry.AtTicks > previousTicks:
+                case "burn-cutoff" when burning:
+                    burning = false;
                     break;
                 default:
                     throw new InvalidDataException("Invalid System Lab event order.");
@@ -61,7 +70,14 @@ public sealed partial class SystemLab
 
         var ship = state.Simulation.Spacecraft[0];
         var last = state.History[^1];
-        if (ship.Trajectory is { } trajectory)
+        if (burning != (ship.ActiveBurn is not null))
+            throw new InvalidDataException("Active burn disagrees with System Lab history.");
+        if (ship.ActiveBurn is { } burn)
+        {
+            if (last.AtTicks != burn.StartTicks)
+                throw new InvalidDataException("Ignition epoch disagrees with System Lab history.");
+        }
+        else if (ship.Trajectory is { } trajectory)
         {
             if (orderIndex < 0 || trajectory.Destination.BodyId is null
                 || state.History[orderIndex].AtTicks != trajectory.Segments[0].Coast.EpochTicks
@@ -76,7 +92,7 @@ public sealed partial class SystemLab
             if (rendezvous.Destination.BodyId is null || last.Kind != "arrival" || last.AtTicks != rendezvous.ArrivalTicks)
                 throw new InvalidDataException("Rendezvous disagrees with System Lab history.");
         }
-        else if (last.Kind is not ("created" or "cancel") || last.AtTicks != ship.FreeCoast!.EpochTicks)
+        else if (last.Kind is not ("created" or "cancel" or "burn-complete" or "burn-exhausted" or "burn-cutoff") || last.AtTicks != ship.FreeCoast!.EpochTicks)
             throw new InvalidDataException("Free coast disagrees with System Lab history.");
     }
 }

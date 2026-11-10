@@ -8,7 +8,8 @@ public sealed record LabEvent(long Sequence,
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long AtTicks, string Kind, string ObjectId, string Message);
 public sealed record ShipStatus(string Status, double SpeedKmPerSecond, string? DestinationId,
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long? ArrivalTicks, double RemainingDistanceKm,
-    PropulsionPerformance? Propulsion = null);
+    PropulsionPerformance? Propulsion = null,
+    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long? BurnEndTicks = null);
 public sealed record LabSnapshot(
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long ElapsedTicks, LabObject[] Objects, ShipStatus Ship, LabEvent[] Events,
     TrajectoryDisplay? Trajectory = null, string? ReferenceEpoch = null);
@@ -82,7 +83,7 @@ public sealed partial class SystemLab
         return new(ElapsedTicks,
             [.. bodies, new(ShipId, "Pathfinder", "spacecraft", ship.State.PositionKm, null, ship.State.VelocityKmPerSecond)],
             new(ship.Status, Vector3d.From(ship.State.VelocityKmPerSecond).Length, ship.DestinationId,
-                ship.ArrivalTicks, distance, ship.Propulsion), [.. events], display is null ? null : display with { Points = [.. display.Points] },
+                ship.ArrivalTicks, distance, ship.Propulsion, ship.BurnEndTicks), [.. events], display is null ? null : display with { Points = [.. display.Points] },
             PrimaryId == SolarSystem.Sun ? SolarSystem.Epoch : null);
     }
 
@@ -116,6 +117,7 @@ public sealed partial class SystemLab
         if (!celestialPositions.Bodies.TryGetValue(destinationId, out var destination)
             || destination.Kind is not (CelestialBodyKind.Planet or CelestialBodyKind.Moon))
             throw new ArgumentException("Choose a planet or moon in this system.", nameof(destinationId));
+        if (movement.IsBurning(ShipId)) throw new InvalidOperationException("Cut thrust before plotting a course.");
         var departure = ElapsedTicks;
         var state = movement.StateAt(ShipId, departure);
         if (state.PositionKm.DistanceTo(celestialPositions.GetState(destinationId, departure).PositionKm) < 1e-6)
@@ -149,6 +151,20 @@ public sealed partial class SystemLab
         Record("cancel", "Pathfinder course cancelled; retaining velocity on an unforced gravitational coast.");
     }
 
+    public void StartBurn(string direction, int durationSeconds)
+    {
+        movement.StartBurn(ShipId, direction, durationSeconds);
+        Record("burn-start", $"Pathfinder ignited for a {direction} burn.");
+    }
+
+    public void CutThrust()
+    {
+        movement.CutThrust(ShipId);
+        Record("burn-cutoff", "Pathfinder cut thrust and resumed an unforced coast.");
+    }
+
+    public string LastEventKind => events[^1].Kind;
+
     public CelestialState ShipStateAt(long atTicks) => movement.StateAt(ShipId, atTicks);
 
     public static TrajectoryDisplay Present(TrajectoryPlan plan) => new(Ticks(plan.DepartureTicks), Ticks(plan.ArrivalTicks),
@@ -164,10 +180,14 @@ public sealed partial class SystemLab
         foreach (var consequence in consequences)
         {
             if (consequence.Kind == "arrival") display = null;
-            Record(consequence.Kind, consequence.Kind == "arrival"
-                ? "Pathfinder arrived. Arrival impulse applied; awaiting orders."
-                : flyby is null ? "Pathfinder changed gravitational primary at a committed patch boundary."
-                    : $"Pathfinder completed a gravity assist at {celestialPositions.Bodies[flyby.BodyId].Name}.");
+            Record(consequence.Kind, consequence.Kind switch
+            {
+                "burn-complete" => "Pathfinder completed its timed burn and resumed an unforced coast.",
+                "burn-exhausted" => "Pathfinder exhausted its propellant and resumed an unforced coast.",
+                "arrival" => "Pathfinder arrived. Arrival impulse applied; awaiting orders.",
+                _ => flyby is null ? "Pathfinder changed gravitational primary at a committed patch boundary."
+                    : $"Pathfinder completed a gravity assist at {celestialPositions.Bodies[flyby.BodyId].Name}."
+            });
         }
         return consequences.Length > 0;
     }

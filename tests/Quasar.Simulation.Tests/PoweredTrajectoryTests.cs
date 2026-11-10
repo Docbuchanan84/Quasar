@@ -34,6 +34,28 @@ public sealed class PoweredTrajectoryTests
     }
 
     [Fact]
+    public void SolarBurnMatchesFineStepReferenceThroughDepletion()
+    {
+        var burn = new PoweredTrajectory(Initial, new(0, 1, 0), 1.32712440018e11, Propulsion, 0, 150);
+        var end = burn.StateAt(burn.EndTicks);
+        // Independent 0.01-second RK4 reference at 150 million km under solar gravity.
+        var referencePosition = new Position3(149_999_999.93364376, 4638.08376807518, 0);
+        var referenceVelocity = new Vector3d(-0.0008847495999650933, 32.07944152815246, 0);
+        Assert.InRange(end.PositionKm.DistanceTo(referencePosition), 0, 1e-6);
+        Assert.InRange((Vector3d.From(end.VelocityKmPerSecond) - referenceVelocity).Length, 0, 1e-8);
+    }
+
+    [Fact]
+    public void FractionalDepletionRoundsUpToTheFirstTickWithoutFuel()
+    {
+        var partial = Propulsion with { Tank = Propulsion.Tank with { QuantityKg = 1.234501 } };
+        var burn = new PoweredTrajectory(Initial, new(0, 1, 0), 1, partial, 0, 1);
+        Assert.Equal(185_176, burn.EndTicks);
+        Assert.True(burn.RemainingPropellantKg(burn.EndTicks - 1) > 0);
+        Assert.Equal(0, burn.RemainingPropellantKg(burn.EndTicks));
+    }
+
+    [Fact]
     public void EmptyTankCannotIgnite()
     {
         var empty = Propulsion with { Tank = Propulsion.Tank with { QuantityKg = 0 } };

@@ -26,6 +26,8 @@ function App() {
   const [selectedId, setSelectedId] = useState('ship-pathfinder')
   const [view, setView] = useState<'2d' | '3d'>('2d')
   const [references, setReferences] = useState(true)
+  const [burnDirection, setBurnDirection] = useState('prograde')
+  const [burnSeconds, setBurnSeconds] = useState('30')
   const [plotting, setPlotting] = useState<PlotInputs | null>(null)
   const onInstanceChange = useCallback((next: Snapshot | null) => {
     setPlotting(null)
@@ -326,9 +328,46 @@ function App() {
                         ))}
                       </dl>
                     ) : <p className="muted">Propulsion not modeled</p>}
+                    {world.ship.propulsion && (
+                      <>
+                        <h3>Engine burn</h3>
+                        {world.ship.burnEndTicks ? (
+                          <div className="order-buttons">
+                            <p>Scheduled cutoff at {formatTime(world.ship.burnEndTicks)}.</p>
+                            <button disabled={disabled || snapshot?.running} onClick={() => void command('cut-thrust')}>
+                              Cut thrust
+                            </button>
+                            <p className="muted">Stop pauses time. Cut thrust ends the burn while paused.</p>
+                          </div>
+                        ) : (
+                          <form className="order-buttons" onSubmit={(event) => {
+                            event.preventDefault()
+                            void command('start-burn', { burnDirection, burnSeconds: Number(burnSeconds) })
+                          }}>
+                            <label>
+                              Burn direction{' '}
+                              <select value={burnDirection} onChange={(event) => setBurnDirection(event.target.value)}>
+                                <option value="prograde">Prograde</option>
+                                <option value="retrograde">Retrograde</option>
+                              </select>
+                            </label>
+                            <label>
+                              Burn duration (seconds){' '}
+                              <input type="number" min="1" max="3600" step="1" required
+                                value={burnSeconds} onChange={(event) => setBurnSeconds(event.target.value)} />
+                            </label>
+                            <button disabled={disabled || snapshot?.running || !!plotting
+                              || world.ship.status !== 'Coasting' || world.ship.propulsion.availablePropellantKg <= 0}>
+                              Ignite engine
+                            </button>
+                            <p className="muted">Direction is fixed at ignition. Thrust stops when time or propellant runs out.</p>
+                          </form>
+                        )}
+                      </>
+                    )}
                     <h3>Course orders</h3>
                     <button
-                      disabled={disabled || snapshot?.running || !!plotting}
+                      disabled={disabled || snapshot?.running || !!plotting || !!world.ship.burnEndTicks}
                       onClick={() =>
                         setPlotting({
                           shipId: selected.id,
