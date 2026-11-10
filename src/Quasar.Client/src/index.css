@@ -609,6 +609,18 @@ footer {
   display: grid;
   gap: 8px;
 }
+.course-tuning {
+  display: grid;
+  gap: 8px;
+  margin-block: 12px;
+  padding-block: 10px;
+  border-block: 1px solid #39505d;
+}
+.course-tuning input[type='range'] {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+}
 .course-options button {
   display: grid;
   gap: 4px;

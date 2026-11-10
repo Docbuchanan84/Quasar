@@ -68,7 +68,8 @@ public static class QuasarHost
 
         app.MapGet("/api/lab", (LabSession session) => session.Snapshot());
         app.MapGet("/api/lab/course-preview", (string destinationId, int? flightSeconds, double? maneuverBudget,
-            string? mode, string? arrivalKind, LabSession session, CancellationToken cancellationToken) =>
+            string? mode, string? arrivalKind, int? preferredFlightSeconds, double? reservePercent, bool? lockFlightTime,
+            LabSession session, CancellationToken cancellationToken) =>
         {
             try
             {
@@ -76,7 +77,7 @@ public static class QuasarHost
                 {
                     null when arrivalKind is null => Results.Ok(session.PreviewCourse(destinationId, flightSeconds ?? 21600, maneuverBudget)),
                     "auto" when flightSeconds is null => Results.Ok(session.PreviewAutomaticCourse(destinationId, maneuverBudget,
-                        cancellationToken, arrivalKind ?? "approach")),
+                        cancellationToken, arrivalKind ?? "approach", preferredFlightSeconds, reservePercent, lockFlightTime ?? false)),
                     _ => Results.BadRequest(new { error = "Use automatic mode without specifying a flight duration." })
                 };
             }

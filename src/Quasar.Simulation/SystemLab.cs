@@ -182,6 +182,16 @@ public sealed partial class SystemLab
         Record("burn-cutoff", "Pathfinder cut thrust and resumed an unforced coast.");
     }
 
+    internal static SpacecraftPropulsion ExplorationTorch() => new(8000,
+        new(1000, 3, 1.5, 300_000, 1_000_000, "torch-test"),
+        new(1000, 20_000, 20_000, "torch-test"));
+
+    public void FitExplorationTorch()
+    {
+        movement.RefitCoastingSpacecraft(ShipId, ExplorationTorch());
+        Record("refit", "Pathfinder fitted the exploration torch and loaded 20,000 kg of reaction mass.");
+    }
+
     public LabEvent LastEvent => events[^1];
     public string LastEventKind => LastEvent.Kind;
 

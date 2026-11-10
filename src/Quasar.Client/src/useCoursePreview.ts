@@ -5,7 +5,10 @@ export type PlotInputs = {
   shipId: string
   destinationId: string
   arrivalKind: 'approach' | 'orbit'
-  maneuverBudget?: number
+  preferredFlightSeconds?: number
+  reservePercent?: number
+  lockFlightTime?: boolean
+  lockReserve?: boolean
 }
 
 // Preview requests are reads. Input/state changes hide old results immediately and abort late responses.
@@ -20,7 +23,6 @@ export function useCoursePreview(
     routes?: AutomaticCoursePreview
     error?: string
   } | null>(null)
-  const maneuverBudget = inputs?.maneuverBudget
   const instanceId = snapshot?.instanceId,
     revision = snapshot?.revision
   const ready = !!snapshot && !snapshot.running && online && !!inputs?.destinationId
@@ -32,6 +34,9 @@ export function useCoursePreview(
   const destinationId = inputs?.destinationId,
     shipId = inputs?.shipId,
     arrivalKind = inputs?.arrivalKind
+  const preferredFlightSeconds = inputs?.preferredFlightSeconds
+  const reservePercent = inputs?.reservePercent
+  const lockFlightTime = inputs?.lockFlightTime
   useEffect(() => {
     if (!key) return
     const controller = new AbortController()
@@ -43,7 +48,9 @@ export function useCoursePreview(
               destinationId: destinationId!,
               mode: 'auto',
               arrivalKind: arrivalKind!,
-              ...(maneuverBudget === undefined ? {} : { maneuverBudget: String(maneuverBudget) }),
+              ...(preferredFlightSeconds === undefined ? {} : { preferredFlightSeconds: String(preferredFlightSeconds) }),
+              ...(reservePercent === undefined ? {} : { reservePercent: String(reservePercent) }),
+              ...(lockFlightTime ? { lockFlightTime: 'true' } : {}),
             })}`,
             {
               cache: 'no-store',
@@ -57,7 +64,7 @@ export function useCoursePreview(
           if (!response.ok)
             throw new Error(data.error ?? 'Course planning failed.')
           const routes = data as AutomaticCoursePreview
-          const stale = [routes.fastest, routes.lowestManeuverCost].some(
+          const stale = [routes.fastest, routes.lowestManeuverCost, routes.tuned].some(
             (preview) => preview && (
               preview.instanceId !== instanceId ||
               preview.revision !== revision ||
@@ -86,7 +93,7 @@ export function useCoursePreview(
       clearTimeout(timer)
       controller.abort()
     }
-  }, [key, destinationId, instanceId, revision, shipId, maneuverBudget, arrivalKind])
+  }, [key, destinationId, instanceId, revision, shipId, arrivalKind, preferredFlightSeconds, reservePercent, lockFlightTime])
   const current = result?.key === key ? result : null
   return {
     routes: current?.routes ?? null,

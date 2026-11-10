@@ -105,6 +105,7 @@ export type AutomaticCoursePreview = {
   fastest: CoursePreview | null
   lowestManeuverCost: CoursePreview | null
   infeasibleReasons: string[]
+  tuned?: CoursePreview | null
 }
 
 export type CourseLayer = {

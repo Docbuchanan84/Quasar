@@ -3,6 +3,7 @@ import {
   type AutomaticCoursePreview, type CoursePreview, type LabObject,
 } from './lab'
 import type { PlotInputs } from './useCoursePreview'
+import CourseTuningControls from './CourseTuningControls'
 
 function formatDuration(seconds: number) {
   const days = Math.floor(seconds / 86400)
@@ -45,6 +46,8 @@ export default function CoursePanel({
   onIssue: () => void
 }) {
   const trajectory = preview?.trajectory
+  const distinctTuned = routes?.tuned && routes.tuned.previewId !== routes.fastest?.previewId
+    && routes.tuned.previewId !== routes.lowestManeuverCost?.previewId ? routes.tuned : null
   const number = (value: number) =>
     value.toLocaleString(undefined, { maximumFractionDigits: 3 })
   return (
@@ -87,24 +90,16 @@ export default function CoursePanel({
           <option value="orbit">Orbit preset (Earth or Moon)</option>
         </select>
       </label>
-      {inputs.maneuverBudget !== undefined && (
-        <details>
-          <summary>Advanced</summary>
-          <label>
-            Additional delta-v limit · {inputs.maneuverBudget} km/s
-            <input aria-label="Additional delta-v limit" type="range" min="1" max="100"
-              value={inputs.maneuverBudget} disabled={disabled}
-              onChange={(e) => onChange({ ...inputs, maneuverBudget: Number(e.target.value) })}
-            />
-          </label>
-        </details>
-      )}
       {running && (
         <p role="status">
           Stop time processing to recalculate and review a course.
         </p>
       )}
       {loading && <p role="status">Calculating course…</p>}
+      {(trajectory || inputs.preferredFlightSeconds !== undefined || inputs.reservePercent !== undefined) && (
+        <CourseTuningControls inputs={inputs} trajectory={trajectory} loading={loading}
+          disabled={disabled || running} onChange={onChange} />
+      )}
       {error && <p role="alert">{error}</p>}
       {routes && !routes.fastest && (
         <div role="status">
@@ -117,11 +112,12 @@ export default function CoursePanel({
       {routes?.fastest && (
         <>
           <p className="muted">Best routes found for the flight times searched.</p>
-          {routes.lowestManeuverCost ? (
+          {routes.lowestManeuverCost || routes.tuned ? (
             <div className="course-options" role="group" aria-label="Route options">
               {([
+                ...(distinctTuned ? [['Adjusted route', distinctTuned] as const] : []),
                 ['Fastest', routes.fastest],
-                ['Lowest maneuver cost', routes.lowestManeuverCost],
+                ...(routes.lowestManeuverCost ? [['Lowest maneuver cost', routes.lowestManeuverCost] as const] : []),
               ] as const).map(([label, route]) => (
                 <button key={route.previewId} aria-pressed={route === preview}
                   disabled={disabled} onClick={() => onSelectRoute(route.previewId)}>

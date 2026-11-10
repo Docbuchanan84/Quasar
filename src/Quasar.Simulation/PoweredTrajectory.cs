@@ -4,6 +4,7 @@ namespace Quasar.Simulation;
 internal sealed class PoweredTrajectory
 {
     internal const int MaximumDurationSeconds = 3600;
+    internal const int MaximumCourseDurationSeconds = 86400;
     private const double StepSeconds = 1;
     private readonly CelestialState initial;
     private readonly Vector3d direction;
@@ -14,7 +15,10 @@ internal sealed class PoweredTrajectory
 
     public PoweredTrajectory(CelestialState initial, Velocity3 unitDirection, double mu,
         SpacecraftPropulsion propulsion, long startTicks, int durationSeconds)
-        : this(initial, unitDirection, mu, propulsion, startTicks, (long)durationSeconds * TimeSpan.TicksPerSecond) { }
+        : this(initial, unitDirection, mu, propulsion, startTicks, (long)durationSeconds * TimeSpan.TicksPerSecond)
+    {
+        if (durationSeconds > MaximumDurationSeconds) throw new ArgumentOutOfRangeException(nameof(durationSeconds));
+    }
 
     internal PoweredTrajectory(CelestialState initial, Velocity3 unitDirection, double mu,
         SpacecraftPropulsion propulsion, long startTicks, long durationTicks)
@@ -25,7 +29,7 @@ internal sealed class PoweredTrajectory
             throw new ArgumentException("Burn direction must be a finite unit vector.", nameof(unitDirection));
         if (!double.IsFinite(mu) || mu <= 0)
             throw new ArgumentOutOfRangeException(nameof(mu));
-        if (durationTicks is < 1 or > MaximumDurationSeconds * TimeSpan.TicksPerSecond)
+        if (durationTicks is < 1 or > MaximumCourseDurationSeconds * TimeSpan.TicksPerSecond)
             throw new ArgumentOutOfRangeException(nameof(durationTicks));
 
         performance = propulsion.CalculatePerformance();

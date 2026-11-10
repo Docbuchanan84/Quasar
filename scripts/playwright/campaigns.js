@@ -38,10 +38,6 @@ async function campaignBrowserScenario(page) {
   const selectTestCourse = async () => {
     const world = (await lab()).world
     const solar = world.objects.some((body) => body.id === 'star-sun')
-    if (solar) {
-      await page.getByText('Advanced', { exact: true }).click()
-      await page.getByLabel('Additional delta-v limit').press('End')
-    }
     const destination = solar ? 'planet-earth' : 'planet-iris'
     await page.getByLabel('Course destination').selectOption(destination)
     return destination

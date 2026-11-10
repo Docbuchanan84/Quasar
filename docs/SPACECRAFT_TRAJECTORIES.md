@@ -197,7 +197,8 @@ switching during burns, and general error guarantees require further modeling.
 Automatic courses start from direct zero-revolution Lambert guesses. The
 rocket equation converts the departure and braking vectors into durations
 using the installed thrust, exhaust velocity, mass flow, and changing wet
-mass. Each burn is limited to one hour. Up to 16 iterations propagate the
+mass. Each automatic-course burn is limited to one day. Manual ignition remains
+limited to one hour. Up to 16 iterations propagate the
 departure burn forward and the desired arrival state backward through the
 braking burn, then update both burn vectors from a new Lambert coast.
 

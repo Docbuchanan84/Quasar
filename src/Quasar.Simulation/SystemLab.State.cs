@@ -71,6 +71,8 @@ public sealed partial class SystemLab
                     break;
                 case "primary-change" when state.Simulation.FormatVersion >= 5 && i > 0 && orderIndex < 0 && !burning
                     && StartsFreeCoast(state.History[i - 1].Kind):
+                case "refit" when state.Simulation.FormatVersion >= 6 && i > 0 && orderIndex < 0 && !burning
+                    && StartsFreeCoast(state.History[i - 1].Kind):
                     break;
                 default:
                     throw new InvalidDataException("Invalid System Lab event order.");
@@ -118,7 +120,7 @@ public sealed partial class SystemLab
     }
 
     private static bool StartsFreeCoast(string kind) => kind is "created" or "cancel" or "burn-complete"
-        or "burn-exhausted" or "burn-cutoff" or "primary-change" or "course-arrival" or "course-approach-complete" or "course-orbit-inserted";
+        or "burn-exhausted" or "burn-cutoff" or "primary-change" or "course-arrival" or "course-approach-complete" or "course-orbit-inserted" or "refit";
 
     // The first v6 builds saved both outcomes under one kind. Their generated messages distinguish them.
     private static string RestoredEventKind(LabHistoryEntry entry) => (entry.Kind, entry.Message) switch

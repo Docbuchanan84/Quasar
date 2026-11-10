@@ -6,14 +6,26 @@ public sealed partial class SystemLab
 {
     // Capture under the session lock. Search reads only the immutable catalogue and departure inputs.
     public Func<CancellationToken, CourseSearchResult> CaptureCourseSearch(string destinationId,
-        double? maneuverBudget = null, string arrivalKind = "approach")
+        double? maneuverBudget = null, string arrivalKind = "approach", int? preferredFlightSeconds = null,
+        double? reservePercent = null, bool lockFlightTime = false)
     {
         var (state, departure, _) = CaptureDeparture(destinationId);
         TrajectoryPlanner.ValidateManeuverBudget(maneuverBudget);
         if (arrivalKind is not ("approach" or "orbit"))
             throw new ArgumentException("Choose a velocity-matched approach or an orbit preset.");
+        if (preferredFlightSeconds is < 1 or > CourseSearch.MaximumSeconds || lockFlightTime && preferredFlightSeconds is null)
+            throw new ArgumentException("Choose a supported flight duration before locking travel time.");
+        if (reservePercent is { } reserve && (!double.IsFinite(reserve) || reserve < 0 || reserve > 99))
+            throw new ArgumentException("Choose a reserve between 0% and 99% of departure propellant.");
 
         var propulsion = movement.PropulsionOf(ShipId);
+        if (reservePercent is { } minimum && propulsion is not null)
+        {
+            var performance = propulsion.CalculatePerformance();
+            var finalMass = performance.DryMassKg + performance.AvailablePropellantKg * minimum / 100;
+            var reserveBudget = propulsion.Engine.ExhaustVelocityMPerSecond / 1000 * Math.Log(performance.WetMassKg / finalMass);
+            maneuverBudget = maneuverBudget is { } existing ? Math.Min(existing, reserveBudget) : reserveBudget;
+        }
         var primary = movement.PrimaryOf(ShipId);
         var body = celestialPositions.Bodies[destinationId];
         var sphere = celestialPositions.GetEnvironment(destinationId).SphereOfInfluenceRadiusKm;
@@ -45,7 +57,9 @@ public sealed partial class SystemLab
                     else if (best is null || plan.RequiredDeltaVKmPerSecond < best.RequiredDeltaVKmPerSecond) best = plan;
                 }
                 return best;
-            }, cancellationToken);
+            }, cancellationToken, preferredFlightSeconds, lockFlightTime);
+            if (choices is null && lockFlightTime)
+                failures.Add("No verified course meets the locked travel time. Unlock travel time or reduce the reserve to adjust the route.");
             return new(choices, choices is null ? [.. failures] : []);
         };
     }

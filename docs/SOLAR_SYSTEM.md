@@ -45,6 +45,20 @@ is about 66.67 kg/s, initial thrust acceleration is 10 m/s², and theoretical
 impulsive delta-v is about 2.079 km/s. An empty tank retains rated flow as
 an engine specification and has zero available thrust acceleration and delta-v.
 
+While paused and freely coasting, **Fit exploration torch and refuel** installs
+the owner's exploration test preset and loads 20,000 kg of reaction mass. It
+retains the ship's position, velocity, and simulation time. The preset has
+300 kN thrust, 1,000 km/s effective exhaust velocity, and 10,000 kg dry mass.
+It starts at 30,000 kg wet mass, about 1g acceleration, 0.3 kg/s flow, and
+1,098.6 km/s theoretical delta-v. Acceleration increases as mass is spent.
+
+This is an idealized advanced fusion torch for flight experiments. Those
+numbers imply 150 GW of ideal jet power. Reactor, radiator, energy storage,
+and engineering mass constraints require the later component model. The
+current rocket calculation still accounts for mass loss, gravity, finite
+burn time, and braking. The refit is a System Lab operation, available after
+cancelling a course or cutting thrust. It records a persistent refit event.
+
 The read-only `MovementExecution.View` and `GET /api/lab` ship status expose
 these derived figures in SI units. The inspector displays delta-v in km/s.
 Use **Engine burn** in the Pathfinder inspector to ignite for 1–3,600 seconds
@@ -61,6 +75,12 @@ approaches available to Pathfinder at the starting epoch. Review the propellant
 cost and reserve before confirming. The [course planner](COURSE_PLOTTING.md)
 reports when Pathfinder's installed engine and fuel cannot execute a candidate.
 Older impulsive courses may include a simplified single-planet flyby.
+
+The torch also supplies executable Mercury, Venus, and Mars approaches from
+the two-hour starter departure tested for this change. Routes still depend on
+geometry and the bounded solver. A single-primary approach stops outside the
+destination's modeled SOI. Moon transfers and planetary capture can require
+gravity transitions that this planner does not support.
 
 Checkpoint format 2 stores body radii and the optional flyby encounter.
 Version 1 checkpoints retain their original catalogue and courses when loaded.
