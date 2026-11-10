@@ -2,7 +2,8 @@ namespace Quasar.Simulation;
 
 public sealed record MovementEvent(long AtTicks, string SpacecraftId, string Kind);
 public sealed record MovementView(string SpacecraftId, long AtTicks, CelestialState State, string Status,
-    string? DestinationId, long? ArrivalTicks, double? RequiredDeltaVKmPerSecond, TransferFuelEstimate? Fuel);
+    string? DestinationId, long? ArrivalTicks, double? RequiredDeltaVKmPerSecond, TransferFuelEstimate? Fuel,
+    PropulsionPerformance? Propulsion = null);
 
 /// <summary>
 /// Single-writer, headless movement owner. Advance examines ordered boundaries, not every spacecraft.
@@ -10,8 +11,9 @@ public sealed record MovementView(string SpacecraftId, long AtTicks, CelestialSt
 /// </summary>
 public sealed partial class MovementExecution(CelestialPositionService catalogue)
 {
-    private sealed class Spacecraft(string primary, TwoBodyTrajectory? coast)
+    private sealed class Spacecraft(string primary, TwoBodyTrajectory? coast, SpacecraftPropulsion? propulsion)
     {
+        public SpacecraftPropulsion? Propulsion { get; } = propulsion;
         public string Primary = primary;
         public TwoBodyTrajectory? Coast = coast;
         public TrajectoryPlan? Plan;
@@ -24,12 +26,13 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
     private long sequence;
     public long ElapsedTicks { get; private set; }
 
-    public void AddSpacecraft(string id, CelestialState state, string primaryBodyId)
+    public void AddSpacecraft(string id, CelestialState state, string primaryBodyId, SpacecraftPropulsion? propulsion = null)
     {
         if (string.IsNullOrWhiteSpace(id) || spacecraft.ContainsKey(id)) throw new ArgumentException("Spacecraft identity must be unique and nonempty.");
         state.RequireFinite();
         var coast = NewCoast(state, primaryBodyId);
-        spacecraft.Add(id, new(primaryBodyId, coast));
+        propulsion?.CalculatePerformance();
+        spacecraft.Add(id, new(primaryBodyId, coast, propulsion));
     }
 
     public CelestialState StateAt(string id, long atTicks)
@@ -47,7 +50,7 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
         var ship = spacecraft[id]; var plan = ship.Plan;
         return new(id, ElapsedTicks, StateAt(id, ElapsedTicks),
             plan is not null ? "Underway" : ship.Rendezvous is not null ? "Arrived" : "Coasting",
-            plan?.Destination.BodyId, plan?.ArrivalTicks, plan?.RequiredDeltaVKmPerSecond, plan?.Fuel);
+            plan?.Destination.BodyId, plan?.ArrivalTicks, plan?.RequiredDeltaVKmPerSecond, plan?.Fuel, ship.Propulsion?.CalculatePerformance());
     }
 
     public TrajectoryPlan? CommittedPlan(string id) => spacecraft[id].Plan;

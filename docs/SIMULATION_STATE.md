@@ -18,9 +18,11 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   `History` entries. `SimulationState` contains `FormatVersion`,
   `ElapsedTicks`, `Bodies`, and `Spacecraft`. The nested
   `Simulation.FormatVersion` versions the entire checkpoint. The current version
-  is `SimulationState.CurrentFormatVersion` (2). Version 2 adds body radii
-  and optional flyby metadata on committed trajectories. Version 1 remains
-  readable and retains its saved catalogue.
+  is `SimulationState.CurrentFormatVersion` (3). Version 3 adds optional
+  spacecraft propulsion inputs and current propellant quantity. Versions 1
+  and 2 remain readable and restore without propulsion. Version 2 added body
+  radii and optional flyby metadata. Legacy versions reject non-null propulsion
+  data, and restore never equips a saved ship from the new-game fixture.
 - `CelestialBodyState` and `OrbitState` carry stable IDs, hierarchy, GM,
   reference state and epoch, and orbital elements and epoch. `SpacecraftState`
   carries the ship ID, gravity primary (last primary while in rendezvous), and
@@ -39,7 +41,7 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
 - Use `SimulationStateJson` for UTF-8 JSON. Fields use camel case, every signed
   64-bit field uses an invariant decimal string (including ticks and event
   sequence), and celestial kinds use camel-case enum names. Nullable fields
-  are present with JSON null when unused. The decoder rejects missing,
+  are generally present with JSON null when unused. Absent propulsion is omitted. The decoder rejects missing,
   unknown, or duplicate fields, invalid tick strings, and unsupported versions.
   It checks the format and shape. The restore factory checks the relationships
   and physics. Malformed payloads and invalid state throw `InvalidDataException`.

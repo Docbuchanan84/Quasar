@@ -32,7 +32,28 @@ Earth Staryard uses a 42,164 km circular orbit inclined 23.4392911° to the
 ecliptic. O’Neill Habitat uses a 100,000 km circular orbit inclined 35° with
 a 20° ascending node. Their starting phases are 230° and 90°, respectively.
 
-## Pathfinder
+## Pathfinder propulsion
+
+New campaigns equip Pathfinder with a provisional chemical rocket fixture.
+Its base dry mass is 8,000 kg, its engine and empty tank weigh 1,000 kg each,
+and the tank starts with 10,000 kg of its 10,000 kg capacity. The engine is
+3 m long and 1.5 m in diameter, with 200 kN rated thrust and 3,000 m/s
+effective exhaust velocity. Both components use the `test-chemical` propellant ID.
+
+The resulting dry and wet masses are 10,000 and 20,000 kg. Rated mass flow
+is about 66.67 kg/s, initial thrust acceleration is 10 m/s², and theoretical
+impulsive delta-v is about 2.079 km/s. An empty tank retains rated flow as
+an engine specification and has zero available thrust acceleration and delta-v.
+
+The read-only `MovementExecution.View` and `GET /api/lab` ship status expose
+these derived figures in SI units. The inspector displays delta-v in km/s.
+For [issue #26](https://github.com/Docbuchanan84/Quasar/issues/26), the persisted
+configuration supplies the thrust, exhaust velocity, and current tank quantity.
+That issue owns ignition, depletion, numerical integration, and burn checkpoint
+state. Existing Lambert orders continue as impulsive test maneuvers, independent
+of the ship's theoretical delta-v and tank quantity.
+
+## Pathfinder flight
 
 Select Mercury in **Plot Course** to compare the fastest and lowest
 maneuver-cost routes found within the default 25 km/s test budget. At the

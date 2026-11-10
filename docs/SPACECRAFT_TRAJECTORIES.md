@@ -134,10 +134,10 @@ state explicitly. No mutable definition command or automatic midflight catalogue
 replacement exists in the lab. Changed state/time/target/arc/clearance/budget
 changes the planner cache key.
 
-Inspection of committed **and working** source found no engine exhaust velocity,
-wet/dry ship mass, tank or fuel accounting model. Delta-v is available. Fuel is
-null with an explicit unavailability reason. No actual fuel is spent. The optional
-estimator interface is an integration point, not a propulsion/inventory model.
+The planner reports required delta-v and an unavailable route fuel estimate.
+The [Pathfinder propulsion model](SOLAR_SYSTEM.md#pathfinder-propulsion) reports
+separate equipment-derived performance. Impulsive course execution does not debit
+its tank.
 
 ## Performance and validation
 
@@ -169,4 +169,4 @@ node src/Quasar.Client/scripts/test-trajectory-api.mjs http://127.0.0.1:5093
 The live Game Design Record was read on 8 November 2026, including Project
 overview, Time behavior, and Control, orders and delegation. Edit tooling was
 exposed; writes were not tested and no shared-document edits were performed.
-Propulsion and mass modelling remains open. See [the project plan](PROJECT_PLAN.md).
+Finite-thrust execution and fuel expenditure remain open. See [the project plan](PROJECT_PLAN.md).

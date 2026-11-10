@@ -6,12 +6,16 @@ namespace Quasar.Simulation;
 public sealed record SimulationState(int FormatVersion, long ElapsedTicks,
     ImmutableArray<CelestialBodyState> Bodies, ImmutableArray<SpacecraftState> Spacecraft)
 {
-    public const int CurrentFormatVersion = 2;
+    public const int CurrentFormatVersion = 3;
+
+    public static bool SupportsFormatVersion(int version) => version is 1 or 2 or CurrentFormatVersion;
 
     internal void RequireSupportedVersion()
     {
-        if (FormatVersion is not (1 or CurrentFormatVersion))
+        if (!SupportsFormatVersion(FormatVersion))
             throw new InvalidDataException($"Unsupported simulation state version {FormatVersion}.");
+        if (FormatVersion < 3 && !Spacecraft.IsDefault && Spacecraft.Any(ship => ship?.Propulsion is not null))
+            throw new InvalidDataException("Propulsion requires simulation state version 3.");
     }
 }
 
@@ -27,7 +31,9 @@ public sealed record OrbitState(double SemiMajorAxisKm, double Eccentricity, dou
     double MeanAnomalyAtEpochRadians, long EpochTicks);
 
 public sealed record SpacecraftState(string Id, string PrimaryBodyId, CoastState? FreeCoast,
-    CommittedTrajectoryState? Trajectory, RendezvousState? Rendezvous);
+    CommittedTrajectoryState? Trajectory, RendezvousState? Rendezvous,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    SpacecraftPropulsion? Propulsion = null);
 public sealed record CoastState(long EpochTicks, KinematicState InitialRelativeState);
 public sealed record CommittedTrajectoryState(KinematicState InitialState, DestinationState Destination,
     ImmutableArray<TrajectorySegmentState> Segments, ImmutableArray<TrajectoryBurnState> Burns,
