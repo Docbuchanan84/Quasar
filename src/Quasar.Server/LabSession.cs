@@ -7,7 +7,8 @@ public sealed record LabCommand(string InstanceId, long Revision, string ClientI
     string? PreviewId = null, string? BurnDirection = null, int? BurnSeconds = null);
 public sealed record CoursePreview(string? PreviewId, string InstanceId, long Revision, string ShipId,
     string DestinationId, double SampledDistanceKm, string[] Warnings, TrajectoryDisplay Trajectory);
-public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePreview? LowestManeuverCost, string[] InfeasibleReasons);
+public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePreview? LowestManeuverCost, string[] InfeasibleReasons,
+    CoursePreview? Tuned = null);
 public sealed record SessionSnapshot(string InstanceId, long Revision, bool Running, string StopReason,
     int DurationSeconds, string Mode, LabSnapshot World, LabEvent? Interrupt);
 
@@ -68,7 +69,8 @@ public sealed partial class LabSession(bool startWithWorld = true)
     }
 
     public AutomaticCoursePreview PreviewAutomaticCourse(string destinationId, double? maneuverBudget,
-        CancellationToken cancellationToken, string arrivalKind = "approach")
+        CancellationToken cancellationToken, string arrivalKind = "approach", int? preferredFlightSeconds = null,
+        double? reservePercent = null, bool lockFlightTime = false)
     {
         string departureInstance;
         long departureRevision;
@@ -76,7 +78,8 @@ public sealed partial class LabSession(bool startWithWorld = true)
         lock (gate)
         {
             if (running) throw new InvalidOperationException("Stop time processing before plotting a course.");
-            search = RequireWorld().CaptureCourseSearch(destinationId, maneuverBudget, arrivalKind);
+            search = RequireWorld().CaptureCourseSearch(destinationId, maneuverBudget, arrivalKind,
+                preferredFlightSeconds, reservePercent, lockFlightTime);
             departureInstance = instanceId;
             departureRevision = revision;
         }
@@ -94,7 +97,11 @@ public sealed partial class LabSession(bool startWithWorld = true)
             var lowestCost = ReferenceEquals(choices.Fastest, choices.LowestManeuverCost)
                 ? null
                 : PresentPreview(destinationId, choices.LowestManeuverCost);
-            return new(fastest, lowestCost, []);
+            var tuned = choices.Tuned is not { } selected ? null
+                : ReferenceEquals(selected, choices.Fastest) ? fastest
+                : ReferenceEquals(selected, choices.LowestManeuverCost) ? lowestCost ?? fastest
+                : PresentPreview(destinationId, selected);
+            return new(fastest, lowestCost, [], tuned);
         }
     }
 
@@ -182,6 +189,12 @@ public sealed partial class LabSession(bool startWithWorld = true)
                     activeWorld.CutThrust();
                     MarkWorldChanged(significant: true);
                     stopReason = "Thrust cut — coasting";
+                    break;
+                case "fit-exploration-torch":
+                    if (running) throw new InvalidOperationException("Stop time processing before refitting.");
+                    activeWorld.FitExplorationTorch();
+                    MarkWorldChanged(significant: true);
+                    stopReason = "Exploration torch fitted — ready to plot a course";
                     break;
                 default: throw new ArgumentException("Unknown command.");
             }

@@ -34,11 +34,11 @@ public sealed partial class TrajectoryPlanner
 
                 var firstTicks = BurnTicks(performance.WetMassKg, departure.Length);
                 reason = "The installed engine cannot complete a required burn within the supported duration.";
-                if (firstTicks is < 1 or > PoweredTrajectory.MaximumDurationSeconds * TimeSpan.TicksPerSecond) return null;
+                if (firstTicks is < 1 or > PoweredTrajectory.MaximumCourseDurationSeconds * TimeSpan.TicksPerSecond) return null;
                 var first = new PoweredTrajectory(local, (departure / departure.Length).Velocity, mu, propulsion, departureTicks, firstTicks);
                 var remaining = first.RemainingPropellantKg(first.EndTicks);
                 var lastTicks = BurnTicks(performance.DryMassKg + remaining, braking.Length);
-                if (lastTicks is < 1 or > PoweredTrajectory.MaximumDurationSeconds * TimeSpan.TicksPerSecond) return null;
+                if (lastTicks is < 1 or > PoweredTrajectory.MaximumCourseDurationSeconds * TimeSpan.TicksPerSecond) return null;
                 var lastStart = checked(arrivalTicks - lastTicks);
                 reason = "The transfer leaves too little time or propellant for both burns and the coast.";
                 if (first.ExhaustsPropellant || lastStart <= first.EndTicks) return null;
@@ -58,22 +58,34 @@ public sealed partial class TrajectoryPlanner
                 var departureCorrection = Vector3d.From(coastVelocity) - Vector3d.From(from.VelocityKmPerSecond);
                 var brakingCorrection = Vector3d.From(to.VelocityKmPerSecond) - Vector3d.From(referenceEnd.VelocityKmPerSecond);
 
-                if (departureCorrection.Length * coastSeconds <= FiniteCourse.PositionToleranceKm / 4
-                    && brakingCorrection.Length <= FiniteCourse.VelocityToleranceKmPerSecond / 4)
+                if (departureCorrection.Length * coastSeconds <= FiniteCourse.PositionToleranceKm * 4
+                    && brakingCorrection.Length <= FiniteCourse.VelocityToleranceKmPerSecond)
                 {
-                    var finite = FiniteCourse.Build(catalogue, new(primaryId, targetId, arrivalKind, departureTicks, arrivalTicks,
-                        KinematicState.From(initial), KinematicState.From(arrivalLocal), propulsion,
-                        CartesianState.From((departure / departure.Length).Velocity), firstTicks, CartesianState.From(lastDirection), lastTicks));
-                    var result = finite.ToPlan();
-                    if (result.RequiredDeltaVKmPerSecond > budget)
+                    FiniteCourse? finite = null;
+                    try
                     {
-                        reason = "The refined burns exceed the requested maneuver budget.";
-                        return null;
+                        finite = FiniteCourse.Build(catalogue, new(primaryId, targetId, arrivalKind, departureTicks, arrivalTicks,
+                            KinematicState.From(initial), KinematicState.From(arrivalLocal), propulsion,
+                            CartesianState.From((departure / departure.Length).Velocity), firstTicks, CartesianState.From(lastDirection), lastTicks));
                     }
-                    reason = "The route crosses a surface or gravity boundary, or clearance could not be verified within the search limit.";
-                    if (new MovementExecution(catalogue).CourseCrossesPrimaryBoundary(finite, cancellationToken))
-                        return null;
-                    return result;
+                    catch (ArgumentException)
+                    {
+                        // Tick-rounded burn durations can straddle a valid endpoint. Keep refining,
+                        // while the full forward check retains the actual arrival tolerances.
+                    }
+                    if (finite is not null)
+                    {
+                        var result = finite.ToPlan();
+                        if (result.RequiredDeltaVKmPerSecond > budget)
+                        {
+                            reason = "The refined burns exceed the requested maneuver budget.";
+                            return null;
+                        }
+                        reason = "The route crosses a surface or gravity boundary, or clearance could not be verified within the search limit.";
+                        if (new MovementExecution(catalogue).CourseCrossesPrimaryBoundary(finite, cancellationToken))
+                            return null;
+                        return result;
+                    }
                 }
 
                 departure += departureCorrection;
@@ -89,7 +101,7 @@ public sealed partial class TrajectoryPlanner
         long BurnTicks(double wetMass, double deltaV)
         {
             var seconds = -wetMass * double.ExpM1(-deltaV / exhaustSpeed) / performance.RatedMassFlowKgPerSecond;
-            return seconds <= PoweredTrajectory.MaximumDurationSeconds
+            return seconds <= PoweredTrajectory.MaximumCourseDurationSeconds
                 ? Math.Max(1, (long)Math.Round(seconds * TimeSpan.TicksPerSecond))
                 : long.MaxValue;
         }

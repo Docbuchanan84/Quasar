@@ -54,9 +54,9 @@ function App() {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
   const fastest = course.routes?.fastest ?? null
   const lowestCost = course.routes?.lowestManeuverCost ?? null
-  const preview = lowestCost && lowestCost.previewId === selectedRouteId
-    ? lowestCost
-    : fastest
+  const tuned = course.routes?.tuned ?? null
+  const preview = [fastest, lowestCost, tuned].find((route) => route?.previewId === selectedRouteId)
+    ?? tuned ?? fastest
   const courses = useMemo<CourseLayer[]>(
     () => [
       ...(committedTrajectory
@@ -378,6 +378,11 @@ function App() {
                       </>
                     )}
                     <h3>Course orders</h3>
+                    <button disabled={disabled || snapshot.running || world.ship.status !== 'Coasting'}
+                      onClick={() => void command('fit-exploration-torch')}>
+                      Fit exploration torch and refuel
+                    </button>
+                    <p className="muted">Test refit. 300 kN thrust, 1,000 km/s exhaust velocity, and 20,000 kg of reaction mass.</p>
                     <button
                       disabled={disabled || snapshot?.running || !!plotting || !!world.ship.burnEndTicks}
                       onClick={() =>
@@ -385,7 +390,6 @@ function App() {
                           shipId: selected.id,
                           destinationId: '',
                           arrivalKind: 'approach',
-                          maneuverBudget: world.referenceEpoch ? 25 : undefined,
                         })
                       }
                     >

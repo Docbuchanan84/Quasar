@@ -1,5 +1,14 @@
 # Quasar decision record
 
+## Approved — Pathfinder torch refit and linked course controls (2026-11-10)
+
+The owner requested usable interplanetary routes, removal of the 25 km/s UI
+limit, a torch-like drive, and linked controls that rebalance unlocked settings.
+This slice supplies an idealized exploration torch and links travel time with
+minimum propellant reserve. The [fixture](SOLAR_SYSTEM.md#pathfinder-propulsion)
+records the performance assumptions. Full propulsion-family engineering and
+reactor or thermal modeling remain future work.
+
 ## Approved — propulsion-aware course planning scope (issue #28)
 
 Automatic course confirmation requires an executable finite departure and

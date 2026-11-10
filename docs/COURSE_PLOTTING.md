@@ -14,8 +14,8 @@ durations, expected propellant spent, and the propellant reserve after braking.
 Reserve is shown in kilograms and as a percentage of departure propellant.
 Below 1%, the option and confirmation panel warn about the small margin for
 later maneuvers. The warning leaves the decision to the player.
-**Advanced** applies an additional delta-v limit. The installed engine and
-propellant inventory always constrain the search. Infeasible results identify
+The installed engine and propellant inventory constrain the search. The client
+applies no additional fixed delta-v limit. Infeasible results identify
 fuel, thrust, geometry, or arrival conditions that prevented a course.
 
 The planner checks 40 whole-second durations over a range of one second to ten
@@ -28,11 +28,29 @@ ship to be in the destination body's primary already. The search can miss narrow
 windows. Multi-primary capture and finite flybys remain unsupported. See
 [trajectory limits](SPACECRAFT_TRAJECTORIES.md#propulsion-aware-courses).
 
+## Linked controls
+
+**Tune course** links travel time and propellant reserve. Moving travel time
+asks for the nearest executable duration found. Moving reserve asks Quasar to
+retain at least that percentage of the current departure propellant and choose
+a route. The other control follows the resulting trajectory. Locking reserve
+holds its minimum while time adjusts. Locking travel time requires that exact
+duration. Conflicting locked constraints produce an explicit failure and disable
+confirmation. Unlock a constraint to let Quasar adjust again.
+
+The search adds the requested duration and nearby candidates to its existing
+bounded search. A locked duration evaluates only that duration. Arrival
+tolerances, equipment and fuel checks still apply. The controls describe a
+departure burn, coast and braking burn within the current flight model.
+
 ## Exact confirmation and stale state
 
 `GET /api/lab/course-preview?mode=auto&destinationId=...` returns a
 `fastest` preview and an optional distinct `lowestManeuverCost` preview. Pass
 `arrivalKind=approach` (default) or `arrivalKind=orbit`.
+Optional `preferredFlightSeconds`, `reservePercent` (0–99), and `lockFlightTime`
+drive the linked controls. A `tuned` preview contains the selected adjusted
+route. Each executable choice has its own revision-bound confirmation token.
 Both previews are null when no candidate satisfies the search, with details in
 `infeasibleReasons`. Each preview carries an
 opaque `previewId`, host instance and revision, ship and destination IDs,

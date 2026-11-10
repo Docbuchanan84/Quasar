@@ -91,6 +91,10 @@ with `burnDirection` (`prograde` or `retrograde`) and `burnSeconds` (1–3,600),
 or `cut-thrust` with no extra arguments. `world.ship.burnEndTicks` is the
 scheduled cutoff as a decimal tick string during an active burn.
 
+`fit-exploration-torch` equips and refuels the test ship while paused and freely
+coasting. The operation preserves position, velocity and time and is recorded
+in campaign history. See the [torch fixture](SOLAR_SYSTEM.md#pathfinder-propulsion).
+
 The host retains up to 32 solved preview plans. A successful command or clock
 tick invalidates them. Automatic searches use a captured departure outside the
 session gate and recheck the instance and revision before issuing previews. The server

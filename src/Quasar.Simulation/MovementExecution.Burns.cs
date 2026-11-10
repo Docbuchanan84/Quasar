@@ -6,6 +6,18 @@ public sealed partial class MovementExecution
 
     public bool IsBurning(string id) => spacecraft[id].Burn is not null;
 
+    public void RefitCoastingSpacecraft(string id, SpacecraftPropulsion propulsion)
+    {
+        ArgumentNullException.ThrowIfNull(propulsion);
+        propulsion.CalculatePerformance();
+        var ship = spacecraft[id];
+        if (ship.Coast is null) throw new InvalidOperationException("Cancel the course or cut thrust before refitting.");
+        var coast = NewCoast(StateAt(id, ElapsedTicks), ship.Primary);
+        ship.Coast = coast;
+        ship.Propulsion = propulsion;
+        ship.Generation++;
+    }
+
     public void StartBurn(string id, string direction, int durationSeconds)
     {
         var sign = direction switch

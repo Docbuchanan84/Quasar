@@ -138,6 +138,29 @@ public sealed class CampaignHttpTests : IDisposable
     }
 
     [Fact]
+    public async Task TorchRefitAndLinkedControlsProduceAnExecutableMarsRoute()
+    {
+        await using var host = await Start();
+        await host.Create("Torch test");
+        await host.Advance(3600);
+        var before = await host.Get(Lab + "/spacecraft/state?atTicks=36000000000");
+        await host.Command("fit-exploration-torch");
+        Assert.Equal(before.GetRawText(), (await host.Get(Lab + "/spacecraft/state?atTicks=36000000000")).GetRawText());
+        var baseline = (await host.Get(Lab + "/course-preview?mode=auto&destinationId=planet-mars")).GetProperty("fastest");
+        var travel = baseline.GetProperty("trajectory").GetProperty("travelSeconds").GetInt32();
+        Assert.True(baseline.GetProperty("trajectory").GetProperty("requiredDeltaVKmPerSecond").GetDouble() > 25);
+        var query = Lab + "/course-preview?mode=auto&destinationId=planet-mars&reservePercent=95&preferredFlightSeconds=" + travel;
+        var tuned = (await host.Get(query)).GetProperty("tuned");
+        Assert.True(tuned.GetProperty("trajectory").GetProperty("brakingMarginPercent").GetDouble() >= 95);
+        var conflict = await host.Get(query + "&lockFlightTime=true");
+        Assert.Equal(JsonValueKind.Null, conflict.GetProperty("fastest").ValueKind);
+        await host.Get(Lab + "/course-preview?mode=auto&destinationId=planet-mars&reservePercent=100", HttpStatusCode.BadRequest);
+        var ordered = await host.Command("commit-course", previewId: tuned.GetProperty("previewId").GetString());
+        Assert.Equal(tuned.GetProperty("trajectory").GetRawText(), ordered.GetProperty("world").GetProperty("trajectory").GetRawText());
+        Assert.Equal(20_000, ordered.GetProperty("world").GetProperty("ship").GetProperty("propulsion").GetProperty("availablePropellantKg").GetDouble());
+    }
+
+    [Fact]
     public async Task ContinuousRunsWithoutBrowserRequestsAndAnotherClientCanStopIt()
     {
         await using var host = await Start();

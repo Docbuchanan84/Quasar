@@ -1,6 +1,6 @@
 namespace Quasar.Simulation;
 
-public sealed record CourseChoices(TrajectoryPlan Fastest, TrajectoryPlan LowestManeuverCost);
+public sealed record CourseChoices(TrajectoryPlan Fastest, TrajectoryPlan LowestManeuverCost, TrajectoryPlan? Tuned = null);
 
 internal static class CourseSearch
 {
@@ -21,12 +21,33 @@ internal static class CourseSearch
         return durations;
     }
 
-    internal static CourseChoices? Find(Func<int, TrajectoryPlan?> evaluate, CancellationToken cancellationToken)
+    internal static CourseChoices? Find(Func<int, TrajectoryPlan?> evaluate, CancellationToken cancellationToken,
+        int? preferredSeconds = null, bool lockFlightTime = false)
     {
         var candidates = new Dictionary<int, TrajectoryPlan?>();
+        if (preferredSeconds is { } preferred)
+        {
+            Evaluate(preferred);
+            if (lockFlightTime)
+                return candidates[preferred] is { } exact ? new(exact, exact, exact) : null;
+            Evaluate(Math.Max(1, preferred - preferred / 5));
+            Evaluate(Math.Min(MaximumSeconds, preferred + preferred / 5));
+        }
         foreach (var duration in Durations) Evaluate(duration);
-        var feasible = Durations.Where(duration => candidates[duration] is not null).ToArray();
+        var feasible = candidates.Where(pair => pair.Value is not null).Select(pair => pair.Key).Order().ToArray();
         if (feasible.Length == 0) return null;
+
+        if (preferredSeconds is { } target && candidates[target] is null)
+        {
+            var valid = feasible.MinBy(seconds => Math.Abs((long)seconds - target));
+            var invalid = target;
+            for (var attempt = 0; attempt < 6 && Math.Abs((long)valid - invalid) > 1; attempt++)
+            {
+                var middle = invalid + (valid - invalid) / 2;
+                if (Evaluate(middle) is null) invalid = middle;
+                else valid = middle;
+            }
+        }
 
         var fastestIndex = Array.BinarySearch(Durations, feasible[0]);
         if (fastestIndex > 0)
@@ -54,7 +75,10 @@ internal static class CourseSearch
         var ranked = candidates.Values.OfType<TrajectoryPlan>();
         return new(
             ranked.OrderBy(plan => plan.ArrivalTicks).ThenBy(plan => plan.RequiredDeltaVKmPerSecond).First(),
-            ranked.OrderBy(plan => plan.RequiredDeltaVKmPerSecond).ThenBy(plan => plan.ArrivalTicks).First());
+            ranked.OrderBy(plan => plan.RequiredDeltaVKmPerSecond).ThenBy(plan => plan.ArrivalTicks).First(),
+            preferredSeconds is { } requested ? candidates.Where(pair => pair.Value is not null)
+                .OrderBy(pair => Math.Abs((long)pair.Key - requested)).ThenBy(pair => pair.Value!.RequiredDeltaVKmPerSecond)
+                .First().Value : null);
 
         TrajectoryPlan? Evaluate(int duration)
         {

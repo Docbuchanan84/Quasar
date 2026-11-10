@@ -1,5 +1,23 @@
 # Development log
 
+## 2026-11-10 — Exploration torch and linked course controls
+
+- The owner requested useful routes for Pathfinder, a torch-like drive, and
+  linked controls with locks. A paused-coast refit supplies 300 kN thrust,
+  1,000 km/s exhaust velocity and 20,000 kg of reaction mass. The client uses
+  the installed capability without the previous 25 km/s limit.
+- Automatic courses support burns up to one day. Full forward arrival checks
+  retain their tolerances while refinement can continue around tick rounding.
+  The torch supplies executable Mercury, Venus and Mars approaches from the
+  tested two-hour starter state. Gravity handoffs remain outside this planner.
+- Travel time and minimum reserve adjust together. Locks preserve constraints,
+  and conflicting constraints disable order confirmation. The chosen adjusted
+  route uses the existing exact-preview confirmation contract.
+- `scripts/Verify.ps1` passed 257 xUnit tests and 11 Node checks. Disposable
+  Chromium verified refitting, linked controls, conflicts, exact confirmation,
+  3D review and a 393 px portrait layout. Long-burn cases cover fuel spending,
+  cancellation and checkpoint restore.
+
 ## 2026-11-10 — Propulsion-aware automatic courses
 
 - [Issue #28](https://github.com/Docbuchanan84/Quasar/issues/28) makes automatic
