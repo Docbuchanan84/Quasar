@@ -16,7 +16,7 @@ public static class QuasarHost
         var settings = PersistenceSettings.Read(paths.SettingsFile);
         builder.Services.AddSingleton(settings);
         builder.Services.AddSingleton<ICampaignStore>(new SqliteCampaignStore(paths.DataRoot, settings.Autosave.RecoveryCheckpoints));
-        builder.Services.AddSingleton(sp => new LabSession(sp.GetRequiredService<TimeProvider>(), startWithWorld: false));
+        builder.Services.AddSingleton(new LabSession(startWithWorld: false));
         builder.Services.AddSingleton(sp => new CampaignLifecycle(sp.GetRequiredService<LabSession>(),
             sp.GetRequiredService<ICampaignStore>(), settings, sp.GetRequiredService<TimeProvider>(),
             sp.GetRequiredService<ILogger<CampaignLifecycle>>(), paths.DataRoot));
@@ -119,15 +119,8 @@ public static class QuasarHost
             catch (Exception error) when (error is ArgumentException or OverflowException)
             { return Results.BadRequest(new { error = "Invalid command: " + error.Message }); }
         });
-        app.MapPost("/api/lab/lease", (LeaseRequest request, LabSession session) =>
-        {
-            session.RenewLease(request.InstanceId, request.ClientId);
-            return Results.NoContent();
-        });
 
         app.MapCampaignEndpoints();
         return app;
     }
 }
-
-public sealed record LeaseRequest(string InstanceId, string ClientId);

@@ -78,8 +78,7 @@ public sealed partial class LabSession
             stopReason = "Campaign loaded — paused";
             durationSeconds = 3600;
             mode = "once";
-            controller = null;
-            leaseUntil = default;
+            interrupt = null;
             previews.Clear();
         }
     }
@@ -127,8 +126,6 @@ public sealed partial class LabSession
         {
             shuttingDown = true;
             running = false;
-            controller = null;
-            leaseUntil = default;
             stopReason = "Host stopping";
         }
     }

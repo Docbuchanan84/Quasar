@@ -65,7 +65,7 @@ knowledge source; these files are supporting evidence, not another live record.
 | Both renderers, selection, orders, movement/arrival, Once/Continuous/Stop | Automated simulation/session/HTTP tests and desktop Chromium browser checks | Explicit physical-phone 3D and end-to-end order/arrival checks |
 | Pan, zoom, rotation, reference toggle, view cleanup | Desktop browser checks and implemented touch/control paths | Physical-phone drag/pinch/two-finger pan and repeated switching |
 | Portrait/landscape and narrow layouts | Actual portrait screenshot; automated 402/320 px and landscape checks | Actual phone landscape, text scaling, browser zoom, and safe-area transitions |
-| Background/lock, lease expiry, reconnect | Server tests and desktop offline/reconnect check | Physical-phone lock/app switching and recovery |
+| Background/lock and reconnect | Disposable HTTP test verifies advancement without browser requests and Stop after reconnect | Physical-phone lock/app switching and recovery |
 | Wi-Fi/cellular | Working phone access; screenshot includes cellular signal indicator | Record the actual path; test cellular-only access explicitly |
 | GPU capacity, frame time, memory, heat/battery | Basic actual-phone 2D rendering works | Measure before setting scale/performance budgets |
 
@@ -87,11 +87,10 @@ Frequent iPhone browser play has been an approved core pillar since 8 November
 - Treat lock, backgrounding, and network changes as normal. Refresh authoritative
   state on return, never replay uncertain orders, and never advance time in a tab.
 
-Task 002 uses a five-second lease renewed by the initiating visible browser.
-Without renewal, continuous processing stops at the next host tick after expiry.
-The host can process further selected intervals during that grace period; this
-is not an immediate disconnect guarantee. Reloading creates a new controller ID
-and does not silently resume the previous run. These are provisional lab semantics.
+The host keeps advancing in Continuous mode while the phone is locked or offline.
+The browser retrieves the live clock and any interrupt notice when it returns.
+This requires the Quasar host to be running. Campaigns restore paused after a host
+restart.
 
 ## Existing private hosting
 

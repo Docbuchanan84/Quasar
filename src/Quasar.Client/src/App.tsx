@@ -166,6 +166,16 @@ function App() {
           </button>
         </div>
       </section>
+      <div role="status" aria-atomic="true">
+        {snapshot.interrupt && (
+          <div className="notice">
+            <span>
+              <strong>Paused at {formatTime(snapshot.interrupt.atTicks)}</strong>
+              {' · '}{snapshot.interrupt.message}
+            </span>
+          </div>
+        )}
+      </div>
       <div className="workspace">
         <section className="map-panel" aria-label="System display">
           <div className="panel-heading">
@@ -436,7 +446,8 @@ function App() {
         </ol>
       </details>
       <footer>
-        Continuous processing stops on arrival or controller lease expiry.
+        Continuous play runs on the host, even with the browser closed.
+        A game interrupt or Stop pauses the clock.
       </footer>
     </main>
   )

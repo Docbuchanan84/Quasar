@@ -106,19 +106,6 @@ export function useLabSession(
     }
     const timer = window.setInterval(resume, 500)
     const initial = window.setTimeout(resume, 0)
-    const heartbeat = window.setInterval(() => {
-      const state = latest.current
-      if (!document.hidden && state?.running)
-        void fetch('/api/lab/lease', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            instanceId: state.instanceId,
-            clientId: clientId.current,
-          }),
-          signal: AbortSignal.timeout(3000),
-        }).catch(() => {})
-    }, 1000)
     document.addEventListener('visibilitychange', resume)
     window.addEventListener('online', resume)
     window.addEventListener('offline', offline)
@@ -126,7 +113,6 @@ export function useLabSession(
       invalidate()
       clearTimeout(initial)
       clearInterval(timer)
-      clearInterval(heartbeat)
       document.removeEventListener('visibilitychange', resume)
       window.removeEventListener('online', resume)
       window.removeEventListener('offline', offline)

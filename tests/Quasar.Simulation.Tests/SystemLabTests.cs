@@ -120,7 +120,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [Fact]
     public void RepeatedIntervalChangesHaveNoClockDrift()
     {
-        var session = new LabSession(new TestClock(), SystemLab.CreateLegacyFixture());
+        var session = new LabSession(SystemLab.CreateLegacyFixture());
         int[] seconds = [1, 5, 30, 60, 3600, 86400, 432000, 1296000, 2592000];
         var expectedShip = session.ShipStateAt(seconds.Sum(s => (long)s) * 200 * TimeSpan.TicksPerSecond);
         long expectedTicks = 0;
@@ -197,7 +197,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [Fact]
     public void OnceStopsAndContinuousProcessesChosenIntervals()
     {
-        var session = new LabSession(new TestClock(), SystemLab.CreateLegacyFixture());
+        var session = new LabSession(SystemLab.CreateLegacyFixture());
         Send(session, "play"); session.Tick();
         Assert.False(session.Snapshot().Running);
         Assert.Equal(TimeSpan.TicksPerHour, session.Snapshot().World.ElapsedTicks);
@@ -221,7 +221,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [InlineData(2592000)]
     public void EveryIntervalSupportsOnceContinuousStopAndResume(int seconds)
     {
-        var clock = new TestClock(); var session = new LabSession(clock, SystemLab.CreateLegacyFixture());
+        var session = new LabSession(SystemLab.CreateLegacyFixture());
         Send(session, "configure", seconds, "once"); Send(session, "play"); session.Tick();
         Assert.False(session.Snapshot().Running);
         Assert.Equal(seconds * TimeSpan.TicksPerSecond, session.Snapshot().World.ElapsedTicks);
@@ -235,7 +235,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
         Assert.Equal(running.Revision, session.Snapshot().Revision);
 
         Send(session, "stop");
-        clock.Now = clock.Now.AddDays(1); session.Tick();
+        session.Tick();
         Assert.Equal(running.World.ElapsedTicks, session.Snapshot().World.ElapsedTicks);
         Assert.Equal(seconds, session.Snapshot().DurationSeconds);
         Assert.Equal("continuous", session.Snapshot().Mode);
@@ -253,45 +253,28 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [InlineData(2592000, "continuous")]
     public void ArrivalInterruptDiscardsRemainderAndResumeUsesFullInterval(int seconds, string mode)
     {
-        var session = new LabSession(new TestClock(), SystemLab.CreateLegacyFixture());
+        var session = new LabSession(SystemLab.CreateLegacyFixture());
         Send(session, "travel", destination: "planet-iris");
         var arrival = session.Snapshot().World.Ship.ArrivalTicks;
         Send(session, "configure", seconds, mode); Send(session, "play"); session.Tick();
-        Assert.False(session.Snapshot().Running);
-        Assert.Equal(arrival, session.Snapshot().World.ElapsedTicks);
-        Assert.Contains("Arrival", session.Snapshot().StopReason);
+        var stopped = session.Snapshot();
+        Assert.False(stopped.Running);
+        Assert.Equal(arrival, stopped.World.ElapsedTicks);
+        Assert.Contains("Arrival", stopped.StopReason);
+        Assert.Equal(Assert.Single(stopped.World.Events, e => e.Kind == "arrival"), stopped.Interrupt);
+        Assert.Equal(stopped.StopReason, Send(session, "stop").StopReason);
         session.Tick();
         Assert.Equal(arrival, session.Snapshot().World.ElapsedTicks);
         Send(session, "play"); session.Tick();
+        Assert.Null(session.Snapshot().Interrupt);
         Assert.Equal(arrival + seconds * TimeSpan.TicksPerSecond, session.Snapshot().World.ElapsedTicks);
         Assert.Single(session.Snapshot().World.Events, e => e.Kind == "arrival");
-    }
-
-    [Theory]
-    [InlineData(1)]
-    [InlineData(5)]
-    [InlineData(30)]
-    [InlineData(432000)]
-    [InlineData(1296000)]
-    public void LeaseExpiresAndOnlyItsOwnerCanRenewIt(int seconds)
-    {
-        var clock = new TestClock(); var session = new LabSession(clock, SystemLab.CreateLegacyFixture());
-        Send(session, "configure", seconds, "continuous");
-        var play = Send(session, "play");
-        clock.Now = clock.Now.AddSeconds(4);
-        session.RenewLease(play.InstanceId, Guid.NewGuid().ToString());
-        clock.Now = clock.Now.AddSeconds(1); session.Tick();
-        Assert.False(session.Snapshot().Running);
-        Assert.Equal(0, session.Snapshot().World.ElapsedTicks);
-        Send(session, "play"); clock.Now = clock.Now.AddSeconds(4);
-        session.RenewLease(play.InstanceId, Client); clock.Now = clock.Now.AddSeconds(2); session.Tick();
-        Assert.True(session.Snapshot().Running);
     }
 
     [Fact]
     public void StaleCommandsAndOtherInstancesAreRejectedButStopCannotLoseToATick()
     {
-        var session = new LabSession(new TestClock(), SystemLab.CreateLegacyFixture()); var old = session.Snapshot();
+        var session = new LabSession(SystemLab.CreateLegacyFixture()); var old = session.Snapshot();
         Send(session, "configure", 1, "continuous"); Send(session, "play"); session.Tick();
         Assert.Throws<InvalidOperationException>(() => session.Execute(new(old.InstanceId, old.Revision, Client, "travel", DestinationId: "planet-iris")));
         Assert.Throws<InvalidOperationException>(() => session.Execute(new("another-instance", old.Revision, Client, "stop")));
@@ -307,7 +290,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [InlineData("unknown", 3600, "once")]
     public void InvalidSessionCommandsAreAtomic(string operation, int duration, string mode)
     {
-        var session = new LabSession(new TestClock(), SystemLab.CreateLegacyFixture()); var before = session.Snapshot();
+        var session = new LabSession(SystemLab.CreateLegacyFixture()); var before = session.Snapshot();
         Assert.Throws<ArgumentException>(() => Send(session, operation, duration, mode));
         Assert.Equal(before.Revision, session.Snapshot().Revision);
         Assert.Equal(before.DurationSeconds, session.Snapshot().DurationSeconds);
@@ -316,7 +299,7 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     [Fact]
     public void ConcurrentCommandsHaveOneWriterAndRejectObsoleteRevision()
     {
-        var session = new LabSession(new TestClock(), SystemLab.CreateLegacyFixture()); var state = session.Snapshot(); var accepted = 0;
+        var session = new LabSession(SystemLab.CreateLegacyFixture()); var state = session.Snapshot(); var accepted = 0;
         Parallel.For(0, 20, _ =>
         {
             try { session.Execute(new(state.InstanceId, state.Revision, Client, "travel", DestinationId: "planet-iris")); Interlocked.Increment(ref accepted); }
@@ -332,10 +315,5 @@ public sealed class SystemLabTests(ITestOutputHelper output)
     {
         var state = session.Snapshot();
         return session.Execute(new(state.InstanceId, state.Revision, Client, operation, duration, mode, destination));
-    }
-    private sealed class TestClock : TimeProvider
-    {
-        public DateTimeOffset Now { get; set; } = DateTimeOffset.UnixEpoch;
-        public override DateTimeOffset GetUtcNow() => Now;
     }
 }

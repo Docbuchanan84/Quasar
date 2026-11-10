@@ -2,7 +2,7 @@
 
 Coverage includes the Solar System and legacy fixtures, exact clock advances,
 celestial queries, gravitational propagation, flybys, automatic course search,
-preview and commit isolation, event ordering, and controller lease expiry.
+preview and commit isolation, event ordering, and host advancement without a browser.
 Checkpoint and campaign cases cover save/load, compatibility, concurrent
 writes, and recovery.
 
