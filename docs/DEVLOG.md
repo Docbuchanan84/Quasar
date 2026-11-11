@@ -16,6 +16,11 @@
   Event processing reached 9.62 s median with 70,800 staggered advances.
   The next scheduling experiment should target the repeated fleet scans for
   potential free-coast gravity changes.
+- The owner requested phone play. The CI-verified benchmark revision `64b3453`
+  was published to the existing private preview. A verified save backup and a
+  disposable restore preceded the switch. The live host restored the same
+  paused checkpoint and world. Private HTTPS served the game and its assets,
+  and a 393 px browser viewport displayed the active campaign and course.
 
 ## 2026-11-10 — Courses across gravity systems
 
