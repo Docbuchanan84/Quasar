@@ -87,4 +87,38 @@ public sealed class PoweredTrajectoryTests
         Assert.Equal(radialOffset, Distance(burn.EndTicks / 2), 4);
         Assert.Equal(clear, new MovementExecution(catalogue).PoweredPathIsClear(burn, "star", CancellationToken.None));
     }
+
+    [Theory]
+    [InlineData(98.98, true)]
+    [InlineData(98.999, true)]
+    [InlineData(99.001, false)]
+    [InlineData(100.001, false)]
+    public void PoweredCoursePatchesBetweenSamplesAndKeepsNearGrazesContinuous(double offset, bool enters)
+    {
+        const double mu = 1.32712440018e11;
+        const double radius = 150_000_000;
+        var childMu = mu * Math.Pow(100 / radius, 2.5);
+        var catalogue = new CelestialPositionService([
+            new("star", "Star", CelestialBodyKind.Star, mu, RadiusKm: 695700),
+            new("child", "Child", CelestialBodyKind.Asteroid, childMu, "star", new(radius, 0), RadiusKm: 1)
+        ]);
+        var initial = new CelestialState(new(radius + offset, -50, 0), new(0, Math.Sqrt((mu + childMu) / radius) + 100, 0));
+        var propulsion = Propulsion with { Engine = Propulsion.Engine with { ThrustN = 1 } };
+        var burn = CourseBurn.Build(catalogue, initial, "star", 0, TimeSpan.TicksPerSecond, new(0, 1, 0), propulsion, CancellationToken.None);
+        Assert.Equal(enters, burn.Parts.Any(part => part.Primary == "child"));
+        Assert.Equal("star", burn.PrimaryAt(0));
+        Assert.Equal("star", burn.PrimaryAt(burn.EndTicks));
+        for (var i = 1; i < burn.Parts.Length; i++)
+        {
+            var part = burn.Parts[i];
+            var prior = burn.Parts[i - 1];
+            var ticks = part.Path.StartTicks;
+            var from = OrbitalNavigation.ToSystem(catalogue, prior.Primary, ticks, prior.Path.StateAt(ticks));
+            var to = OrbitalNavigation.ToSystem(catalogue, part.Primary, ticks, part.Path.StateAt(ticks));
+            Assert.InRange(from.PositionKm.DistanceTo(to.PositionKm), 0, 1e-7);
+            Assert.InRange((Vector3d.From(from.VelocityKmPerSecond) - Vector3d.From(to.VelocityKmPerSecond)).Length, 0, 1e-10);
+        }
+        Assert.Equal(propulsion.Tank.QuantityKg - propulsion.CalculatePerformance().RatedMassFlowKgPerSecond,
+            burn.RemainingPropellantKg(burn.EndTicks), 9);
+    }
 }

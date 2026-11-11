@@ -1,5 +1,15 @@
 # Quasar decision record
 
+## Approved — courses between gravity systems (2026-11-10)
+
+The owner explicitly requested automatic courses from the ship's current
+location to any modeled destination, with linked travel-time and reserve
+controls and locks. The computer handles intermediate gravity changes.
+This extends the original single-primary Issue #28 slice. Finite burns,
+propellant accounting, continuous clearance and arrival validation remain
+mandatory. This implementation extends the existing patched-conic model;
+it does not add component architecture, landing, docking or full n-body physics.
+
 ## Approved — starting Pathfinder exploration torch (2026-11-10)
 
 The owner requested the exploration torch as the starting loadout for every

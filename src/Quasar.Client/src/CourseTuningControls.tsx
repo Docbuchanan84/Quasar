@@ -13,8 +13,9 @@ export default function CourseTuningControls({ inputs, trajectory, loading, disa
 }) {
   const seconds = (!loading && trajectory?.travelSeconds) || inputs.preferredFlightSeconds || 86400
   const actualReserve = loading ? undefined : trajectory?.brakingMarginPercent
-  const reserve = inputs.lockReserve ? inputs.reservePercent ?? 0
-    : actualReserve ?? inputs.reservePercent ?? 0
+  // Preserve the player's request while results arrive; actual remaining fuel
+  // can exceed this minimum and is reported separately in the preview.
+  const reserve = inputs.reservePercent ?? actualReserve ?? 0
   const timePosition = Math.log(Math.max(1, seconds)) / timeScale * 1000
   const days = seconds / 86400
 
@@ -38,7 +39,7 @@ export default function CourseTuningControls({ inputs, trajectory, loading, disa
         {inputs.lockFlightTime ? '🔒 Travel time locked' : '🔓 Lock travel time'}
       </button>
       <label>
-        {inputs.lockReserve ? 'Keep at least' : 'Propellant reserve'} · {reserve.toFixed(1)}%
+        {inputs.reservePercent !== undefined ? 'Keep at least' : 'Propellant reserve'} · {reserve.toFixed(1)}%
         <input aria-label="Propellant reserve" type="range" min="0" max="99" step="1"
           value={Math.min(99, reserve)} disabled={disabled}
           onChange={(event) => onChange({ ...inputs,

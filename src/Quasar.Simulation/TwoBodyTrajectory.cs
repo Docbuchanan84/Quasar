@@ -101,6 +101,9 @@ public sealed class TwoBodyTrajectory
             var value = Equation(candidate);
             if (Math.Abs(value) <= Math.Max(1e-9, sqrtMu * Math.Abs(dt) * 1e-14)) { solved = true; break; }
             if (value < 0) low = candidate; else high = candidate;
+            // At adjacent floating-point anomalies the bracket cannot shrink further.
+            // This occurs in fast hyperbolic moon encounters where large terms cancel.
+            if (Math.BitIncrement(low) >= high) { candidate = (low + high) / 2; solved = true; break; }
             var chi = sign * candidate;
             var z = alpha * chi * chi;
             var (c, s) = Stumpff(z);

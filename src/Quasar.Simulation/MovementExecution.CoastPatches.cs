@@ -12,10 +12,11 @@ public sealed partial class MovementExecution
 
     internal bool CourseCrossesPrimaryBoundary(FiniteCourse course, CancellationToken cancellationToken)
     {
+        if (course.State.ArrivalPrimaryBodyId is not null) return false; // Rebuilt with validated continuous patched paths.
         var primary = course.Coast.PrimaryBodyId;
         var coast = course.Coast.Coast;
-        if (!PoweredPathIsClear(course.Departure, primary, cancellationToken)
-            || !PoweredPathIsClear(course.Braking, primary, cancellationToken)) return true;
+        if (!PoweredPathIsClear(course.Departure.Parts[0].Path, primary, cancellationToken)
+            || !PoweredPathIsClear(course.Braking.Parts[0].Path, primary, cancellationToken)) return true;
 
         for (var from = course.Coast.StartTicks; from < course.Coast.EndTicks;)
         {
@@ -92,10 +93,11 @@ public sealed partial class MovementExecution
         }
         if (ship.Plan?.Finite is { } course && atTicks > course.Braking.EndTicks)
         {
-            var (primary, state) = PredictCoast(course.ArrivalCoast, ship.Primary, atTicks, course.Braking.EndTicks);
+            var (primary, state) = PredictCoast(course.ArrivalCoast, course.Arrival.PrimaryBodyId, atTicks, course.Braking.EndTicks);
             return new("spacecraft", id, primary, atTicks, state);
         }
-        var primaryId = ship.Plan?.Segments.LastOrDefault(segment => segment.StartTicks <= atTicks)?.PrimaryBodyId ?? ship.Primary;
+        var primaryId = ship.Plan?.Finite?.PrimaryAt(atTicks)
+            ?? ship.Plan?.Segments.LastOrDefault(segment => segment.StartTicks <= atTicks)?.PrimaryBodyId ?? ship.Primary;
         return new("spacecraft", id, primaryId, atTicks, StateAt(id, atTicks));
     }
 
@@ -115,7 +117,7 @@ public sealed partial class MovementExecution
     }
 
     private CoastPatch? FindCoastPatch(TwoBodyTrajectory coast, string primary, long from, long through,
-        CancellationToken? courseCancellation = null)
+        CancellationToken? courseCancellation = null, bool buildPatch = false)
     {
         if (through < from) return null;
         CoastPatch? chosen = null;
@@ -145,7 +147,7 @@ public sealed partial class MovementExecution
                 }
                 var crossing = FirstOnSide(cursor, left, limit, right, boundary.IsExit);
                 if (crossing is null) break;
-                if (courseCancellation.HasValue)
+                if (courseCancellation.HasValue && !buildPatch)
                     return new(crossing.Value, boundary.NextPrimary, coast);
                 var system = OrbitalNavigation.ToSystem(catalogue, primary, crossing.Value, coast.StateAt(crossing.Value));
                 var local = OrbitalNavigation.ToLocal(catalogue, boundary.NextPrimary, crossing.Value, system);
@@ -157,6 +159,7 @@ public sealed partial class MovementExecution
                 }
                 catch (ArgumentException)
                 {
+                    if (buildPatch) throw new ArgumentException("Gravity transition creates an unsupported radial coast state.");
                     // A centre-directed course can leave a radial state the local solver cannot propagate.
                     cursor = crossing.Value;
                     left = SampleAt(cursor);

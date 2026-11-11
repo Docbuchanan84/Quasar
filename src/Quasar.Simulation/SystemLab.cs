@@ -37,12 +37,14 @@ public sealed record TrajectoryDisplay(string DepartureTicks, string ArrivalTick
     double RequiredDeltaVKmPerSecond, TransferFuelEstimate Fuel, TrajectoryDisplayPoint[] Points, FlybyDisplay? Flyby = null,
     string? ArrivalKind = null, CourseArrival? Arrival = null, CourseBurnDisplay[]? BurnSchedule = null,
     double? BrakingMarginKg = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] double? BrakingMarginPercent = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] double? BrakingMarginPercent = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] CourseGravityTransition[]? GravityTransitions = null)
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool CriticalBrakingReserve => BrakingMarginPercent is < 1;
 }
 public sealed record CourseBurnDisplay(string Phase, string StartTicks, double DurationSeconds, double PropellantKg);
+public sealed record CourseGravityTransition(string BodyId, string BodyName, string AtTicks);
 public sealed record FlybyDisplay(string BodyId, string BodyName, string AtTicks, double ClosestApproachKm);
 
 /// <summary>Headless fixture using the planner/execution contracts available to future fleet systems.</summary>
@@ -133,11 +135,11 @@ public sealed partial class SystemLab
             : planner.Plan(new(state, departure, leg, maneuverBudget));
     }
 
-    private (CelestialState State, long Departure, TransferLeg Leg) CaptureDeparture(string destinationId)
+    private (CelestialState State, long Departure, TransferLeg Leg) CaptureDeparture(string destinationId, bool automatic = false)
     {
         if (!celestialPositions.Bodies.TryGetValue(destinationId, out var destination)
-            || destination.Kind is not (CelestialBodyKind.Planet or CelestialBodyKind.Moon))
-            throw new ArgumentException("Choose a planet or moon in this system.", nameof(destinationId));
+            || (!automatic && destination.Kind is not (CelestialBodyKind.Planet or CelestialBodyKind.Moon)))
+            throw new ArgumentException("Choose a destination in this system.", nameof(destinationId));
         if (movement.IsBurning(ShipId)) throw new InvalidOperationException("Cut thrust before plotting a course.");
         var departure = ElapsedTicks;
         var state = movement.StateAt(ShipId, departure);
@@ -209,15 +211,22 @@ public sealed partial class SystemLab
 
     private OrbitalTargetState ResolvePresetOrbit(string bodyId, long atTicks)
     {
+        if (!celestialPositions.Bodies.TryGetValue(bodyId, out var body) || body.GravitationalParameterKm3PerSecond2 <= 0)
+            throw new ArgumentException("Choose a destination with modeled gravity for orbital insertion.", nameof(bodyId));
         var altitude = bodyId switch
         {
             SolarSystem.Earth => 400,
             "moon-moon" => 100,
-            _ => throw new ArgumentException("Choose an Earth or lunar orbit preset.", nameof(bodyId))
+            _ => Math.Max(100, body.RadiusKm * 0.1)
         };
-        if (!celestialPositions.Bodies.TryGetValue(bodyId, out var body))
-            throw new ArgumentException("This campaign does not contain the requested orbit preset.", nameof(bodyId));
         var radius = body.RadiusKm + altitude;
+        if (celestialPositions.GetEnvironment(bodyId).SphereOfInfluenceRadiusKm is { } sphere)
+        {
+            var surface = Math.Max(1, body.RadiusKm);
+            if (sphere <= surface)
+                throw new ArgumentException("No above-surface orbit fits inside this destination's modeled gravity sphere. Choose a velocity-matched approach.");
+            radius = Math.Min(radius, (surface + sphere) / 2);
+        }
         var speed = Math.Sqrt(body.GravitationalParameterKm3PerSecond2 / radius);
         return OrbitalNavigation.ResolveOrbit(celestialPositions, bodyId, 0, new(new(radius, 0, 0), new(0, speed, 0)), atTicks);
     }
@@ -235,9 +244,12 @@ public sealed partial class SystemLab
             finite.State.Propulsion.Tank.QuantityKg - finite.Departure.RemainingPropellantKg(finite.Departure.EndTicks)),
          new("Braking", Ticks(finite.Braking.StartTicks), Seconds(finite.Braking), finite.BrakingPropellantKg)] : null,
         plan.Finite?.RemainingPropellantKg, plan.Finite is { } solved
-            ? solved.RemainingPropellantKg / solved.State.Propulsion.Tank.QuantityKg * 100 : null);
+            ? solved.RemainingPropellantKg / solved.State.Propulsion.Tank.QuantityKg * 100 : null,
+        plan.Finite is { } course && course.GravityTransitionTicks.Length > 0
+            ? course.GravityTransitionTicks.Select(ticks => new CourseGravityTransition(course.PrimaryAt(ticks),
+                plan.Catalogue.Bodies[course.PrimaryAt(ticks)].Name, Ticks(ticks))).ToArray() : null);
 
-    private static double Seconds(PoweredTrajectory burn) => (burn.EndTicks - burn.StartTicks) / (double)TimeSpan.TicksPerSecond;
+    private static double Seconds(CourseBurn burn) => (burn.EndTicks - burn.StartTicks) / (double)TimeSpan.TicksPerSecond;
 
     public bool Advance(TimeSpan duration)
     {

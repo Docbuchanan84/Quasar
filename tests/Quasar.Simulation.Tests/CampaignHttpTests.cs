@@ -138,6 +138,70 @@ public sealed class CampaignHttpTests : IDisposable
     }
 
     [Fact]
+    public async Task ImpossiblePhobosOrbitReturnsAnUnsupportedPreviewWithoutChangingState()
+    {
+        await using var host = await Start();
+        await host.Create("Small-body orbit validation");
+        var before = await host.Get(Lab);
+        var result = await host.Get(Lab + "/course-preview?mode=auto&destinationId=moon-phobos&arrivalKind=orbit");
+        Assert.Equal(JsonValueKind.Null, result.GetProperty("fastest").ValueKind);
+        Assert.Contains("No above-surface orbit", result.GetProperty("infeasibleReasons")[0].GetString());
+        Assert.Equal(before.GetRawText(), (await host.Get(Lab)).GetRawText());
+    }
+
+    [Fact]
+    public async Task CallistoCourseSurvivesHttpRestartAndContinuousGravityInterrupts()
+    {
+        JsonElement expected;
+        long arrival;
+        await using (var host = await Start())
+        {
+            await host.Create("Callisto regression");
+            var before = await host.Get(Lab);
+            var preview = (await host.Get(Lab + "/course-preview?mode=auto&destinationId=moon-callisto&preferredFlightSeconds=20736000&lockFlightTime=true"))
+                .GetProperty("fastest");
+            Assert.Equal(JsonValueKind.Object, preview.ValueKind);
+            Assert.Equal(before.GetRawText(), (await host.Get(Lab)).GetRawText());
+            var ordered = await host.Command("commit-course", previewId: preview.GetProperty("previewId").GetString());
+            Assert.Equal(preview.GetProperty("trajectory").GetRawText(), ordered.GetProperty("world").GetProperty("trajectory").GetRawText());
+            arrival = long.Parse(preview.GetProperty("trajectory").GetProperty("arrivalTicks").GetString()!);
+            while (true)
+            {
+                var advanced = await host.Advance(2592000);
+                if (advanced.TryGetProperty("interrupt", out var interrupt) && interrupt.ValueKind == JsonValueKind.Object
+                    && interrupt.GetProperty("kind").GetString() == "primary-change") break;
+                Assert.True(long.Parse(advanced.GetProperty("world").GetProperty("elapsedTicks").GetString()!) < arrival);
+            }
+            var at = await host.Get(Lab);
+            await host.Post("/api/campaigns/save-named", at, new { label = "Jupiter gravity entry" }, HttpStatusCode.Created);
+            expected = at.GetProperty("world");
+        }
+        await using var restarted = await Start();
+        Assert.Equal(expected.GetRawText(), (await restarted.Get(Lab)).GetProperty("world").GetRawText());
+        var kinds = new List<string>();
+        while (long.Parse((await restarted.Get(Lab)).GetProperty("world").GetProperty("elapsedTicks").GetString()!) < arrival)
+        {
+            await restarted.Command("configure", duration: 2592000, mode: "continuous");
+            await restarted.Command("play");
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            JsonElement stopped;
+            while (true)
+            {
+                stopped = await restarted.Get(Lab);
+                if (!stopped.GetProperty("running").GetBoolean()) break;
+                await Task.Delay(25, timeout.Token);
+            }
+            kinds.Add(stopped.GetProperty("interrupt").GetProperty("kind").GetString()!);
+        }
+        Assert.Contains("course-braking-start", kinds);
+        Assert.Contains("primary-change", kinds);
+        Assert.Equal("course-approach-complete", kinds[^1]);
+        var finished = await restarted.Get(Lab);
+        Assert.Equal("approach", finished.GetProperty("world").GetProperty("ship").GetProperty("arrivalKind").GetString());
+        Assert.Equal("Velocity-matched approach complete", finished.GetProperty("stopReason").GetString());
+    }
+
+    [Fact]
     public async Task EveryNewCampaignStartsWithAFueledTorchAndCanPlanMarsWithoutARefit()
     {
         await using var host = await Start();
@@ -170,7 +234,7 @@ public sealed class CampaignHttpTests : IDisposable
         var query = Lab + "/course-preview?mode=auto&destinationId=planet-mars&reservePercent=95&preferredFlightSeconds=" + travel;
         var tuned = (await host.Get(query)).GetProperty("tuned");
         Assert.True(tuned.GetProperty("trajectory").GetProperty("brakingMarginPercent").GetDouble() >= 95);
-        var conflict = await host.Get(query + "&lockFlightTime=true");
+        var conflict = await host.Get(Lab + "/course-preview?mode=auto&destinationId=planet-mars&reservePercent=95&preferredFlightSeconds=1&lockFlightTime=true");
         Assert.Equal(JsonValueKind.Null, conflict.GetProperty("fastest").ValueKind);
         await host.Get(Lab + "/course-preview?mode=auto&destinationId=planet-mars&reservePercent=100", HttpStatusCode.BadRequest);
         var ordered = await host.Command("commit-course", previewId: tuned.GetProperty("previewId").GetString());

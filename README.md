@@ -17,7 +17,7 @@ the local view. See the [Solar System guide](docs/SOLAR_SYSTEM.md).
 1. Select Pathfinder in either map or the object list. Stop time processing before plotting.
    Every new Pathfinder starts with an exploration torch and 20,000 kg of
    reaction mass for interplanetary flight.
-2. Choose **Plot Course**, select a planet or moon, and choose an arrival
+2. Choose **Plot Course**, select any modeled body or station, and choose an arrival
    condition. Quasar searches for the fastest and lowest-maneuver-cost routes
    the installed engine and remaining fuel can execute. Start with an Earth
    approach in a fresh campaign.
@@ -37,7 +37,8 @@ two fingers to pan. Both views support wheel/pinch zoom and **Reset View**.
 **Focus Selected** tracks the selected object in either view.
 
 C# owns the simulation clock and movement. Automatic courses refine Lambert
-transfer guesses into finite burns connected by an analytical coast. The reusable
+transfer guesses into finite burns connected by analytical coasts, with automatic
+gravity transitions during burns and coasting. The reusable
 simulation also supports hierarchical celestial queries and moving targets.
 The browser exposes one ship. Use **Engine burn** on Pathfinder to command a
 prograde or retrograde burn while paused and freely coasting. Course burn
