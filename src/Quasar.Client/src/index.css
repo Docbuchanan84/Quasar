@@ -105,6 +105,16 @@ main {
   content: '●';
   margin-right: 7px;
 }
+.arrival-notifications {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-block: 0.75rem;
+}
+.arrival-notifications button {
+  min-height: 44px;
+}
 .time-console {
   display: flex;
   align-items: center;

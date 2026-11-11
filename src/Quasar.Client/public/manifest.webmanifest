@@ -1,0 +1,11 @@
+{
+  "id": "/",
+  "name": "Quasar",
+  "short_name": "Quasar",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#101621",
+  "theme_color": "#101621",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

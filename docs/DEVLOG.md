@@ -1,5 +1,17 @@
 # Development log
 
+## 2026-11-11 — iPhone ship arrival notifications
+
+- Added a per-iPhone opt-in and Web Push delivery when a new ship arrival
+  pauses the simulation. The clock hands the alert to a background sender.
+- The host persists subscriptions and signing keys alongside its local data.
+  The Home Screen app displays the notification and opens Quasar on tap.
+- Tests cover the arrival trigger, same-origin opt-in, restart and opt-out,
+  the encrypted push request, and expired-device removal.
+- A disposable 393 px Chromium session verified opt-in and opt-out across
+  reloads and displayed an injected push through the active service worker.
+  Delivery to a locked iPhone remains to be checked on the device.
+
 ## 2026-11-10 — Courses across gravity systems
 
 - The owner clarified that the computer must plan between locations across

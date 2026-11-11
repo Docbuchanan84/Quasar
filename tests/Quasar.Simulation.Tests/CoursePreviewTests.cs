@@ -142,13 +142,14 @@ public class CoursePreviewTests
         })
         {
             Assert.True(Send(session, "play").Running);
-            session.Tick();
+            Assert.Equal(kind == "course-approach-complete" ? "Pathfinder arrived at Earth." : null,
+                session.TickWithArrival());
             var interrupted = session.Snapshot();
             Assert.False(interrupted.Running);
             Assert.Equal(kind, interrupted.Interrupt!.Kind);
             Assert.Equal(ticks, interrupted.Interrupt.AtTicks);
             Assert.Equal(ticks, interrupted.World.ElapsedTicks);
-            session.Tick();
+            Assert.Null(session.TickWithArrival());
             Assert.Equal(interrupted.Revision, session.Snapshot().Revision);
         }
 

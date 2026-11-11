@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { formatTime, isCourseDestination, type Snapshot } from './lab'
 import CampaignPanel from './CampaignPanel'
+import ArrivalNotifications from './ArrivalNotifications'
 import { useLabSession } from './useLabSession'
 import MapBoundary from './MapBoundary'
 import CoursePanel from './CoursePanel'
@@ -98,6 +99,7 @@ function App() {
         message={campaignMessage}
         onAction={campaignAction}
       />
+      <ArrivalNotifications />
       {(notice || !online) && (
         <div className="notice" role="alert">
           {notice || 'Waiting for the authoritative host. Orders are disabled.'}

@@ -1,4 +1,5 @@
 using Quasar.Simulation;
+using Quasar.Server.Notifications;
 
 namespace Quasar.Server;
 
@@ -204,15 +205,19 @@ public sealed partial class LabSession(bool startWithWorld = true)
         }
     }
 
-    public void Tick()
+    public void Tick() => TickWithArrival();
+
+    internal string? TickWithArrival()
     {
         lock (gate)
         {
-            if (!running || switchingCampaign || shuttingDown) return;
+            if (!running || switchingCampaign || shuttingDown) return null;
+            string? arrivalNotice = null;
             try
             {
                 var activeWorld = RequireWorld();
                 var before = activeWorld.ElapsedTicks;
+                var destination = activeWorld.CourseDestinationName;
                 var interrupted = activeWorld.Advance(TimeSpan.FromSeconds(durationSeconds));
                 if (interrupted || activeWorld.ElapsedTicks != before) MarkWorldChanged(significant: interrupted);
                 if (interrupted || mode == "once")
@@ -229,6 +234,13 @@ public sealed partial class LabSession(bool startWithWorld = true)
                         "patch" or "primary-change" => "Gravity primary changed — coasting",
                         _ => "Game event — awaiting orders"
                     };
+                    if (interrupt is { ArrivalLabel: not null } arrival)
+                    {
+                        arrivalNotice = destination is null ? arrival.Message
+                            : arrival.Kind == "course-orbit-inserted"
+                                ? $"Pathfinder entered orbit at {destination}."
+                                : $"Pathfinder arrived at {destination}.";
+                    }
                 }
             }
             catch (OverflowException)
@@ -238,6 +250,7 @@ public sealed partial class LabSession(bool startWithWorld = true)
             }
             revision++;
             previews.Clear();
+            return arrivalNotice;
         }
     }
 
@@ -250,11 +263,14 @@ public sealed partial class LabSession(bool startWithWorld = true)
     }
 }
 
-public sealed class LabRunner(LabSession session) : BackgroundService
+internal sealed class LabRunner(LabSession session, ArrivalNotifications notifications) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(250));
-        while (await timer.WaitForNextTickAsync(stoppingToken)) session.Tick();
+        while (await timer.WaitForNextTickAsync(stoppingToken))
+        {
+            if (session.TickWithArrival() is { } arrival) notifications.Enqueue(arrival);
+        }
     }
 }
