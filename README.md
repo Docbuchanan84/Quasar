@@ -70,6 +70,11 @@ checks. See [development setup](docs/DEVELOPMENT_SETUP.md) and the disposable
 
 ## Project records
 
+- [Parametric engineering designers](docs/PARAMETRIC_ENGINEERING_DESIGN.md)
+  documents the approved cross-domain engineering, live-generated technical
+  visualization and in-context learning direction. This is future gameplay;
+  the reusable designer is not yet implemented.
+
 - [System Lab](docs/SYSTEM_LAB.md) covers the clock, movement, and HTTP contract.
 - [Course plotting](docs/COURSE_PLOTTING.md) and [map navigation](docs/MAP_NAVIGATION.md)
   cover controls and verification.
