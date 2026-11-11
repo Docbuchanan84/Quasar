@@ -22,17 +22,18 @@ internal static class CourseSearch
     }
 
     internal static CourseChoices? Find(Func<int, TrajectoryPlan?> evaluate, CancellationToken cancellationToken,
-        int? preferredSeconds = null, bool lockFlightTime = false)
+        int? preferredSeconds = null, bool lockFlightTime = false, Func<bool>? stop = null, int[]? probes = null)
     {
         var candidates = new Dictionary<int, TrajectoryPlan?>();
         if (preferredSeconds is { } preferred)
         {
             Evaluate(preferred);
             if (lockFlightTime)
-                return candidates[preferred] is { } exact ? new(exact, exact, exact) : null;
+                return candidates.GetValueOrDefault(preferred) is { } exact ? new(exact, exact, exact) : null;
             Evaluate(Math.Max(1, preferred - preferred / 5));
             Evaluate(Math.Min(MaximumSeconds, preferred + preferred / 5));
         }
+        foreach (var duration in probes ?? []) Evaluate(duration);
         foreach (var duration in Durations) Evaluate(duration);
         var feasible = candidates.Where(pair => pair.Value is not null).Select(pair => pair.Key).Order().ToArray();
         if (feasible.Length == 0) return null;
@@ -83,8 +84,13 @@ internal static class CourseSearch
         TrajectoryPlan? Evaluate(int duration)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (stop?.Invoke() == true) return null;
             if (!candidates.TryGetValue(duration, out var plan))
-                candidates.Add(duration, plan = evaluate(duration));
+            {
+                try { plan = evaluate(duration); }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && stop?.Invoke() == true) { return null; }
+                candidates.Add(duration, plan);
+            }
             return plan;
         }
     }

@@ -118,9 +118,9 @@ public class CoursePreviewTests
     public void AutomaticSearchReportsUnsupportedArrivalWithoutAnOrderToken()
     {
         var session = new LabSession();
-        var options = session.PreviewAutomaticCourse("planet-earth", 25, CancellationToken.None, "orbit");
+        var options = session.PreviewAutomaticCourse("station-staryard", 25, CancellationToken.None, "orbit");
         Assert.Null(options.Fastest);
-        Assert.Contains("Cross-primary capture", Assert.Single(options.InfeasibleReasons));
+        Assert.Contains("no modeled gravity", Assert.Single(options.InfeasibleReasons));
     }
 
     [Fact]

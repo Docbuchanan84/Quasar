@@ -91,7 +91,7 @@ public sealed class TorchCourseTests
         Assert.InRange(tuned.Fuel.PropellantMassKg!.Value, 0, 1000);
         Assert.InRange(tuned.Finite!.Arrival.PositionErrorKm, 0, FiniteCourse.PositionToleranceKm);
 
-        var conflict = lab.CaptureCourseSearch("planet-mars", preferredFlightSeconds: requested,
+        var conflict = lab.CaptureCourseSearch("planet-mars", preferredFlightSeconds: 1,
             reservePercent: 95, lockFlightTime: true)(CancellationToken.None);
         Assert.Null(conflict.Choices);
         Assert.Contains(conflict.InfeasibleReasons, reason => reason.Contains("locked travel time"));

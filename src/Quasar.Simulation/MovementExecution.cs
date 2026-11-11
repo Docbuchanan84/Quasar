@@ -51,7 +51,7 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
         if (ship.Plan is { } plan)
         {
             if (plan.Finite is { } finite && atTicks > plan.ArrivalTicks)
-                return PredictCoast(finite.ArrivalCoast, ship.Primary, atTicks, plan.ArrivalTicks).State;
+                return PredictCoast(finite.ArrivalCoast, finite.Arrival.PrimaryBodyId, atTicks, plan.ArrivalTicks).State;
             return atTicks <= plan.ArrivalTicks ? plan.StateAt(atTicks) : plan.Destination.StateAt(catalogue, atTicks);
         }
         if (ship.Rendezvous is { } target) return target.Destination.StateAt(catalogue, atTicks);
@@ -89,7 +89,7 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
             throw new InvalidOperationException("The spacecraft propulsion or gravity primary changed. Preview again before committing.");
         ship.Propulsion = propulsion;
         ship.Plan = plan; ship.Rendezvous = null; ship.Generation++; ship.NextBoundary = 0;
-        ship.Primary = plan.Segments[0].PrimaryBodyId;
+        ship.Primary = plan.Finite?.PrimaryAt(plan.DepartureTicks) ?? plan.Segments[0].PrimaryBodyId;
         ship.Coast = null;
         ship.AutomaticPrimary = false;
         Schedule(id, ship);
@@ -155,18 +155,20 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
             if (ship.Plan is not { } plan) continue;
             if (plan.Finite is { } finite)
             {
+                ship.Primary = finite.PrimaryAt(at);
+                var boundary = finite.Boundaries[ship.NextBoundary];
                 if (at == finite.Braking.EndTicks)
                 {
                     ship.Propulsion = PropulsionAt(ship, at);
                     ship.Coast = finite.ArrivalCoast;
                     ship.Plan = null;
                     ship.AutomaticPrimary = true;
-                    events.Add(new(at, entry.Id, finite.Arrival.Kind == "orbit" ? "course-orbit-inserted" : "course-approach-complete"));
+                    events.Add(new(at, entry.Id, boundary.Kind));
                 }
                 else
                 {
                     ship.NextBoundary++;
-                    events.Add(new(at, entry.Id, at == finite.Departure.EndTicks ? "course-departure-cutoff" : "course-braking-start"));
+                    events.Add(new(at, entry.Id, boundary.Kind));
                     Schedule(entry.Id, ship);
                 }
                 continue;
@@ -193,7 +195,7 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
         catalogue.GetEnvironment(primary).GravitationalParameterKm3PerSecond2);
 
     private static long? BoundaryTicks(Spacecraft ship) => ship.Plan?.Finite is { } finite
-        ? ship.NextBoundary switch { 0 => finite.Departure.EndTicks, 1 => finite.Braking.StartTicks, _ => finite.Braking.EndTicks }
+        ? finite.Boundaries[ship.NextBoundary].Ticks
         : ship.Burn?.Path.EndTicks ?? ship.Plan?.Segments[ship.NextBoundary].EndTicks;
 
     private void Schedule(string id, Spacecraft ship)

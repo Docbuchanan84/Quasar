@@ -18,7 +18,14 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   `History` entries. `SimulationState` contains `FormatVersion`,
   `ElapsedTicks`, `Bodies`, and `Spacecraft`. The nested
   `Simulation.FormatVersion` versions the entire checkpoint. The current version
-  is `SimulationState.CurrentFormatVersion` (6). Version 6 adds finite courses.
+  is `SimulationState.CurrentFormatVersion` (7). Version 7 adds finite courses
+  across gravity systems, recording the arrival primary and burn throttle.
+  Thrust and mass flow scale together; the tiny cutoff adjustment places exact
+  rocket-equation impulses on integer clock ticks without exceeding rated thrust.
+  All patched paths and their boundaries are rebuilt and validated on load,
+  including current primary, remaining fuel, and consumed history events.
+  Versions 1–6 remain readable with their original equipment and motion state.
+  Version 6 adds finite courses.
   Version 5 records automatic
   primary selection on eligible free coasts. Older free coasts keep their
   stored primary until a new coast is created by cancellation or burn cutoff.

@@ -36,9 +36,8 @@ async (page) => {
   }
 
   const jupiter = await choose('planet-jupiter', () => destination.selectOption('planet-jupiter'))
-  assert(jupiter.fastest === null, 'Unsupported Jupiter route remains infeasible')
-  await panel.getByText(/No executable|Insufficient propellant|gravity|boundary/).first().waitFor()
-  assert(await issue.isDisabled(), 'Infeasible results cannot be ordered')
+  assert(jupiter.fastest !== null, 'The computer can now plan a Jupiter course')
+  await route('Fastest').waitFor()
 
   const earth = await choose('planet-earth', () => destination.selectOption('planet-earth'))
   await route('Fastest').waitFor()
@@ -54,9 +53,11 @@ async (page) => {
   assert(same(before, await read()), 'Preview and route selection leave canonical state untouched')
 
   await page.setViewportSize({ width: 393, height: 852 })
-  await choose('planet-earth', () => arrival.selectOption('orbit'))
-  await panel.getByText(/Cross-primary capture/).waitFor()
-  assert(await issue.isDisabled(), 'Unsupported capture cannot be ordered')
+  await choose('station-staryard', () => destination.selectOption('station-staryard'))
+  await choose('station-staryard', () => arrival.selectOption('orbit'))
+  await panel.getByText(/no modeled gravity/).waitFor()
+  assert(await issue.isDisabled(), 'A station cannot be treated as a gravitational orbit primary')
+  await choose('planet-earth', () => destination.selectOption('planet-earth'))
   const reviewed = await choose('planet-earth', () => arrival.selectOption('approach'))
   await route('Fastest').waitFor()
   assert(await route('Fastest').getAttribute('aria-pressed') === 'true', 'New arrival condition defaults to fastest')

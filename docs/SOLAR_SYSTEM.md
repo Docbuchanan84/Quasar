@@ -69,9 +69,11 @@ Older impulsive courses may include a simplified single-planet flyby.
 
 The torch also supplies executable Mercury, Venus, and Mars approaches from
 the two-hour starter departure tested for this change. Routes still depend on
-geometry and the bounded solver. A single-primary approach stops outside the
-destination's modeled SOI. Moon transfers and planetary capture can require
-gravity transitions that this planner does not support.
+geometry and the bounded solver. A velocity-matched approach stops outside the
+destination's modeled SOI. The planner handles intervening gravity transitions
+automatically, including Callisto and other moons. Select orbital insertion to
+request the destination orbit preset. No approach or insertion implies landing
+or docking.
 
 Checkpoint format 2 stores body radii and the optional flyby encounter.
 Version 1 checkpoints retain their original catalogue and courses when loaded.

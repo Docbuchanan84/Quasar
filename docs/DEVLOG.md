@@ -1,5 +1,32 @@
 # Development log
 
+## 2026-11-10 — Courses across gravity systems
+
+- The owner clarified that the computer must plan between locations across
+  gravity systems and rebalance unlocked course controls. Callisto was blocked
+  by a single-primary guard, despite the starting torch's capability.
+- Finite departure and braking burns now support primary changes inside RK
+  steps. Analytical coasts use continuous SOI detection and actual-interval
+  surface clearance. Full forward arrival tolerances remain 10 m and 1 mm/s.
+  Tight-orbit departures use damped shooting. A near-full-thrust adjustment
+  aligns exact rocket-equation burn impulses with integer clock ticks.
+- All 40 modeled destinations returned verified routes from the starting state
+  in a disposable sweep (0 failed; maximum observed 4.021 s). Orbit-to-moon,
+  moon-to-planet, station and outer-system routes are covered. This is measured
+  fixture coverage, not a promise that every fuel/lock/geometry combination is
+  feasible. Searches stop after four seconds and retain completed candidates;
+  bounded caches support repeated slider requests.
+- Checkpoint v7 rebuilds transitions and validates primary, fuel and history.
+  Versions 1–6 remain readable. Callisto regressions cover execution, momentum,
+  cancellation around every boundary, HTTP restart and Continuous interrupts.
+- `scripts/Verify.ps1` passed 284 xUnit tests and 11 Node checks, formatting,
+  lint, renderer loading and production bundling. Disposable Chromium passed
+  Callisto's linked controls and locks, exact confirmation, 3D review and
+  393 px portrait layout. The existing course browser scenario also passed.
+  Physical iPhone validation remains separate.
+- The live Google design record was read on 10 November (title and revision
+  verified); its earlier release summary is historical. It was not modified.
+
 ## 2026-11-10 — Starting Pathfinder exploration torch
 
 - Every new campaign starts Pathfinder with the exploration torch and 20,000 kg

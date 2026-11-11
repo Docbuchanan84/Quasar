@@ -212,14 +212,24 @@ starting tangent by half the bounded acceleration times the step duration
 squared. The ship bound uses half the starting radius and maximum dry-mass
 thrust. The child frame adds the child's maximum acceleration at periapsis.
 If the enclosure could touch a surface or sphere boundary, the course is
-rejected. This can reject very close safe passes. Cross-primary maneuvers and
-flybys require a different refinement.
+rejected. This can reject very close safe passes.
+
+Cross-primary courses refine against the full patched coast, including moving
+SOI entries and exits, and may change primary during either powered leg. The
+powered solver recursively encloses possible crossings inside each RK step;
+handoffs preserve system-frame position, velocity and propellant. SOI boundary
+localization uses a 0.1 mm numerical tolerance. Coast surface checks cover the
+actual flown interval rather than rejecting a safe arc for a later unused
+periapsis. Tight-orbit departures use a six-variable damped shooting solve.
+Every accepted course is rebuilt forward and must meet the same 10 m / 1 mm/s
+arrival tolerances. Automatic gravity-assist optimization remains outside scope.
 
 The departure cutoff, braking ignition, and final cutoff are separate clock
 interrupts. At final cutoff the ship coasts from its integrated state and the
 clock and history identify the completed approach or insertion. Cancelling
 or replacing the course uses the current position, velocity, and remaining
-propellant. See [checkpoint version 6](SIMULATION_STATE.md).
+propellant. Gravity changes also interrupt Continuous processing. See
+[checkpoint version 7](SIMULATION_STATE.md).
 
 ## Performance and validation
 

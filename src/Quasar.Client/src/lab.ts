@@ -17,6 +17,7 @@ export type Trajectory = {
   brakingMarginKg?: number | null
   brakingMarginPercent?: number
   criticalBrakingReserve?: boolean
+  gravityTransitions?: { bodyId: string; bodyName: string; atTicks: string }[]
   flyby?: { bodyId: string; bodyName: string; atTicks: string; closestApproachKm: number } | null
   points: {
     atTicks: string
@@ -41,7 +42,7 @@ export type LabObject = {
   } | null
 }
 export const isCourseDestination = (object: LabObject) =>
-  object.kind === 'planet' || object.kind === 'moon'
+  object.kind !== 'spacecraft'
 
 type LabEvent = {
   sequence: number

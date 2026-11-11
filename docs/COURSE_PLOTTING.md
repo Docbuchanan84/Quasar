@@ -1,8 +1,8 @@
 # Course plotting and map integration
 
 Select Pathfinder and open **Plot Course** while simulation time is stopped.
-Choose a planet or moon from either map, the object list, or the destination
-picker. Choose **Velocity-matched approach** or **Orbit preset**. Quasar
+Choose any modeled body or station from either map, the object list, or the destination
+picker. Choose **Velocity-matched approach** or **Orbital insertion**. Quasar
 searches from the current departure state and shows the executable
 **Fastest** route and the **Lowest maneuver cost** route it finds. The fastest
 route is selected initially. If both criteria pick the same trajectory, the
@@ -21,12 +21,24 @@ fuel, thrust, geometry, or arrival conditions that prevented a course.
 The planner checks 40 whole-second durations over a range of one second to ten
 Julian years, then checks additional times around the earliest feasible and
 lowest-cost results. It refines direct Lambert arcs into two fixed-direction
-burns and one analytical coast in the current gravity primary. The approach
+burns and analytical coasts with automatic gravity-primary changes. The approach
 endpoint lies at 110% of the target's Laplace SOI on the outward radial, with
-the velocity of that moving point. Earth and Moon orbit presets require the
-ship to be in the destination body's primary already. The search can miss narrow
-windows. Multi-primary capture and finite flybys remain unsupported. See
+the velocity of that moving point. Stations use a 10 km offset. A stellar
+approach uses a standoff where gravity is at most one percent of initial thrust
+acceleration, or 110% of its radius, whichever is larger, and matches a circular
+parking point there. It does not stop at the stellar center. Orbital insertion
+uses an Earth 400 km or Moon 100 km preset; other gravitating bodies use
+100 km or 10% of body radius, whichever is larger. These are approaches or
+orbits, not landing or docking. Burns and coasts may cross gravity boundaries.
+The search can miss narrow windows and does not optimize gravity assists. See
 [trajectory limits](SPACECRAFT_TRAJECTORIES.md#propulsion-aware-courses).
+
+Each search has a four-second cancellation deadline and returns the best
+verified candidates found before that deadline. Already completed candidates
+survive timeout. Cross-primary searches probe geometry-based flight times first.
+The immutable planner caches up to 256 solved/rejected patched candidates for
+slider recalculation; caches never enter checkpoints. A failed bounded search
+does not prove the destination is physically unreachable.
 
 ## Linked controls
 
@@ -119,8 +131,10 @@ ship motion, advances time or sends a command from its camera/render loop.
 
 `scripts/Verify.ps1` covers the headless search, exact selected-route commit,
 and finite-course checkpoint reload. The browser scenario exercises an
-infeasible Jupiter route, unsupported Earth capture, default and alternate Earth
-approach options, 2D/3D review, portrait layout, and exact order confirmation.
+Jupiter and Earth approaches, unsupported station orbit insertion, default and
+alternate options, 2D/3D review, portrait layout, and exact order confirmation.
+`check-cross-primary-browser.js` exercises Callisto, automatic gravity changes,
+reserve/time adjustment, locks, conflicting constraints and exact confirmation.
 
 Run the browser scenario against an isolated same-origin host serving the built
 client. Set a disposable persistence data root before starting the host, and

@@ -121,7 +121,7 @@ public sealed partial class LabSession(bool startWithWorld = true)
         return new(id, instanceId, revision, SystemLab.ShipId, destinationId, distance, trajectory.Arrival is null
             ? [executable ? "Legacy test course with instantaneous maneuvers and no propulsion accounting."
                 : "Advisory only. Use automatic course planning to issue an order for this spacecraft."]
-            : ["Bounded search, with fixed-direction burns and one gravity primary. Faster or cheaper routes may exist."], trajectory);
+            : ["Bounded search with finite burns and automatic gravity transitions. Faster or cheaper routes may exist."], trajectory);
     }
 
     public SessionSnapshot Execute(LabCommand command)

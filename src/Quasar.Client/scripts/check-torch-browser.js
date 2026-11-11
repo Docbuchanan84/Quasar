@@ -36,7 +36,13 @@ async (page) => {
   const reserve = page.getByRole('slider', { name: 'Propellant reserve', exact: true })
   await reserve.press('End')
   for (let step = 0; step < 4; step++) await reserve.press('ArrowLeft')
-  const impossible = await (await conflict).json()
+  await conflict
+  const reserveLocked = page.waitForResponse(response => new URL(response.url()).searchParams.get('reservePercent') === '95')
+  await button('Lock propellant reserve').click()
+  await reserveLocked
+  const exactSecond = page.waitForResponse(response => new URL(response.url()).searchParams.get('preferredFlightSeconds') === '1')
+  await page.getByRole('slider', { name: 'Travel time', exact: true }).press('Home')
+  const impossible = await (await exactSecond).json()
   assert(!impossible.fastest, 'Locked time cannot silently spend the protected reserve')
   await panel.getByText(/No verified course meets the locked travel time/).waitFor()
   assert(await button('Issue Order').isDisabled(), 'Conflicting constraints prevent confirmation')
@@ -50,9 +56,7 @@ async (page) => {
   assert(adjusted.tuned.trajectory.brakingMarginPercent >= 95, 'Unlocked time adjusts to preserve 95% reserve')
   assert(adjusted.tuned.trajectory.travelSeconds > initial.fastest.trajectory.travelSeconds, 'The fuel constraint makes this route slower')
   await button('Issue Order').waitFor({ state: 'visible' })
-  const protect = page.waitForResponse(response => new URL(response.url()).searchParams.has('reservePercent'))
-  await button('Lock propellant reserve').click()
-  await protect
+  await panel.getByText('Travel time adjusted to the nearest executable route found.', { exact: true }).waitFor()
 
   const snap = page.waitForResponse(response => new URL(response.url()).searchParams.get('preferredFlightSeconds') === '1')
   await page.getByRole('slider', { name: 'Travel time', exact: true }).press('Home')

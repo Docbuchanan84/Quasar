@@ -322,6 +322,31 @@ function App() {
                         </>
                       )}
                     </div>
+                    <h3>Course orders</h3>
+                    <button
+                      disabled={disabled || snapshot?.running || !!plotting || !!world.ship.burnEndTicks}
+                      onClick={() =>
+                        setPlotting({
+                          shipId: selected.id,
+                          destinationId: '',
+                          arrivalKind: 'approach',
+                        })
+                      }
+                    >
+                      Plot Course
+                    </button>
+                    {world.ship.destinationId && (
+                      <button
+                        disabled={disabled || snapshot?.running}
+                        onClick={() => void command('cancel-travel')}
+                      >
+                        Cancel committed course
+                      </button>
+                    )}
+                    <p className="muted">
+                      Stop time processing to plot, replace or cancel an order.
+                      Cancelling a committed course retains momentum.
+                    </p>
                     <h3>Propulsion</h3>
                     {world.ship.propulsion ? (
                       <dl>
@@ -340,9 +365,16 @@ function App() {
                         ))}
                       </dl>
                     ) : <p className="muted">Propulsion not modeled</p>}
+                    <details><summary>Lab refit and refuel</summary>
+                    <button disabled={disabled || snapshot.running || world.ship.status !== 'Coasting'}
+                      onClick={() => void command('fit-exploration-torch')}>
+                      Fit exploration torch and refuel
+                    </button>
+                    <p className="muted">Test refit. 300 kN thrust, 1,000 km/s exhaust velocity, and 20,000 kg of reaction mass.</p>
+                    </details>
                     {world.ship.propulsion && (
                       <>
-                        <h3>Engine burn</h3>
+                        <h3>Manual engine burn</h3>
                         {world.ship.burnEndTicks ? (
                           <div className="order-buttons">
                             <p>Scheduled cutoff at {formatTime(world.ship.burnEndTicks)}.</p>
@@ -377,36 +409,6 @@ function App() {
                         )}
                       </>
                     )}
-                    <h3>Course orders</h3>
-                    <button disabled={disabled || snapshot.running || world.ship.status !== 'Coasting'}
-                      onClick={() => void command('fit-exploration-torch')}>
-                      Fit exploration torch and refuel
-                    </button>
-                    <p className="muted">Test refit. 300 kN thrust, 1,000 km/s exhaust velocity, and 20,000 kg of reaction mass.</p>
-                    <button
-                      disabled={disabled || snapshot?.running || !!plotting || !!world.ship.burnEndTicks}
-                      onClick={() =>
-                        setPlotting({
-                          shipId: selected.id,
-                          destinationId: '',
-                          arrivalKind: 'approach',
-                        })
-                      }
-                    >
-                      Plot Course
-                    </button>
-                    {world.ship.destinationId && (
-                      <button
-                        disabled={disabled || snapshot?.running}
-                        onClick={() => void command('cancel-travel')}
-                      >
-                        Cancel committed course
-                      </button>
-                    )}
-                    <p className="muted">
-                      Stop time processing to plot, replace or cancel an order.
-                      Cancelling a committed course retains momentum.
-                    </p>
                   </>
                 ) : selected.kind === 'planet' ? (
                   <>

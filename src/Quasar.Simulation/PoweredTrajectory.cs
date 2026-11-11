@@ -65,6 +65,14 @@ internal sealed class PoweredTrajectory
 
     internal CelestialState InitialStateFor(CelestialState end) => Integrate(end, poweredSeconds, 0).State;
 
+    internal CelestialState StateBefore(CelestialState end, long atTicks) => Integrate(end, poweredSeconds, SecondsAt(atTicks)).State;
+
+    internal bool InspectPath(CelestialState end, bool reverse,
+        Func<long, CelestialState, double, bool> inspect) => Integrate(reverse ? end : initial,
+        reverse ? poweredSeconds : 0, reverse ? 0 : poweredSeconds,
+        (time, position, velocity, step) => inspect(StartTicks + (long)Math.Round(time * TimeSpan.TicksPerSecond),
+            new(position.Position, velocity.Velocity), step)).Clear;
+
     internal bool HasClearPath(Func<long, Vector3d, Vector3d, double, double, bool> clear)
     {
         var maxThrustAcceleration = thrust / performance.DryMassKg / 1000 * direction.Length;

@@ -102,7 +102,8 @@ public sealed class TrajectoryPlan
         if (pointCount is < 2 or > 1025) throw new ArgumentOutOfRangeException(nameof(pointCount), "Choose 2 to 1025 samples.");
         // Always include patch epochs even when uniform samples miss them.
         var ticks = new SortedSet<long>(Segments.Select(s => s.StartTicks)) { ArrivalTicks };
-        if (Finite is { } finite) ticks.Add(finite.Braking.StartTicks);
+        if (Finite is { } finite)
+            foreach (var boundary in finite.Boundaries) ticks.Add(boundary.Ticks);
         for (var i = 0; i < pointCount; i++)
             ticks.Add(DepartureTicks + (long)(((decimal)ArrivalTicks - DepartureTicks) * i / (pointCount - 1)));
         return ticks.Select(t => new TrajectoryPoint(t, StateAt(t))).ToArray();

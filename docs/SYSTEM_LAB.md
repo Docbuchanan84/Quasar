@@ -26,7 +26,7 @@ and velocity and starts an unforced coast. The reusable
 [trajectory engine](SPACECRAFT_TRAJECTORIES.md) also support moving targets and
 explicit gravity patches.
 
-Select Pathfinder, choose **Plot Course**, select a planet or moon, and review
+Select Pathfinder, choose **Plot Course**, select any modeled body or station, and review
 the fastest and lowest maneuver-cost routes found. **Issue Order** commits the
 exact reviewed plan while the host instance and revision match. Previewing or
 cancelling a preview preserves the simulation and any existing course. Both

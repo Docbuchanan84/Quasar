@@ -22,14 +22,14 @@ public sealed partial class SystemLab
             || primary.GravitationalParameterKm3PerSecond2 <= 0)
             throw new InvalidDataException("The System Lab requires Pathfinder and a supported gravity primary.");
 
-        ValidateHistory(state);
+        ValidateHistory(state, movement);
         var restored = new SystemLab(movement) { lastEventSequence = state.LastEventSequence };
         restored.events.AddRange(state.History.Select(entry =>
             new LabEvent(entry.Sequence, entry.AtTicks, RestoredEventKind(entry), entry.ObjectId, entry.Message)));
         return restored;
     }
 
-    private static void ValidateHistory(SystemLabState state)
+    private static void ValidateHistory(SystemLabState state, MovementExecution movement)
     {
         var previousTicks = long.MinValue;
         var orderIndex = -1;
@@ -49,14 +49,16 @@ public sealed partial class SystemLab
                     orderIndex = i;
                     break;
                 case "patch" when orderIndex >= 0 && entry.AtTicks > previousTicks:
+                case "primary-change" when state.Simulation.FormatVersion >= 7 && orderIndex >= 0 && entry.AtTicks >= previousTicks:
                     break;
                 case "course-departure-cutoff" or "course-braking-start" when state.Simulation.FormatVersion >= 6
                     && orderIndex >= 0 && entry.AtTicks > previousTicks
-                    && state.History[i - 1].Kind == (entry.Kind == "course-departure-cutoff" ? "order" : "course-departure-cutoff"):
+                    && state.History.Take(i).Last(prior => prior.Kind != "primary-change").Kind
+                        == (entry.Kind == "course-departure-cutoff" ? "order" : "course-departure-cutoff"):
                     break;
                 case "course-arrival" or "course-approach-complete" or "course-orbit-inserted"
                     when state.Simulation.FormatVersion >= 6 && orderIndex >= 0 && entry.AtTicks > previousTicks
-                    && state.History[i - 1].Kind == "course-braking-start":
+                    && state.History.Take(i).Last(prior => prior.Kind != "primary-change").Kind == "course-braking-start":
                 case "arrival" when orderIndex >= 0 && entry.AtTicks > previousTicks:
                 case "cancel" when orderIndex >= 0:
                     orderIndex = -1;
@@ -91,13 +93,13 @@ public sealed partial class SystemLab
         }
         else if (ship.FiniteCourse is { } finite)
         {
-            var cutoff = checked(finite.DepartureTicks + finite.DepartureDurationTicks);
-            var braking = checked(finite.ArrivalTicks - finite.BrakingDurationTicks);
-            var count = state.Simulation.ElapsedTicks < cutoff ? 0 : state.Simulation.ElapsedTicks < braking ? 1 : 2;
+            var expected = movement.CommittedPlan(ShipId)!.Finite!.Boundaries
+                .Where(boundary => boundary.Ticks <= state.Simulation.ElapsedTicks).ToArray();
+            var count = expected.Length;
             if (orderIndex < 0 || state.History[orderIndex].AtTicks != finite.DepartureTicks
                 || state.History.Length - orderIndex - 1 != count
-                || (count >= 1 && (state.History[orderIndex + 1].Kind != "course-departure-cutoff" || state.History[orderIndex + 1].AtTicks != cutoff))
-                || (count == 2 && (last.Kind != "course-braking-start" || last.AtTicks != braking)))
+                || expected.Where((boundary, index) => state.History[orderIndex + index + 1].Kind != boundary.Kind
+                    || state.History[orderIndex + index + 1].AtTicks != boundary.Ticks).Any())
                 throw new InvalidDataException("Finite course disagrees with System Lab history.");
         }
         else if (ship.Trajectory is { } trajectory)

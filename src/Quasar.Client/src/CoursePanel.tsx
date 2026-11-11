@@ -59,7 +59,7 @@ export default function CoursePanel({
         current departure state
       </p>
       <p className="muted">
-        Select a planet or moon on either map, in the object list, or below. Previewing
+        Select any destination on either map, in the object list, or below. The computer plans gravity transitions. Previewing
         and cancelling a preview issue no orders.
       </p>
       <label>
@@ -87,7 +87,7 @@ export default function CoursePanel({
         <select value={inputs.arrivalKind} disabled={disabled}
           onChange={(e) => onChange({ ...inputs, arrivalKind: e.target.value === 'orbit' ? 'orbit' : 'approach' })}>
           <option value="approach">Velocity-matched approach</option>
-          <option value="orbit">Orbit preset (Earth or Moon)</option>
+          <option value="orbit">Orbital insertion</option>
         </select>
       </label>
       {running && (
@@ -96,7 +96,7 @@ export default function CoursePanel({
         </p>
       )}
       {loading && <p role="status">Calculating course…</p>}
-      {(trajectory || inputs.preferredFlightSeconds !== undefined || inputs.reservePercent !== undefined) && (
+      {inputs.destinationId && (
         <CourseTuningControls inputs={inputs} trajectory={trajectory} loading={loading}
           disabled={disabled || running} onChange={onChange} />
       )}
@@ -201,7 +201,16 @@ export default function CoursePanel({
           {trajectory.flyby ? (
             <p>Gravity assist at {trajectory.flyby.bodyName} · {formatTime(trajectory.flyby.atTicks)}
               {' · '}closest approach {number(trajectory.flyby.closestApproachKm)} km from center</p>
-          ) : <p>Direct transfer</p>}
+          ) : trajectory.gravityTransitions?.length ? (
+            <>
+              <h3>Automatic gravity transitions</h3>
+              <ul>{trajectory.gravityTransitions.map((transition) => (
+                <li key={`${transition.atTicks}-${transition.bodyId}`}>
+                  {transition.bodyName} · {formatTime(transition.atTicks)}
+                </li>
+              ))}</ul>
+            </>
+          ) : <p>Single gravity frame</p>}
           <ul className="course-warnings" aria-label="Feasibility warnings">
             {preview.warnings.map((w) => (
               <li key={w}>{w}</li>
