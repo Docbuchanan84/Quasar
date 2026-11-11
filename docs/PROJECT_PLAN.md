@@ -54,6 +54,12 @@ landscape, background/reconnect, and cellular-only access separately.
 
 ## Open implementation and design work
 
+- **Approved direction; not yet implemented:** detailed, parameter-driven component
+  engineering across domains, live automatically generated technical visuals,
+  and contextual teaching. No manual drawing requirement. A nozzle/engine
+  prototype tied to C# propulsion is a suggested experiment, not an approved
+  implementation task. See [the engineering design contract](PARAMETRIC_ENGINEERING_DESIGN.md).
+
 - Cross-primary finite courses, fleets, collision,
   docking, and player-facing moving-target/waypoint selection remain open. The
   headless trajectory planner already supports moving-target interception.
