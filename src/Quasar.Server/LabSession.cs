@@ -4,7 +4,7 @@ namespace Quasar.Server;
 
 public sealed record LabCommand(string InstanceId, long Revision, string ClientId, string Operation,
     int? DurationSeconds = null, string? Mode = null, string? DestinationId = null, int? FlightSeconds = null,
-    string? PreviewId = null, string? BurnDirection = null, int? BurnSeconds = null);
+    string? PreviewId = null, string? BurnDirection = null, int? BurnSeconds = null, string? ShipId = null);
 public sealed record CoursePreview(string? PreviewId, string InstanceId, long Revision, string ShipId,
     string DestinationId, double SampledDistanceKm, string[] Warnings, TrajectoryDisplay Trajectory);
 public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePreview? LowestManeuverCost, string[] InfeasibleReasons,
@@ -195,6 +195,12 @@ public sealed partial class LabSession(bool startWithWorld = true)
                     activeWorld.FitExplorationTorch();
                     MarkWorldChanged(significant: true);
                     stopReason = "Exploration torch fitted — ready to plot a course";
+                    break;
+                case "debug-refuel":
+                    if (running) throw new InvalidOperationException("Stop time processing before refuelling.");
+                    if (!activeWorld.DebugRefuel(command.ShipId ?? "")) return Read();
+                    MarkWorldChanged(significant: true);
+                    stopReason = "Propellant tank refilled";
                     break;
                 default: throw new ArgumentException("Unknown command.");
             }

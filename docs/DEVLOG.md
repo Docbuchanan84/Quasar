@@ -1,5 +1,11 @@
 # Development log
 
+## 2026-11-11 — One-tap debug refuelling
+
+- Added **Debug refuel** to the selected ship's Propulsion panel. It fills
+  the installed tank while paused and freely coasting. Successful refills
+  are recorded in campaign history and saved with the ship.
+
 ## 2026-11-10 — Courses across gravity systems
 
 - The owner clarified that the computer must plan between locations across

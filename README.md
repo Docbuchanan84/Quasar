@@ -49,6 +49,9 @@ Choose **Continue** inside Load Game to recover the latest readable save.
 See the [campaign workflow](docs/CAMPAIGN_LIFECYCLE.md) for first run,
 confirmation, and recovery.
 
+For testing, select a coasting ship while paused and tap **Debug refuel** under
+**Propulsion** to fill its installed tank.
+
 ## Run and verify
 
 Use PowerShell 7:

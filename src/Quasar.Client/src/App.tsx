@@ -365,6 +365,14 @@ function App() {
                         ))}
                       </dl>
                     ) : <p className="muted">Propulsion not modeled</p>}
+                    {world.ship.propulsion && (
+                      <button
+                        disabled={disabled || snapshot.running || world.ship.status !== 'Coasting'}
+                        onClick={() => void command('debug-refuel', { shipId: selected.id })}
+                      >
+                        Debug refuel
+                      </button>
+                    )}
                     <details><summary>Lab refit and refuel</summary>
                     <button disabled={disabled || snapshot.running || world.ship.status !== 'Coasting'}
                       onClick={() => void command('fit-exploration-torch')}>

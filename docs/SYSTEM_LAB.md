@@ -95,6 +95,11 @@ scheduled cutoff as a decimal tick string during an active burn.
 coasting. The operation preserves position, velocity and time and is recorded
 in campaign history. See the [torch fixture](SOLAR_SYSTEM.md#pathfinder-propulsion).
 
+`debug-refuel` takes the selected `shipId` and fills its installed tank while
+paused and freely coasting. **Debug refuel** is available in the Propulsion
+panel. The ship keeps its equipment and the refill uses the existing refit
+history entry so checkpoints keep their format.
+
 The host retains up to 32 solved preview plans. A successful command or clock
 tick invalidates them. Automatic searches use a captured departure outside the
 session gate and recheck the instance and revision before issuing previews. The server

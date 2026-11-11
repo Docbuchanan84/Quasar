@@ -18,6 +18,16 @@ public sealed partial class MovementExecution
         ship.Generation++;
     }
 
+    public bool RefillPropellant(string id)
+    {
+        if (!spacecraft.TryGetValue(id, out var ship)) throw new ArgumentException("Choose a spacecraft.", nameof(id));
+        if (ship.Coast is null) throw new InvalidOperationException("Refuelling requires a freely coasting ship.");
+        var propulsion = ship.Propulsion ?? throw new InvalidOperationException("This ship has no modeled propellant tank.");
+        if (propulsion.Tank.QuantityKg == propulsion.Tank.CapacityKg) return false;
+        RefitCoastingSpacecraft(id, WithPropellant(propulsion, propulsion.Tank.CapacityKg));
+        return true;
+    }
+
     public void StartBurn(string id, string direction, int durationSeconds)
     {
         var sign = direction switch
