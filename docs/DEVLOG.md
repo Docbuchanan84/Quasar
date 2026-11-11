@@ -1,5 +1,22 @@
 # Development log
 
+## 2026-11-10 — Headless 1,000-ship travel benchmark
+
+- A fresh Solar System fleet completed 3,000 finite-burn station approaches.
+  Each run handled 9,000 events and queried position and velocity one million
+  times. See the [fixture and results](SPACECRAFT_TRAJECTORIES.md#repeated-fleet-travel-benchmark).
+- Indexing gravity children, reusing each course's boundary schedule, and
+  removing allocations from segment lookup preserved event ticks and the query
+  checksum. At six planner workers, median event processing fell from 689 ms
+  to 100 ms and allocations fell from 1,579.13 MiB to 2.84 MiB.
+- Twelve detached planner workers solved the 3,000 locked-duration routes in
+  1.40 s median on the test PC. `scripts/Verify.ps1` passed 291 xUnit tests and
+  11 client tests, formatting, lint, renderer loading, and production bundling.
+- The 10,000-ship scale run verified 30,000 arrivals and 10 million queries.
+  Event processing reached 9.62 s median with 70,800 staggered advances.
+  The next scheduling experiment should target the repeated fleet scans for
+  potential free-coast gravity changes.
+
 ## 2026-11-10 — Courses across gravity systems
 
 - The owner clarified that the computer must plan between locations across
