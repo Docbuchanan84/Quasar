@@ -30,7 +30,17 @@ public sealed partial class SystemLab
         var body = celestialPositions.Bodies[destinationId];
         var sphere = celestialPositions.GetEnvironment(destinationId).SphereOfInfluenceRadiusKm;
         var arrivalPrimary = arrivalKind == "orbit" ? destinationId : body.ParentId ?? destinationId;
-        var unsupported = arrivalKind == "orbit" && body.GravitationalParameterKm3PerSecond2 <= 0;
+        string? unsupported = null;
+        if (arrivalKind == "orbit")
+        {
+            if (body.GravitationalParameterKm3PerSecond2 <= 0)
+                unsupported = "This destination has no modeled gravity for orbital insertion. Choose a velocity-matched approach.";
+            else
+            {
+                try { ResolvePresetOrbit(destinationId, departure); }
+                catch (ArgumentException error) { unsupported = error.Message; }
+            }
+        }
         var needsPatches = arrivalPrimary != primary || destinationId == primary;
 
         return cancellationToken =>
@@ -38,15 +48,13 @@ public sealed partial class SystemLab
             cancellationToken.ThrowIfCancellationRequested();
             if (propulsion is null) return new(null, ["This spacecraft has no modeled engine or propellant inventory."]);
             if (propulsion.Tank.QuantityKg <= 0) return new(null, ["No propellant is available for departure or braking."]);
-            if (unsupported) return new(null, [arrivalKind == "orbit"
-                ? "This destination has no modeled gravity for orbital insertion. Choose a velocity-matched approach."
-                : "This destination has no modeled gravity primary."]);
+            if (unsupported is not null) return new(null, [unsupported]);
 
             using var searchDeadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             searchDeadline.CancelAfter(TimeSpan.FromSeconds(4));
             var searchToken = searchDeadline.Token;
             var failures = new HashSet<string>(StringComparer.Ordinal);
-            var approachRadius = Math.Max(body.RadiusKm * 1.1, sphere * 1.1 ?? 10);
+            var approachRadius = Math.Max(body.RadiusKm * 1.1, sphere is > 0 ? sphere.Value * 1.1 : 10);
             if (body.ParentId is null)
                 approachRadius = Math.Max(approachRadius, Math.Sqrt(body.GravitationalParameterKm3PerSecond2
                     / (propulsion.CalculatePerformance().InitialAccelerationMPerSecond2 / 1000 / 100)));

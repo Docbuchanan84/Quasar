@@ -29,7 +29,10 @@ acceleration, or 110% of its radius, whichever is larger, and matches a circular
 parking point there. It does not stop at the stellar center. Orbital insertion
 uses an Earth 400 km or Moon 100 km preset; other gravitating bodies use
 100 km or 10% of body radius, whichever is larger. These are approaches or
-orbits, not landing or docking. Burns and coasts may cross gravity boundaries.
+orbits, not landing or docking. Small-body presets are capped between the
+modeled surface and SOI. If no such interval exists (for example Phobos),
+insertion returns an explicit explanation and approach remains selectable.
+Burns and coasts may cross gravity boundaries.
 The search can miss narrow windows and does not optimize gravity assists. See
 [trajectory limits](SPACECRAFT_TRAJECTORIES.md#propulsion-aware-courses).
 

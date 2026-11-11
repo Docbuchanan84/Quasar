@@ -93,6 +93,41 @@ public sealed class PatchedCourseTests
     }
 
     [Fact]
+    public void PhobosInsertionReturnsAnExplanationInsteadOfAnInvalidTarget()
+    {
+        var result = new SystemLab().CaptureCourseSearch("moon-phobos", arrivalKind: "orbit")(CancellationToken.None);
+        Assert.Null(result.Choices);
+        Assert.Contains("No above-surface orbit", Assert.Single(result.InfeasibleReasons));
+    }
+
+    [Theory]
+    [InlineData("asteroid-bennu")]
+    [InlineData("moon-deimos")]
+    public void SmallBodyOrbitPresetsFitBetweenTheSurfaceAndSphere(string destination)
+    {
+        var lab = new SystemLab();
+        var catalogue = SolarSystem.CreateCatalogue();
+        var body = catalogue.Bodies[destination];
+        var target = lab.TargetStateAt("orbit", destination, 0);
+        var local = OrbitalNavigation.ToLocal(catalogue, destination, 0, target.State);
+        var radius = Vector3d.From(local.PositionKm).Length;
+        Assert.True(radius > Math.Max(1, body.RadiusKm));
+        Assert.True(radius < catalogue.GetEnvironment(destination).SphereOfInfluenceRadiusKm);
+    }
+
+    [Theory]
+    [InlineData("station-staryard")]
+    [InlineData("station-oneill")]
+    public void StationApproachesStopAtTheTenKilometreStandoff(string destination)
+    {
+        var lab = new SystemLab();
+        var course = lab.CaptureCourseSearch(destination)(CancellationToken.None).Choices!.Fastest;
+        Assert.Equal(10, course.Finite!.Arrival.TargetRadiusKm, 5);
+        var station = lab.CelestialPositions.GetState(destination, course.ArrivalTicks);
+        Assert.InRange(course.StateAt(course.ArrivalTicks).PositionKm.DistanceTo(station.PositionKm), 9.99, 10.01);
+    }
+
+    [Fact]
     public void ReserveAdjustmentFromAFastCallistoPreviewFindsAProtectedRoute()
     {
         var lab = new SystemLab();

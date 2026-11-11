@@ -24,13 +24,17 @@
 - Checkpoint v7 rebuilds transitions and validates primary, fuel and history.
   Versions 1–6 remain readable. Callisto regressions cover execution, momentum,
   cancellation around every boundary, HTTP restart and Continuous interrupts.
-- `scripts/Verify.ps1` passed 285 xUnit tests and 11 Node checks, formatting,
+- `scripts/Verify.ps1` passed 291 xUnit tests and 11 Node checks, formatting,
   lint, renderer loading and production bundling. Disposable Chromium passed
   Callisto's linked controls and locks, exact confirmation, 3D review and
   393 px portrait layout. The existing course browser scenario also passed.
   Physical iPhone validation remains separate.
 - The live Google design record was read on 10 November (title and revision
   verified); its earlier release summary is historical. It was not modified.
+- PR review found two edge cases: small-body insertion presets must fit inside
+  the destination SOI, and zero-GM stations need the explicit 10 km approach
+  fallback. Both are corrected, with six focused regressions covering Bennu,
+  Deimos, Phobos (including HTTP) and both stations.
 
 ## 2026-11-10 — Starting Pathfinder exploration torch
 

@@ -220,6 +220,13 @@ public sealed partial class SystemLab
             _ => Math.Max(100, body.RadiusKm * 0.1)
         };
         var radius = body.RadiusKm + altitude;
+        if (celestialPositions.GetEnvironment(bodyId).SphereOfInfluenceRadiusKm is { } sphere)
+        {
+            var surface = Math.Max(1, body.RadiusKm);
+            if (sphere <= surface)
+                throw new ArgumentException("No above-surface orbit fits inside this destination's modeled gravity sphere. Choose a velocity-matched approach.");
+            radius = Math.Min(radius, (surface + sphere) / 2);
+        }
         var speed = Math.Sqrt(body.GravitationalParameterKm3PerSecond2 / radius);
         return OrbitalNavigation.ResolveOrbit(celestialPositions, bodyId, 0, new(new(radius, 0, 0), new(0, speed, 0)), atTicks);
     }

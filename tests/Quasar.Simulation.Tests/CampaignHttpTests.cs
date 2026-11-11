@@ -138,6 +138,18 @@ public sealed class CampaignHttpTests : IDisposable
     }
 
     [Fact]
+    public async Task ImpossiblePhobosOrbitReturnsAnUnsupportedPreviewWithoutChangingState()
+    {
+        await using var host = await Start();
+        await host.Create("Small-body orbit validation");
+        var before = await host.Get(Lab);
+        var result = await host.Get(Lab + "/course-preview?mode=auto&destinationId=moon-phobos&arrivalKind=orbit");
+        Assert.Equal(JsonValueKind.Null, result.GetProperty("fastest").ValueKind);
+        Assert.Contains("No above-surface orbit", result.GetProperty("infeasibleReasons")[0].GetString());
+        Assert.Equal(before.GetRawText(), (await host.Get(Lab)).GetRawText());
+    }
+
+    [Fact]
     public async Task CallistoCourseSurvivesHttpRestartAndContinuousGravityInterrupts()
     {
         JsonElement expected;
