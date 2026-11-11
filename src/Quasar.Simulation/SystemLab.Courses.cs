@@ -7,9 +7,14 @@ public sealed partial class SystemLab
     // Capture under the session lock. Search reads only the immutable catalogue and departure inputs.
     public Func<CancellationToken, CourseSearchResult> CaptureCourseSearch(string destinationId,
         double? maneuverBudget = null, string arrivalKind = "approach", int? preferredFlightSeconds = null,
+        double? reservePercent = null, bool lockFlightTime = false) => CaptureCourseSearchForSpacecraft(ShipId, destinationId,
+            maneuverBudget, arrivalKind, preferredFlightSeconds, reservePercent, lockFlightTime);
+
+    internal Func<CancellationToken, CourseSearchResult> CaptureCourseSearchForSpacecraft(string shipId, string destinationId,
+        double? maneuverBudget = null, string arrivalKind = "approach", int? preferredFlightSeconds = null,
         double? reservePercent = null, bool lockFlightTime = false)
     {
-        var (state, departure, _) = CaptureDeparture(destinationId, automatic: true);
+        var (state, departure, _) = CaptureDeparture(shipId, destinationId, automatic: true);
         TrajectoryPlanner.ValidateManeuverBudget(maneuverBudget);
         if (arrivalKind is not ("approach" or "orbit"))
             throw new ArgumentException("Choose a velocity-matched approach or an orbit preset.");
@@ -18,7 +23,7 @@ public sealed partial class SystemLab
         if (reservePercent is { } reserve && (!double.IsFinite(reserve) || reserve < 0 || reserve > 99))
             throw new ArgumentException("Choose a reserve between 0% and 99% of departure propellant.");
 
-        var propulsion = movement.PropulsionOf(ShipId);
+        var propulsion = movement.PropulsionOf(shipId);
         if (reservePercent is { } minimum && propulsion is not null)
         {
             var performance = propulsion.CalculatePerformance();
@@ -26,7 +31,7 @@ public sealed partial class SystemLab
             var reserveBudget = propulsion.Engine.ExhaustVelocityMPerSecond / 1000 * Math.Log(performance.WetMassKg / finalMass);
             maneuverBudget = maneuverBudget is { } existing ? Math.Min(existing, reserveBudget) : reserveBudget;
         }
-        var primary = movement.PrimaryOf(ShipId);
+        var primary = movement.PrimaryOf(shipId);
         var body = celestialPositions.Bodies[destinationId];
         var sphere = celestialPositions.GetEnvironment(destinationId).SphereOfInfluenceRadiusKm;
         var arrivalPrimary = arrivalKind == "orbit" ? destinationId : body.ParentId ?? destinationId;

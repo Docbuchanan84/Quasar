@@ -8,5 +8,6 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Quasar.Simulation.Tests" />
+    <InternalsVisibleTo Include="Quasar.Benchmarks" />
   </ItemGroup>
 </Project>
