@@ -69,6 +69,8 @@ public sealed partial class SystemLab
     public ICelestialPositionService CelestialPositions => celestialPositions;
     public long ElapsedTicks => movement.ElapsedTicks;
     public bool HasModeledPropulsion => movement.PropulsionOf(ShipId) is not null;
+    public string? CourseDestinationName => movement.CommittedPlan(ShipId)?.TargetBodyId is { } id
+        ? celestialPositions.Bodies[id].Name : null;
 
     public SystemLab() : this(ExplorationTorch()) { }
 

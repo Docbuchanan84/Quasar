@@ -109,6 +109,12 @@ separate from the release and deployment metadata. Development uses
 `%LOCALAPPDATA%\Quasar\dev-saves`. Check any configured data-root override
 before publishing and keep it outside the checkout and the release directory.
 
+The host keeps its Web Push signing keys and iPhone subscriptions in
+`arrival-notifications.json` under the same data root. Include it in private
+host backups and keep it out of Git. The ASP.NET process sends outbound HTTPS
+to Apple's Web Push endpoints under `*.push.apple.com`. Quasar continues to
+serve the game over its existing private HTTPS route.
+
 1. Record the active release and copy `deployment.json` to a separate file
    before publishing. Check that time is stopped and the latest checkpoint
    covers the current progress. Save any pending progress before stopping the

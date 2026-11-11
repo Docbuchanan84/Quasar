@@ -32,6 +32,10 @@ the local view. See the [Solar System guide](docs/SOLAR_SYSTEM.md).
    host even when you lock your phone or close the browser. **Stop** or a game
    interrupt pauses it. The clock displays the event and its simulation time.
 
+On iPhone, open Quasar from the Home Screen, tap **Enable arrival notifications**,
+and allow the permission prompt. Quasar can then alert you when an arrival
+pauses the game. Tap the notification to return to Quasar.
+
 Drag or swipe to pan in 2D. In 3D, drag to orbit and use right/middle/Ctrl-drag or
 two fingers to pan. Both views support wheel/pinch zoom and **Reset View**.
 **Focus Selected** tracks the selected object in either view.

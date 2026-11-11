@@ -54,12 +54,25 @@ Arrivals, legacy gravity assists, automatic coast primary changes, and course bu
 pause at the event tick. The host includes the triggering event in
 `interrupt` so the clock can display its time and message, including after a
 reconnect or reload. The notice clears on Play or campaign replacement. The
-event remains in campaign history. Phone push delivery remains open.
+event remains in campaign history.
 
 The host restores the last valid checkpoint paused on restart. Use **New Game**
 on first run, or use **Load Game** and **Continue** to restore a campaign. See
 the [campaign workflow](CAMPAIGN_LIFECYCLE.md). **Reset View** changes only
 the camera.
+
+## Arrival notifications
+
+Open Quasar from its iPhone Home Screen icon, select **Enable arrival
+notifications**, and allow the iOS prompt. The same control disables delivery
+for that device. The alert names the destination and says that the game
+paused. Tapping it opens Quasar over the private HTTPS route.
+
+New completed approaches, orbital insertions, and legacy arrivals enqueue an
+alert after the host pauses. Earlier course interruptions and restored
+arrivals only show the in-game notice. The sender runs separately from the
+clock and submits encrypted Web Push to Apple. Alerts expire after one hour.
+The browser can be closed while the Quasar host is running.
 
 ## HTTP contract
 

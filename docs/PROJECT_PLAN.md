@@ -10,6 +10,7 @@ automatic course planning, interactive maps, and persistent campaigns. The
 | --- | --- |
 | System Lab | Solar System starter, Pathfinder, inspectable XYZ, shared 2D/3D selection, and event history |
 | Clock | Nine intervals, host-owned Once/Continuous, Stop, exact event interruption, and in-game notices on reconnect |
+| Arrival alerts | Per-device iPhone Home Screen Web Push opt-in for new arrivals that pause the clock |
 | Celestial mechanics | Analytical hierarchical position and velocity queries and sphere-of-influence data |
 | Spacecraft movement | Lambert transfers, analytical coasting, impulses, and headless event execution |
 | Navigation | Collapsible system object tree, gesture-safe selection, pan/orbit/zoom, Reset View, and Focus Selected in both maps |
@@ -35,6 +36,7 @@ ship. Existing Helios campaigns retain their original world when loaded.
 Extend the initial phone play check to an end-to-end course order and arrival,
 both maps, and campaign save/load. Record iOS/browser versions. Cover gestures,
 landscape, background/reconnect, and cellular-only access separately.
+Confirm arrival push delivery with Quasar closed and the iPhone locked.
 
 ## Persistence sequence
 
@@ -57,7 +59,6 @@ landscape, background/reconnect, and cellular-only access separately.
 - Cross-primary finite courses, fleets, collision,
   docking, and player-facing moving-target/waypoint selection remain open. The
   headless trajectory planner already supports moving-target interception.
-- Phone push delivery for game interrupts remains open.
 - Permanent scheduling, variable fidelity, look-ahead, cross-platform determinism,
   terrain, and sustained large-world and phone performance require further work.
 - Private hosting uses manual startup after reboot. Unattended startup remains open.

@@ -1,5 +1,12 @@
 # Quasar decision record
 
+## Approved — iPhone arrival notifications (2026-11-11)
+
+The owner requested an opt-in iPhone push when a ship arrives and the game
+pauses. The hosted System Lab submits Web Push delivery after a new arrival
+interrupt. The iPhone Home Screen app displays it. Other interrupts keep their
+in-game notices. See the [notification contract](SYSTEM_LAB.md#arrival-notifications).
+
 ## Approved — courses between gravity systems (2026-11-10)
 
 The owner explicitly requested automatic courses from the ship's current
@@ -43,8 +50,8 @@ See the [navigation contract](SPACECRAFT_TRAJECTORIES.md#orbital-destination-sta
 
 The owner requested that the host continue advancing when the phone locks or
 disconnects. Continuous play pauses on Stop or a game interrupt. The game
-shows the interrupt and its simulation time when the player returns. Phone
-push delivery remains open. See the [clock contract](SYSTEM_LAB.md#clock-and-execution).
+shows the interrupt and its simulation time when the player returns.
+See the [clock contract](SYSTEM_LAB.md#clock-and-execution).
 
 ## Approved — finite-thrust task scope (issue #26)
 
