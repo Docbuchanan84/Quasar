@@ -325,7 +325,8 @@ The median was 12.99 s for planning, 66 ms for commit, 9.62 s for advances,
 and 6.44 s for queries. The event stage grew about 84 times for 10 times the
 ships. Each advance still scans the fleet for ships eligible for free-coast
 gravity checks. Staggered events multiply the number of scans. This makes
-the scan a target for the next scheduling experiment.
+the scan a target for the next scheduling experiment. The proposal and its
+comparison checks are tracked in [GitHub issue #41](https://github.com/Docbuchanan84/Quasar/issues/41).
 
 The fixture uses local station transfers at specified durations. Unlocked
 interplanetary planning, gravity handoffs, and long powered state queries need

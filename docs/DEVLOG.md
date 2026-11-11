@@ -15,7 +15,8 @@
 - The 10,000-ship scale run verified 30,000 arrivals and 10 million queries.
   Event processing reached 9.62 s median with 70,800 staggered advances.
   The next scheduling experiment should target the repeated fleet scans for
-  potential free-coast gravity changes.
+  potential free-coast gravity changes. The follow-up is tracked in
+  [GitHub issue #41](https://github.com/Docbuchanan84/Quasar/issues/41).
 - The owner requested phone play. The CI-verified benchmark revision `64b3453`
   was published to the existing private preview. A verified save backup and a
   disposable restore preceded the switch. The live host restored the same
