@@ -42,6 +42,7 @@ public sealed class TorchCourseTests
         Assert.Equal("approach", plan.Finite!.Arrival.Kind);
         lab.CommitTravel(plan);
         Assert.Throws<InvalidOperationException>(() => lab.FitExplorationTorch());
+        Assert.Throws<InvalidOperationException>(() => lab.DebugRefuel(SystemLab.ShipId));
 
         var longBurn = SystemLab.Present(plan).BurnSchedule!.First(burn => burn.DurationSeconds > 3600);
         var midburn = long.Parse(longBurn.StartTicks) + (long)(longBurn.DurationSeconds / 2 * TimeSpan.TicksPerSecond);

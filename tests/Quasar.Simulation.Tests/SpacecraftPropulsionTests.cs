@@ -1,3 +1,5 @@
+using Quasar.Server;
+
 namespace Quasar.Simulation.Tests;
 
 public sealed class SpacecraftPropulsionTests
@@ -18,6 +20,45 @@ public sealed class SpacecraftPropulsionTests
         var restored = SystemLab.RestoreState(SimulationStateJson.Deserialize(before));
         Assert.Equal(performance, restored.Snapshot().Ship.Propulsion);
         Assert.Equal(before, SimulationStateJson.Serialize(restored.ExportState()));
+    }
+
+    [Fact]
+    public void DebugRefuelFillsTheInstalledTankAndSurvivesCheckpointRestore()
+    {
+        var lab = SystemLab.CreateChemicalFixture();
+        var installed = lab.ExportState().Simulation.Spacecraft[0].Propulsion!;
+        var session = new LabSession(lab);
+        var client = Guid.NewGuid().ToString();
+        LabCommand Refill(SessionSnapshot snapshot, string shipId = SystemLab.ShipId) =>
+            new(snapshot.InstanceId, snapshot.Revision, client, "debug-refuel", ShipId: shipId);
+        Assert.Throws<ArgumentException>(() => session.Execute(Refill(session.Snapshot(), SolarSystem.Earth)));
+
+        lab.StartBurn("prograde", 30);
+        Assert.Throws<InvalidOperationException>(() => session.Execute(Refill(session.Snapshot())));
+        lab.Advance(TimeSpan.FromSeconds(30));
+        lab.Advance(TimeSpan.FromSeconds(5));
+        var at = lab.ElapsedTicks;
+        var kinematics = lab.ShipStateAt(at);
+        var depleted = session.Snapshot();
+        Assert.Equal(8000, depleted.World.Ship.Propulsion!.AvailablePropellantKg, 8);
+
+        var refilled = session.Execute(Refill(depleted));
+        Assert.Equal(installed.Tank.CapacityKg, refilled.World.Ship.Propulsion!.AvailablePropellantKg);
+        Assert.Equal(installed, lab.ExportState().Simulation.Spacecraft[0].Propulsion);
+        Assert.Equal(at, lab.ElapsedTicks);
+        Assert.Equal(kinematics, lab.ShipStateAt(at));
+        Assert.Equal("Debug refuel filled Pathfinder's propellant tank.", lab.LastEvent.Message);
+        var again = session.Execute(Refill(refilled));
+        Assert.Equal(refilled.Revision, again.Revision);
+        Assert.Equal(refilled.World.Events, again.World.Events);
+
+        var checkpoint = SimulationStateJson.Serialize(lab.ExportState());
+        var restored = SystemLab.RestoreState(SimulationStateJson.Deserialize(checkpoint));
+        Assert.Equal(checkpoint, SimulationStateJson.Serialize(restored.ExportState()));
+
+        var playing = session.Execute(new(refilled.InstanceId, refilled.Revision, client, "play"));
+        Assert.Throws<InvalidOperationException>(() => session.Execute(Refill(playing)));
+        Assert.Throws<InvalidOperationException>(() => SystemLab.CreateLegacyFixture().DebugRefuel(SystemLab.ShipId));
     }
 
     [Fact]

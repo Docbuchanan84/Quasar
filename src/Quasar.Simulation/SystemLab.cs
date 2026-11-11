@@ -201,6 +201,14 @@ public sealed partial class SystemLab
         Record("refit", "Pathfinder fitted the exploration torch and loaded 20,000 kg of reaction mass.");
     }
 
+    public bool DebugRefuel(string shipId)
+    {
+        if (shipId != ShipId) throw new ArgumentException("Choose a spacecraft in this lab.", nameof(shipId));
+        if (!movement.RefillPropellant(shipId)) return false;
+        Record("refit", "Debug refuel filled Pathfinder's propellant tank.");
+        return true;
+    }
+
     public LabEvent LastEvent => events[^1];
     public string LastEventKind => LastEvent.Kind;
 
