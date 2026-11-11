@@ -108,7 +108,7 @@ public sealed class SqliteCampaignStoreTests : IDisposable
             store.LoadCheckpoint(campaign.Id, current.Id).World.Snapshot().Ship.Propulsion);
 
         var payload = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(SimulationStateJson.Serialize(state))
-            .Replace("\"quantityKg\":10000", "\"quantityKg\":10001", StringComparison.Ordinal));
+            .Replace("\"quantityKg\":20000", "\"quantityKg\":20001", StringComparison.Ordinal));
         Execute(campaign.Id, "UPDATE checkpoints SET payload = $payload, sha256 = $hash WHERE sequence = 2;",
             ("$payload", payload), ("$hash", SHA256.HashData(payload)));
 

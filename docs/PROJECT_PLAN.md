@@ -14,7 +14,7 @@ automatic course planning, interactive maps, and persistent campaigns. The
 | Spacecraft movement | Lambert transfers, analytical coasting, impulses, and headless event execution |
 | Navigation | Collapsible system object tree, gesture-safe selection, pan/orbit/zoom, Reset View, and Focus Selected in both maps |
 | Course plotting | Propulsion-aware fastest and lowest maneuver-cost routes, finite burns, approach and same-primary orbit arrival conditions, shared map preview, and revision-bound commit |
-| Propulsion 1/4 | Single chemical engine and tank, read-only Pathfinder performance, and compatible v3 checkpoints |
+| Propulsion 1/4 | Single engine and tank, starting exploration torch, read-only Pathfinder performance, and compatible v3 checkpoints |
 | Propulsion 2/4 | Finite burns, fuel depletion, clock interrupts, and active-burn v4 checkpoints |
 | Navigation 1/2 | Orbital target states, automatic coast primary changes, and checkpoint v5 |
 | Campaigns | SQLite checkpoints, autosave, startup restore, and player-facing New Game, Save Game, Named Save, and Load Game |

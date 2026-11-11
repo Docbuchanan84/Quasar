@@ -1,4 +1,4 @@
-// Disposable same-origin host with a fresh campaign. The scenario refits and orders the test ship.
+// Disposable same-origin host with a fresh campaign. The scenario uses the starting torch and orders the test ship.
 // oxlint-disable-next-line no-unused-expressions -- Playwright CLI evaluates this function.
 async (page) => {
   const assert = (condition, message) => { if (!condition) throw new Error(message) }
@@ -8,6 +8,7 @@ async (page) => {
   const errors = []
   page.on('pageerror', (error) => errors.push(error.message))
   await page.getByText('HOST CONNECTED', { exact: true }).waitFor()
+  assert((await read()).world.ship.propulsion.availablePropellantKg === 20000, 'New games start with a fueled torch without a refit')
   await page.getByLabel('Advance interval').selectOption('3600')
   for (const at of ['36000000000', '72000000000']) {
     await button('▶ Play').click()
@@ -16,8 +17,6 @@ async (page) => {
       return !snapshot.running && snapshot.world.elapsedTicks === ticks
     }, at)
   }
-  await button('Fit exploration torch and refuel').click()
-  await page.waitForFunction(async () => (await (await fetch('/api/lab')).json()).world.ship.propulsion.availablePropellantKg === 20000)
   await button('Plot Course').click()
   const firstResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/lab/course-preview')
   await page.getByLabel('Course destination').selectOption('planet-mars')

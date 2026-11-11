@@ -68,16 +68,20 @@ public sealed partial class SystemLab
     public long ElapsedTicks => movement.ElapsedTicks;
     public bool HasModeledPropulsion => movement.PropulsionOf(ShipId) is not null;
 
-    public SystemLab() : this(new MovementExecution(SolarSystem.CreateCatalogue()))
+    public SystemLab() : this(ExplorationTorch()) { }
+
+    private SystemLab(SpacecraftPropulsion propulsion) : this(new MovementExecution(SolarSystem.CreateCatalogue()))
     {
         var earth = celestialPositions.GetState(SolarSystem.Earth, 0);
         var radial = Vector3d.From(earth.PositionKm);
         var position = (radial + radial / radial.Length * 1_000_000).Position;
         movement.AddSpacecraft(ShipId, new(position, earth.VelocityKmPerSecond), PrimaryId,
-            new(8000, new(1000, 3, 1.5, 200_000, 3000, "test-chemical"),
-                new(1000, 10_000, 10_000, "test-chemical")), automaticPrimary: true);
-        Record("created", "Solar System initialized. Pathfinder coasting near Earth.");
+            propulsion, automaticPrimary: true);
+        Record("created", "Solar System initialized. Pathfinder coasting near Earth with its starting propulsion loadout.");
     }
+
+    internal static SystemLab CreateChemicalFixture() => new(new SpacecraftPropulsion(8000,
+        new(1000, 3, 1.5, 200_000, 3000, "test-chemical"), new(1000, 10_000, 10_000, "test-chemical")));
 
     internal static SystemLab CreateLegacyFixture()
     {

@@ -138,6 +138,24 @@ public sealed class CampaignHttpTests : IDisposable
     }
 
     [Fact]
+    public async Task EveryNewCampaignStartsWithAFueledTorchAndCanPlanMarsWithoutARefit()
+    {
+        await using var host = await Start();
+        for (var i = 0; i < 2; i++)
+        {
+            await host.Create("Starting torch " + i);
+            var initial = await host.Get(Lab);
+            var propulsion = initial.GetProperty("world").GetProperty("ship").GetProperty("propulsion");
+            Assert.Equal(20_000, propulsion.GetProperty("availablePropellantKg").GetDouble());
+            Assert.Equal(30_000, propulsion.GetProperty("wetMassKg").GetDouble());
+            Assert.Equal(0.3, propulsion.GetProperty("ratedMassFlowKgPerSecond").GetDouble());
+            var preview = await host.Get(Lab + "/course-preview?mode=auto&destinationId=planet-mars");
+            Assert.Equal(JsonValueKind.Object, preview.GetProperty("fastest").ValueKind);
+            Assert.Equal(initial.GetRawText(), (await host.Get(Lab)).GetRawText());
+        }
+    }
+
+    [Fact]
     public async Task TorchRefitAndLinkedControlsProduceAnExecutableMarsRoute()
     {
         await using var host = await Start();

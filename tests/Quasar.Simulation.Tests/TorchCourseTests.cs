@@ -7,7 +7,7 @@ public sealed class TorchCourseTests
     [Fact]
     public void TorchRefitPreservesTheCoastAndRoundTripsWithFullReactionMass()
     {
-        var lab = new SystemLab();
+        var lab = SystemLab.CreateChemicalFixture();
         lab.Advance(TimeSpan.FromHours(2));
         var before = lab.ShipStateAt(lab.ElapsedTicks);
         var at = lab.ElapsedTicks;
@@ -25,14 +25,16 @@ public sealed class TorchCourseTests
     }
 
     [Theory]
-    [InlineData("planet-venus")]
-    [InlineData("planet-mars")]
-    [InlineData("planet-mercury")]
-    public void TorchFindsAndExecutesAnInterplanetaryApproach(string destination)
+    [InlineData("planet-venus", 0)]
+    [InlineData("planet-mars", 0)]
+    [InlineData("planet-mercury", 0)]
+    [InlineData("planet-venus", 7200)]
+    [InlineData("planet-mars", 7200)]
+    [InlineData("planet-mercury", 7200)]
+    public void StartingTorchFindsAndExecutesAnInterplanetaryApproach(string destination, int departureSeconds)
     {
         var lab = new SystemLab();
-        lab.Advance(TimeSpan.FromHours(2));
-        lab.FitExplorationTorch();
+        if (departureSeconds > 0) lab.Advance(TimeSpan.FromSeconds(departureSeconds));
         var result = lab.CaptureCourseSearch(destination)(CancellationToken.None);
         var plan = Assert.IsType<CourseChoices>(result.Choices).Fastest;
         Assert.True(plan.RequiredDeltaVKmPerSecond > 25);

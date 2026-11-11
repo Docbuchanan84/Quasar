@@ -1,5 +1,21 @@
 # Development log
 
+## 2026-11-10 — Starting Pathfinder exploration torch
+
+- Every new campaign starts Pathfinder with the exploration torch and 20,000 kg
+  of reaction mass. The owner requested this as the default, replacing the
+  chemical starter. Existing checkpoints retain their serialized equipment.
+- Explicit chemical fixtures preserve the existing exhaustion, low-reserve,
+  finite-course cancellation and restore regressions. New-game tests execute
+  Mercury, Venus and Mars approaches from both the initial epoch and two hours
+  later; HTTP tests create two campaigns and plan Mars without a refit.
+- `scripts/Verify.ps1` passed 261 xUnit tests and 11 Node checks, formatting,
+  lint, renderer checks and the production build. Both disposable browser
+  scenarios passed: linked controls and locks, exact order confirmation,
+  Continuous interrupts, arrival wording, 3D review and a 393 px portrait
+  layout. Actual iPhone validation remains separate. The planner still uses
+  the existing bounded single-primary model and does not support every route.
+
 ## 2026-11-10 — Exploration torch and linked course controls
 
 - The owner requested useful routes for Pathfinder, a torch-like drive, and

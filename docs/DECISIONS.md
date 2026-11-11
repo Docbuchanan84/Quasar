@@ -1,5 +1,12 @@
 # Quasar decision record
 
+## Approved — starting Pathfinder exploration torch (2026-11-10)
+
+The owner requested the exploration torch as the starting loadout for every
+new Pathfinder, replacing the chemical starter. New campaigns start with the
+existing 300 kN, 1,000 km/s exhaust, 20,000 kg reaction-mass preset. Saved ships
+retain their serialized equipment. No broader component architecture is added.
+
 ## Approved — Pathfinder torch refit and linked course controls (2026-11-10)
 
 The owner requested usable interplanetary routes, removal of the 25 km/s UI
