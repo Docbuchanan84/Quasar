@@ -11,7 +11,7 @@ public sealed record CoursePreview(string? PreviewId, string InstanceId, long Re
 public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePreview? LowestManeuverCost, string[] InfeasibleReasons,
     CoursePreview? Tuned = null);
 public sealed record SessionSnapshot(string InstanceId, long Revision, bool Running, string StopReason,
-    int DurationSeconds, string Mode, LabSnapshot World, LabEvent? Interrupt);
+    int DurationSeconds, string Mode, LabSnapshot World, LabEvent? Interrupt, LabEvent? FlightNotice = null);
 
 /// <summary>The host is the only writer. This gate also makes polling snapshots internally consistent.</summary>
 public sealed partial class LabSession(bool startWithWorld = true)
@@ -28,6 +28,7 @@ public sealed partial class LabSession(bool startWithWorld = true)
     private int durationSeconds = 3600;
     private string mode = "once";
     private LabEvent? interrupt;
+    private LabEvent? flightNotice;
     public static readonly int[] Durations = [1, 5, 30, 60, 3600, 86400, 432000, 1296000, 2592000];
 
     public SessionSnapshot Snapshot()
@@ -147,6 +148,7 @@ public sealed partial class LabSession(bool startWithWorld = true)
                 case "play":
                     if (running) throw new InvalidOperationException("Already processing time.");
                     interrupt = null;
+                    flightNotice = null;
                     running = true;
                     stopReason = "Processing";
                     break;
@@ -217,24 +219,29 @@ public sealed partial class LabSession(bool startWithWorld = true)
             {
                 var activeWorld = RequireWorld();
                 var before = activeWorld.ElapsedTicks;
+                var previousEventSequence = activeWorld.LastEvent.Sequence;
                 var destination = activeWorld.CourseDestinationName;
-                var interrupted = activeWorld.Advance(TimeSpan.FromSeconds(durationSeconds));
-                if (interrupted || activeWorld.ElapsedTicks != before) MarkWorldChanged(significant: interrupted);
-                if (interrupted || mode == "once")
+                var deadline = checked(before + durationSeconds * TimeSpan.TicksPerSecond);
+                // Movement still resolves each boundary at its own tick. Spend the rest of this interval after a notice.
+                while (activeWorld.ElapsedTicks < deadline
+                    && activeWorld.Advance(TimeSpan.FromTicks(deadline - activeWorld.ElapsedTicks)))
+                {
+                    var flightEvent = activeWorld.LastEvent;
+                    if (flightEvent.ArrivalLabel is not null)
+                    {
+                        interrupt = flightEvent;
+                        break;
+                    }
+                    flightNotice = flightEvent;
+                }
+
+                var recordedEvent = activeWorld.LastEvent.Sequence != previousEventSequence;
+                if (recordedEvent || activeWorld.ElapsedTicks != before) MarkWorldChanged(significant: recordedEvent);
+                if (interrupt is not null || mode == "once")
                 {
                     running = false;
-                    interrupt = interrupted ? activeWorld.LastEvent : null;
-                    stopReason = interrupt?.ArrivalLabel ?? interrupt?.Kind switch
-                    {
-                        null => "Advance complete",
-                        "burn-complete" => "Burn complete — coasting",
-                        "burn-exhausted" => "Propellant exhausted — coasting",
-                        "course-departure-cutoff" => "Departure burn complete — coasting",
-                        "course-braking-start" => "Braking burn ready — resume to execute",
-                        "patch" or "primary-change" => "Gravity primary changed — coasting",
-                        _ => "Game event — awaiting orders"
-                    };
-                    if (interrupt is { ArrivalLabel: not null } arrival)
+                    stopReason = interrupt?.ArrivalLabel ?? "Advance complete";
+                    if (interrupt is { } arrival)
                     {
                         arrivalNotice = destination is null ? arrival.Message
                             : arrival.Kind == "course-orbit-inserted"
@@ -254,7 +261,8 @@ public sealed partial class LabSession(bool startWithWorld = true)
         }
     }
 
-    private SessionSnapshot Read() => new(instanceId, revision, running, stopReason, durationSeconds, mode, RequireWorld().Snapshot(), interrupt);
+    private SessionSnapshot Read() => new(instanceId, revision, running, stopReason, durationSeconds, mode,
+        RequireWorld().Snapshot(), interrupt, flightNotice);
 
     private static void RequireLegacyOrderAllowed(SystemLab world)
     {

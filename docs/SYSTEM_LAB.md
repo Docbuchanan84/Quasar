@@ -45,16 +45,17 @@ query timestamps use decimal strings across HTTP.
 
 The nine supported intervals are 1, 5, 30, 60, 3,600, 86,400, 432,000,
 1,296,000, and 2,592,000 seconds. Once processes one interval. Continuous uses
-one interval per 250 ms host tick until Stop, a game interrupt, or the clock
+one interval per 250 ms host tick until Stop, a ship arrival, or the clock
 limit. Locking the phone, closing the tab, or losing the browser connection
 does not stop the host. The visible client polls every 500 ms and refreshes on
 return. Any connected browser can inspect or Stop the shared run.
 
-Arrivals, legacy gravity assists, automatic coast primary changes, and course burn boundaries
-pause at the event tick. The host includes the triggering event in
-`interrupt` so the clock can display its time and message, including after a
-reconnect or reload. The notice clears on Play or campaign replacement. The
-event remains in campaign history.
+An arrival pauses at its exact tick, including during Once. The host includes
+it in `interrupt`. Gravity changes, burn boundaries, and propellant exhaustion
+are recorded at their exact ticks while the clock completes the remaining
+interval. The clock displays the latest such event in `flightNotice`. Both
+fields are available on reconnect and clear on Play or campaign replacement.
+All events remain in campaign history.
 
 The host restores the last valid checkpoint paused on restart. Use **New Game**
 on first run, or use **Load Game** and **Continue** to restore a campaign. See
@@ -69,8 +70,8 @@ for that device. The alert names the destination and says that the game
 paused. Tapping it opens Quasar over the private HTTPS route.
 
 New completed approaches, orbital insertions, and legacy arrivals enqueue an
-alert after the host pauses. Earlier course interruptions and restored
-arrivals only show the in-game notice. The sender runs separately from the
+alert after the host pauses. Other flight events and restored arrivals
+appear in-game. The sender runs separately from the
 clock and submits encrypted Web Push to Apple. Alerts expire after one hour.
 The browser can be closed while the Quasar host is running.
 
@@ -79,7 +80,7 @@ The browser can be closed while the Quasar host is running.
 | Request | Purpose |
 | --- | --- |
 | `GET /api/health` | Readiness and the `system-lab` stage |
-| `GET /api/lab` | Instance/revision, run controls, latest run interrupt, objects and velocities, ship status, events, and any committed trajectory |
+| `GET /api/lab` | Instance/revision, run controls, arrival interrupt and latest flight notice, objects and velocities, ship status, events, and any committed trajectory |
 | `GET /api/lab/course-preview?mode=auto&destinationId=…&arrivalKind=…` | Search a stopped-world departure for executable courses to an approach or orbit and return revision-bound previews or infeasibility reasons |
 | `GET /api/lab/course-preview?destinationId=…&flightSeconds=…` | Solve a single fixed-duration course for existing callers |
 | `GET /api/lab/trajectory-preview?destinationId=…&flightSeconds=…` | Compatibility query for an advisory trajectory without a confirmation ID |

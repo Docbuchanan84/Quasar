@@ -61,6 +61,7 @@ export type Snapshot = {
   durationSeconds: number
   mode: 'once' | 'continuous'
   interrupt?: LabEvent | null
+  flightNotice?: LabEvent | null
   world: {
     trajectory: Trajectory | null
     elapsedTicks: string

@@ -1,5 +1,11 @@
 # Quasar decision record
 
+## Approved — only arrivals pause the clock automatically (2026-11-11)
+
+Ship arrivals pause at the exact arrival tick. Existing flight notices record
+their event and time while the clock continues through the selected interval.
+Once still ends after its selected interval or an earlier arrival.
+
 ## Approved — iPhone arrival notifications (2026-11-11)
 
 The owner requested an opt-in iPhone push when a ship arrives and the game
@@ -49,7 +55,7 @@ See the [navigation contract](SPACECRAFT_TRAJECTORIES.md#orbital-destination-sta
 ## Approved — Continuous play without a connected browser (2026-11-10)
 
 The owner requested that the host continue advancing when the phone locks or
-disconnects. Continuous play pauses on Stop or a game interrupt. The game
+disconnects. Continuous play pauses on Stop or a ship arrival. The game
 shows the interrupt and its simulation time when the player returns.
 See the [clock contract](SYSTEM_LAB.md#clock-and-execution).
 

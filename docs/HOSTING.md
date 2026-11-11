@@ -178,7 +178,7 @@ the controls and inspector available and offers **Reload display**.
 
 Continuous play starts on Play and processes at most four selected intervals per
 second. The host runs through browser reloads and disconnects, and pauses on Stop
-or a game interrupt. See the current process lifetime section for the running
+or ship arrival. See the current process lifetime section for the running
 launcher.
 
 ## Requested reset and later acceptance (2026-11-08)

@@ -9,14 +9,14 @@ automatic course planning, interactive maps, and persistent campaigns. The
 | Delivered | Scope |
 | --- | --- |
 | System Lab | Solar System starter, Pathfinder, inspectable XYZ, shared 2D/3D selection, and event history |
-| Clock | Nine intervals, host-owned Once/Continuous, Stop, exact event interruption, and in-game notices on reconnect |
+| Clock | Nine intervals, host-owned Once/Continuous, Stop, exact arrival pauses, and non-pausing flight notices |
 | Arrival alerts | Per-device iPhone Home Screen Web Push opt-in for new arrivals that pause the clock |
 | Celestial mechanics | Analytical hierarchical position and velocity queries and sphere-of-influence data |
 | Spacecraft movement | Lambert transfers, analytical coasting, impulses, and headless event execution |
 | Navigation | Collapsible system object tree, gesture-safe selection, pan/orbit/zoom, Reset View, and Focus Selected in both maps |
 | Course plotting | All modeled destinations, automatic gravity transitions, finite burns, approach/orbit arrival, linked time/reserve controls and locks, shared map preview, and revision-bound commit |
 | Propulsion 1/4 | Single engine and tank, starting exploration torch, read-only Pathfinder performance, and compatible v3 checkpoints |
-| Propulsion 2/4 | Finite burns, fuel depletion, clock interrupts, and active-burn v4 checkpoints |
+| Propulsion 2/4 | Finite burns, fuel depletion notices, and active-burn v4 checkpoints |
 | Navigation 1/2 | Orbital target states, automatic coast primary changes, and checkpoint v5 |
 | Campaigns | SQLite checkpoints, autosave, startup restore, and player-facing New Game, Save Game, Named Save, and Load Game |
 

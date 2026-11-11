@@ -80,6 +80,7 @@ public sealed partial class LabSession
             mode = "once";
             interrupt = world.LastEvent.ArrivalLabel is not null && world.LastEvent.AtTicks == world.ElapsedTicks
                 ? world.LastEvent : null;
+            flightNotice = null;
             previews.Clear();
         }
     }
