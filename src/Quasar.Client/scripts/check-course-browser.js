@@ -36,16 +36,15 @@ async (page) => {
   }
 
   const jupiter = await choose('planet-jupiter', () => destination.selectOption('planet-jupiter'))
-  assert(jupiter.fastest === null, 'Pathfinder cannot afford Jupiter')
-  await panel.getByText(/Insufficient propellant/).waitFor()
+  assert(jupiter.fastest === null, 'Unsupported Jupiter route remains infeasible')
+  await panel.getByText(/No executable|Insufficient propellant|gravity|boundary/).first().waitFor()
   assert(await issue.isDisabled(), 'Infeasible results cannot be ordered')
 
   const earth = await choose('planet-earth', () => destination.selectOption('planet-earth'))
   await route('Fastest').waitFor()
   assert(await route('Fastest').getAttribute('aria-pressed') === 'true', 'Fastest is selected by default')
-  await route('Fastest').getByText('Critically low propellant reserve').waitFor()
-  await panel.getByRole('alert').filter({ hasText: /less than 1%/ }).waitFor()
-  await panel.getByText(/10\.141 kg.*0\.1%/).waitFor()
+  assert(earth.fastest.trajectory.brakingMarginKg > 0, 'Starting torch retains reaction mass after braking')
+  await panel.getByText(/^Braking margin.*kg.*%/).waitFor()
   await route('Lowest maneuver cost').click()
   assert(await route('Lowest maneuver cost').getAttribute('aria-pressed') === 'true', 'Route selection switches')
   assert(earth.fastest.trajectory.travelSeconds < earth.lowestManeuverCost.trajectory.travelSeconds, 'Earth has a faster option')
@@ -61,7 +60,7 @@ async (page) => {
   const reviewed = await choose('planet-earth', () => arrival.selectOption('approach'))
   await route('Fastest').waitFor()
   assert(await route('Fastest').getAttribute('aria-pressed') === 'true', 'New arrival condition defaults to fastest')
-  await panel.getByRole('alert').filter({ hasText: /Critically low propellant reserve/ }).waitFor()
+  assert(reviewed.fastest.trajectory.brakingMarginPercent > 1, 'Starting torch has a useful Earth approach reserve')
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Portrait has no horizontal overflow')
   await panel.screenshot({ path: 'output/playwright/course-phone-panel.png' })
 

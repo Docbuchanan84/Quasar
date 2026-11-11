@@ -15,8 +15,8 @@ the simulation clock. Select Earth and use **Focus Selected** in either map for
 the local view. See the [Solar System guide](docs/SOLAR_SYSTEM.md).
 
 1. Select Pathfinder in either map or the object list. Stop time processing before plotting.
-   While freely coasting, **Fit exploration torch and refuel** gives the test
-   ship an advanced drive and fresh reaction mass for interplanetary experiments.
+   Every new Pathfinder starts with an exploration torch and 20,000 kg of
+   reaction mass for interplanetary flight.
 2. Choose **Plot Course**, select a planet or moon, and choose an arrival
    condition. Quasar searches for the fastest and lowest-maneuver-cost routes
    the installed engine and remaining fuel can execute. Start with an Earth

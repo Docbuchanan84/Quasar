@@ -9,7 +9,7 @@ public sealed class FiniteBurnExecutionTests
     [InlineData(3600, 150, "burn-exhausted")]
     public void MidBurnRestoreAndPartitionedAdvanceReachExactlyTheSameBoundary(int requested, int cutoff, string eventKind)
     {
-        var lab = new SystemLab();
+        var lab = SystemLab.CreateChemicalFixture();
         lab.StartBurn("prograde", requested);
         var endTicks = TimeSpan.FromSeconds(cutoff).Ticks;
         var endState = lab.ShipStateAt(endTicks);
@@ -46,7 +46,7 @@ public sealed class FiniteBurnExecutionTests
     [Fact]
     public void ManualCutoffPreservesMomentumAndInvalidatesTheOldBoundary()
     {
-        var lab = new SystemLab();
+        var lab = SystemLab.CreateChemicalFixture();
         var oldPreview = lab.PreviewTravel("planet-earth", 21_600, 100);
         lab.StartBurn("retrograde", 30);
         Assert.Throws<InvalidOperationException>(() => lab.CommitTravel(oldPreview));
@@ -67,7 +67,7 @@ public sealed class FiniteBurnExecutionTests
     [Fact]
     public void CheckpointRejectsContradictoryBurnDataAndReadsVersionThree()
     {
-        var lab = new SystemLab();
+        var lab = SystemLab.CreateChemicalFixture();
         var coast = lab.ExportState();
         Assert.Equal(coast.Simulation.Spacecraft[0].Propulsion,
             SystemLab.RestoreState(coast with

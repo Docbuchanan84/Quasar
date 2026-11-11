@@ -7,7 +7,7 @@ public class FiniteCourseTests
     [Fact]
     public void InstalledEngineAndFuelChangeTheRoutesFound()
     {
-        var baseline = Fastest(new());
+        var baseline = Fastest(SystemLab.CreateChemicalFixture());
         var higherThrust = Fastest(WithShip(ship => ship with
         {
             Propulsion = ship.Propulsion! with { Engine = ship.Propulsion.Engine with { ThrustN = 400_000 } }
@@ -30,7 +30,7 @@ public class FiniteCourseTests
     [Fact]
     public void CourseUsesFiniteBurnsAndRestoresEachPhaseWithoutAnArrivalImpulse()
     {
-        var lab = new SystemLab();
+        var lab = SystemLab.CreateChemicalFixture();
         var course = Fastest(lab);
         var finite = course.Finite!;
         var initial = lab.ShipStateAt(0);
@@ -71,7 +71,7 @@ public class FiniteCourseTests
     [Fact]
     public void CancellingOrReplanningMidburnUsesCurrentVelocityAndFuel()
     {
-        var lab = new SystemLab();
+        var lab = SystemLab.CreateChemicalFixture();
         var plan = Find(lab).Choices!.LowestManeuverCost;
         lab.CommitTravel(plan);
         AdvanceTo(lab, plan.Finite!.State.DepartureDurationTicks / 2);
@@ -97,7 +97,7 @@ public class FiniteCourseTests
     [InlineData("last-powered-tick")]
     public void RestoringThenCancellingPreservesStateAndFuelAndDropsFutureBurns(string phase)
     {
-        var lab = new SystemLab();
+        var lab = SystemLab.CreateChemicalFixture();
         var plan = Fastest(lab);
         var finite = plan.Finite!;
         var departureEnd = finite.Departure.EndTicks;
@@ -190,7 +190,7 @@ public class FiniteCourseTests
 
     private static SystemLab WithShip(Func<SpacecraftState, SpacecraftState> transform)
     {
-        var state = new SystemLab().ExportState();
+        var state = SystemLab.CreateChemicalFixture().ExportState();
         return SystemLab.RestoreState(state with { Simulation = state.Simulation with { Spacecraft = [transform(state.Simulation.Spacecraft[0])] } });
     }
 }

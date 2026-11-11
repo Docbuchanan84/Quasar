@@ -34,20 +34,8 @@ a 20° ascending node. Their starting phases are 230° and 90°, respectively.
 
 ## Pathfinder propulsion
 
-New campaigns equip Pathfinder with a provisional chemical rocket fixture.
-Its base dry mass is 8,000 kg, its engine and empty tank weigh 1,000 kg each,
-and the tank starts with 10,000 kg of its 10,000 kg capacity. The engine is
-3 m long and 1.5 m in diameter, with 200 kN rated thrust and 3,000 m/s
-effective exhaust velocity. Both components use the `test-chemical` propellant ID.
-
-The resulting dry and wet masses are 10,000 and 20,000 kg. Rated mass flow
-is about 66.67 kg/s, initial thrust acceleration is 10 m/s², and theoretical
-impulsive delta-v is about 2.079 km/s. An empty tank retains rated flow as
-an engine specification and has zero available thrust acceleration and delta-v.
-
-While paused and freely coasting, **Fit exploration torch and refuel** installs
-the owner's exploration test preset and loads 20,000 kg of reaction mass. It
-retains the ship's position, velocity, and simulation time. The preset has
+Every new campaign equips Pathfinder with the owner's exploration torch and
+a full 20,000 kg tank of reaction mass; no refit is required. The preset has
 300 kN thrust, 1,000 km/s effective exhaust velocity, and 10,000 kg dry mass.
 It starts at 30,000 kg wet mass, about 1g acceleration, 0.3 kg/s flow, and
 1,098.6 km/s theoretical delta-v. Acceleration increases as mass is spent.
@@ -56,8 +44,11 @@ This is an idealized advanced fusion torch for flight experiments. Those
 numbers imply 150 GW of ideal jet power. Reactor, radiator, energy storage,
 and engineering mass constraints require the later component model. The
 current rocket calculation still accounts for mass loss, gravity, finite
-burn time, and braking. The refit is a System Lab operation, available after
-cancelling a course or cutting thrust. It records a persistent refit event.
+burn time, and braking. While paused and freely coasting, **Fit exploration
+torch and refuel** restores this preset and fills its tank without changing
+position, velocity, or simulation time. It records a persistent refit event.
+Existing checkpoints retain their saved equipment and fuel, including the
+earlier chemical fixture; loading a save never applies the new-game preset.
 
 The read-only `MovementExecution.View` and `GET /api/lab` ship status expose
 these derived figures in SI units. The inspector displays delta-v in km/s.

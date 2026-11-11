@@ -9,11 +9,11 @@ public sealed class SpacecraftPropulsionTests
         var before = SimulationStateJson.Serialize(lab.ExportState());
         var performance = Assert.IsType<PropulsionPerformance>(lab.Snapshot().Ship.Propulsion);
         Assert.Equal(10_000, performance.DryMassKg);
-        Assert.Equal(20_000, performance.WetMassKg);
-        Assert.Equal(10_000, performance.AvailablePropellantKg);
-        Assert.Equal(66.6666666667, performance.RatedMassFlowKgPerSecond, 8);
+        Assert.Equal(30_000, performance.WetMassKg);
+        Assert.Equal(20_000, performance.AvailablePropellantKg);
+        Assert.Equal(0.3, performance.RatedMassFlowKgPerSecond, 8);
         Assert.Equal(10, performance.InitialAccelerationMPerSecond2);
-        Assert.Equal(2079.44154168, performance.TheoreticalDeltaVMPerSecond, 7);
+        Assert.Equal(1_000_000 * Math.Log(3), performance.TheoreticalDeltaVMPerSecond, 7);
         Assert.Equal(before, SimulationStateJson.Serialize(lab.ExportState()));
         var restored = SystemLab.RestoreState(SimulationStateJson.Deserialize(before));
         Assert.Equal(performance, restored.Snapshot().Ship.Propulsion);
@@ -68,5 +68,5 @@ public sealed class SpacecraftPropulsionTests
         Assert.Throws<InvalidDataException>(() => SystemLab.RestoreState(state with { Simulation = legacy }));
     }
 
-    private static SpacecraftPropulsion Pathfinder() => new SystemLab().ExportState().Simulation.Spacecraft[0].Propulsion!;
+    private static SpacecraftPropulsion Pathfinder() => SystemLab.CreateChemicalFixture().ExportState().Simulation.Spacecraft[0].Propulsion!;
 }

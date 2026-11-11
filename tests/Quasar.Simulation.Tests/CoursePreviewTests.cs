@@ -89,7 +89,7 @@ public class CoursePreviewTests
     [InlineData(true)]
     public void AutomaticOptionsCommitExactlyTheSelectedTrajectory(bool chooseLowestCost)
     {
-        var session = new LabSession();
+        var session = new LabSession(SystemLab.CreateChemicalFixture());
         var before = session.Snapshot();
         var options = session.PreviewAutomaticCourse("planet-earth", 25, CancellationToken.None);
         var fastest = Assert.IsType<CoursePreview>(options.Fastest);
