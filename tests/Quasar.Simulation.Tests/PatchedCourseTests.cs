@@ -93,6 +93,18 @@ public sealed class PatchedCourseTests
     }
 
     [Fact]
+    public void ReserveAdjustmentFromAFastCallistoPreviewFindsAProtectedRoute()
+    {
+        var lab = new SystemLab();
+        var fastest = lab.CaptureCourseSearch("moon-callisto")(CancellationToken.None).Choices!.Fastest;
+        var protectedRoute = lab.CaptureCourseSearch("moon-callisto", preferredFlightSeconds: (int)fastest.TravelSeconds,
+            reservePercent: 95)(CancellationToken.None).Choices;
+        Assert.NotNull(protectedRoute);
+        Assert.InRange(protectedRoute.Tuned!.Fuel.PropellantMassKg!.Value, 0, 1000);
+        Assert.True(protectedRoute.Tuned.TravelSeconds > fastest.TravelSeconds);
+    }
+
+    [Fact]
     public void PatchedCheckpointsRejectWrongFuelPrimaryThrottleAndOldFormat()
     {
         var lab = new SystemLab();

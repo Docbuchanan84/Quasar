@@ -52,6 +52,9 @@ public sealed partial class SystemLab
                     / (propulsion.CalculatePerformance().InitialAccelerationMPerSecond2 / 1000 / 100)));
             var distance = state.PositionKm.DistanceTo(celestialPositions.GetState(destinationId, departure).PositionKm);
             var estimate = Math.Clamp((int)Math.Min(CourseSearch.MaximumSeconds, distance / 100), 1, CourseSearch.MaximumSeconds);
+            if (maneuverBudget is { } selectedBudget)
+                estimate = Math.Clamp((int)Math.Min(CourseSearch.MaximumSeconds,
+                    Math.Max(estimate, distance / Math.Max(0.001, selectedBudget / 3))), 1, CourseSearch.MaximumSeconds);
             if (primary == arrivalPrimary)
             {
                 var originRadius = Vector3d.From(OrbitalNavigation.ToLocal(celestialPositions, primary, departure, state).PositionKm).Length;

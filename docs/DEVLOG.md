@@ -19,10 +19,12 @@
 - Reserve edits retain the requested minimum while asynchronous results arrive;
   actual remaining fuel is reported separately. This prevents a completed
   calculation from moving the control during an ongoing edit.
+- High-reserve recalculations probe fuel-appropriate durations before polishing
+  a previous fast route, so the bounded search retains a viable slower option.
 - Checkpoint v7 rebuilds transitions and validates primary, fuel and history.
   Versions 1–6 remain readable. Callisto regressions cover execution, momentum,
   cancellation around every boundary, HTTP restart and Continuous interrupts.
-- `scripts/Verify.ps1` passed 284 xUnit tests and 11 Node checks, formatting,
+- `scripts/Verify.ps1` passed 285 xUnit tests and 11 Node checks, formatting,
   lint, renderer loading and production bundling. Disposable Chromium passed
   Callisto's linked controls and locks, exact confirmation, 3D review and
   393 px portrait layout. The existing course browser scenario also passed.

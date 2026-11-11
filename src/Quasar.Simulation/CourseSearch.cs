@@ -25,20 +25,23 @@ internal static class CourseSearch
         int? preferredSeconds = null, bool lockFlightTime = false, Func<bool>? stop = null, int[]? probes = null)
     {
         var candidates = new Dictionary<int, TrajectoryPlan?>();
-        if (preferredSeconds is { } preferred)
+        if (preferredSeconds is { } preferred && lockFlightTime)
         {
             Evaluate(preferred);
-            if (lockFlightTime)
-                return candidates.GetValueOrDefault(preferred) is { } exact ? new(exact, exact, exact) : null;
-            Evaluate(Math.Max(1, preferred - preferred / 5));
-            Evaluate(Math.Min(MaximumSeconds, preferred + preferred / 5));
+            return candidates.GetValueOrDefault(preferred) is { } exact ? new(exact, exact, exact) : null;
         }
         foreach (var duration in probes ?? []) Evaluate(duration);
+        if (preferredSeconds is { } requestedTime)
+        {
+            Evaluate(requestedTime);
+            Evaluate(Math.Max(1, requestedTime - requestedTime / 5));
+            Evaluate(Math.Min(MaximumSeconds, requestedTime + requestedTime / 5));
+        }
         foreach (var duration in Durations) Evaluate(duration);
         var feasible = candidates.Where(pair => pair.Value is not null).Select(pair => pair.Key).Order().ToArray();
         if (feasible.Length == 0) return null;
 
-        if (preferredSeconds is { } target && candidates[target] is null)
+        if (preferredSeconds is { } target && candidates.GetValueOrDefault(target) is null)
         {
             var valid = feasible.MinBy(seconds => Math.Abs((long)seconds - target));
             var invalid = target;
