@@ -110,6 +110,7 @@ function App() {
   )
 
   if (!world || !snapshot) return <main>{campaignControls}</main>
+  const flightNotice = snapshot.interrupt ?? snapshot.flightNotice
   return (
     <main>
       {campaignControls}
@@ -169,11 +170,11 @@ function App() {
         </div>
       </section>
       <div role="status" aria-atomic="true">
-        {snapshot.interrupt && (
+        {flightNotice && (
           <div className="notice">
             <span>
-              <strong>Paused at {formatTime(snapshot.interrupt.atTicks)}</strong>
-              {' · '}{snapshot.interrupt.message}
+              <strong>{snapshot.interrupt ? 'Paused at' : 'At'} {formatTime(flightNotice.atTicks)}</strong>
+              {' · '}{flightNotice.message}
             </span>
           </div>
         )}
@@ -458,7 +459,7 @@ function App() {
       </details>
       <footer>
         Continuous play runs on the host, even with the browser closed.
-        A game interrupt or Stop pauses the clock.
+        An arrival or Stop pauses Continuous play.
       </footer>
     </main>
   )

@@ -159,7 +159,8 @@ The first crossing interrupts advancement and seeds the next conic with the
 same inertial position and velocity. Earliest time wins in overlapping
 spheres. At the same tick, exit takes precedence over entry, child IDs break
 entry ties, and simultaneous events across ships are processed together.
-Resume after each interrupt to reach the original requested end time.
+The System Lab host continues through these movement boundaries to reach the
+requested end time unless a ship arrives.
 
 The scanner works in windows of up to 30 days. Read-only predictions allow
 30 days inclusive from the current tick for an eligible coast, or from the
@@ -224,11 +225,11 @@ periapsis. Tight-orbit departures use a six-variable damped shooting solve.
 Every accepted course is rebuilt forward and must meet the same 10 m / 1 mm/s
 arrival tolerances. Automatic gravity-assist optimization remains outside scope.
 
-The departure cutoff, braking ignition, and final cutoff are separate clock
-interrupts. At final cutoff the ship coasts from its integrated state and the
-clock and history identify the completed approach or insertion. Cancelling
-or replacing the course uses the current position, velocity, and remaining
-propellant. Gravity changes also interrupt Continuous processing. See
+The departure cutoff, braking ignition, and gravity changes appear in the
+flight notices as the clock advances. At final cutoff the ship coasts from
+its integrated state and the clock pauses on the completed approach or
+insertion. Cancelling or replacing the course uses the current position,
+velocity, and remaining propellant. See
 [checkpoint version 7](SIMULATION_STATE.md).
 
 ## Performance and validation

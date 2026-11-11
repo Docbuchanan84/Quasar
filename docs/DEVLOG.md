@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Arrival-only clock pauses
+
+- Once and Continuous consume the selected interval across burn and gravity
+  events. The clock pauses at the exact arrival tick, which triggers the
+  existing iPhone notification for opted-in devices.
+- Other flight events remain visible in the clock and event history.
+
 ## 2026-11-11 — iPhone ship arrival notifications
 
 - Added a per-iPhone opt-in and Web Push delivery when a new ship arrival

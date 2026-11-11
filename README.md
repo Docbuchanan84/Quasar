@@ -29,8 +29,8 @@ the local view. See the [Solar System guide](docs/SOLAR_SYSTEM.md).
    committed paths. Both views show departure and future arrival markers.
 4. Choose 1, 5, or 30 seconds, 1 minute, 1 hour, or 1, 5, 15, or 30 days.
    Select **Once** or **Continuous** and press **Play**. Continuous runs on the
-   host even when you lock your phone or close the browser. **Stop** or a game
-   interrupt pauses it. The clock displays the event and its simulation time.
+   host even when you lock your phone or close the browser. A ship arrival or
+   **Stop** pauses it. The clock displays flight events and their simulation time.
 
 On iPhone, open Quasar from the Home Screen, tap **Enable arrival notifications**,
 and allow the permission prompt. Quasar can then alert you when an arrival
@@ -46,7 +46,7 @@ gravity transitions during burns and coasting. The reusable
 simulation also supports hierarchical celestial queries and moving targets.
 The browser exposes one ship. Use **Engine burn** on Pathfinder to command a
 prograde or retrograde burn while paused and freely coasting. Course burn
-boundaries, timed cutoff, and propellant exhaustion interrupt time processing.
+boundaries, timed cutoff, and propellant exhaustion appear as flight notices.
 The lab is shared across browsers. The host restores SQLite checkpoints
 and exposes **New Game**, **Save Game**, **Named Save**, and **Load Game**.
 Choose **Continue** inside Load Game to recover the latest readable save.

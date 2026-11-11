@@ -176,11 +176,13 @@ async function campaignBrowserScenario(page) {
     await click('▶ Play')
     if (!(await accepted).ok()) throw new Error('Host rejected Continuous play')
   } else if (phase === 'arrival') {
-    await show(page.getByText(/Gravity primary changed/).first())
-    const stopped = await lab()
-    if (stopped.running || stopped.interrupt?.kind !== 'primary-change')
-      throw new Error('Host did not stop Continuous play at an automatic primary change')
-    await show(page.getByText(/Paused at D000 03:00:05/))
+    await show(page.locator('.notice').getByText(/Pathfinder changed gravity primary/))
+    const processing = await lab()
+    if (!processing.running || processing.interrupt || processing.flightNotice?.kind !== 'primary-change'
+      || BigInt(processing.world.elapsedTicks) <= BigInt(processing.flightNotice.atTicks))
+      throw new Error('Host did not advance past the automatic primary change during Continuous play')
+    await click('■ Stop')
+    await show(button('▶ Play'))
     await click('Load Game')
     await load('Load Midflight #2')
     await show(button('Cancel committed course'))

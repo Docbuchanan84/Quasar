@@ -59,8 +59,8 @@ public sealed class CampaignHttpTests : IDisposable
             }
             else if (scenario == "powered-arrived")
             {
-                foreach (var kind in new[] { "course-departure-cutoff", "course-braking-start", "course-approach-complete" })
-                    Assert.Equal(kind, (await host.Advance(1296000)).GetProperty("interrupt").GetProperty("kind").GetString());
+                var arrived = await host.Advance(1296000);
+                Assert.Equal("course-approach-complete", arrived.GetProperty("interrupt").GetProperty("kind").GetString());
             }
             else
             {
@@ -150,7 +150,7 @@ public sealed class CampaignHttpTests : IDisposable
     }
 
     [Fact]
-    public async Task CallistoCourseSurvivesHttpRestartAndContinuousGravityInterrupts()
+    public async Task CallistoCourseSurvivesHttpRestartAndRunsThroughGravityChangesUntilArrival()
     {
         JsonElement expected;
         long arrival;
@@ -165,39 +165,38 @@ public sealed class CampaignHttpTests : IDisposable
             var ordered = await host.Command("commit-course", previewId: preview.GetProperty("previewId").GetString());
             Assert.Equal(preview.GetProperty("trajectory").GetRawText(), ordered.GetProperty("world").GetProperty("trajectory").GetRawText());
             arrival = long.Parse(preview.GetProperty("trajectory").GetProperty("arrivalTicks").GetString()!);
-            while (true)
+            var interval = TimeSpan.FromDays(30).Ticks;
+            for (var deadline = interval; deadline < arrival; deadline += interval)
             {
                 var advanced = await host.Advance(2592000);
-                if (advanced.TryGetProperty("interrupt", out var interrupt) && interrupt.ValueKind == JsonValueKind.Object
-                    && interrupt.GetProperty("kind").GetString() == "primary-change") break;
-                Assert.True(long.Parse(advanced.GetProperty("world").GetProperty("elapsedTicks").GetString()!) < arrival);
+                var world = advanced.GetProperty("world");
+                var atTicks = long.Parse(world.GetProperty("elapsedTicks").GetString()!);
+                Assert.Equal(deadline, atTicks);
+                Assert.Equal(JsonValueKind.Null, advanced.GetProperty("interrupt").ValueKind);
             }
             var at = await host.Get(Lab);
-            await host.Post("/api/campaigns/save-named", at, new { label = "Jupiter gravity entry" }, HttpStatusCode.Created);
+            await host.Post("/api/campaigns/save-named", at, new { label = "En route to Callisto" }, HttpStatusCode.Created);
             expected = at.GetProperty("world");
         }
         await using var restarted = await Start();
         Assert.Equal(expected.GetRawText(), (await restarted.Get(Lab)).GetProperty("world").GetRawText());
-        var kinds = new List<string>();
-        while (long.Parse((await restarted.Get(Lab)).GetProperty("world").GetProperty("elapsedTicks").GetString()!) < arrival)
+        await restarted.Command("configure", duration: 2592000, mode: "continuous");
+        await restarted.Command("play");
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        JsonElement finished;
+        while (true)
         {
-            await restarted.Command("configure", duration: 2592000, mode: "continuous");
-            await restarted.Command("play");
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            JsonElement stopped;
-            while (true)
-            {
-                stopped = await restarted.Get(Lab);
-                if (!stopped.GetProperty("running").GetBoolean()) break;
-                await Task.Delay(25, timeout.Token);
-            }
-            kinds.Add(stopped.GetProperty("interrupt").GetProperty("kind").GetString()!);
+            finished = await restarted.Get(Lab);
+            if (!finished.GetProperty("running").GetBoolean()) break;
+            await Task.Delay(25, timeout.Token);
         }
+        var finalWorld = finished.GetProperty("world");
+        var kinds = finalWorld.GetProperty("events").EnumerateArray().Select(e => e.GetProperty("kind").GetString()).ToArray();
         Assert.Contains("course-braking-start", kinds);
         Assert.Contains("primary-change", kinds);
-        Assert.Equal("course-approach-complete", kinds[^1]);
-        var finished = await restarted.Get(Lab);
-        Assert.Equal("approach", finished.GetProperty("world").GetProperty("ship").GetProperty("arrivalKind").GetString());
+        Assert.Equal("course-approach-complete", finished.GetProperty("interrupt").GetProperty("kind").GetString());
+        Assert.Equal(arrival, long.Parse(finalWorld.GetProperty("elapsedTicks").GetString()!));
+        Assert.Equal("approach", finalWorld.GetProperty("ship").GetProperty("arrivalKind").GetString());
         Assert.Equal("Velocity-matched approach complete", finished.GetProperty("stopReason").GetString());
     }
 
