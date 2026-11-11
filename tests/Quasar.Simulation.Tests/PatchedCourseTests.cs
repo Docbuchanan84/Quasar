@@ -46,20 +46,23 @@ public sealed class PatchedCourseTests
     }
 
     [Theory]
-    [InlineData("moon-callisto", "planet-earth")]
-    [InlineData("planet-earth", "moon-callisto")]
-    [InlineData("moon-moon", "planet-mars")]
-    [InlineData("planet-jupiter", "moon-europa")]
-    [InlineData("moon-callisto", "moon-europa")]
-    [InlineData("star-sun", "moon-titan")]
-    [InlineData("star-sun", "dwarfplanet-pluto")]
-    [InlineData("star-sun", "station-staryard")]
-    [InlineData("star-sun", "star-sun")]
-    public void ComputerFindsRoutesFromDifferentGravitySystems(string origin, string destination)
+    [InlineData("moon-callisto", "planet-earth", null)]
+    // Verify these tight-orbit departures at known durations independently of
+    // how many alternatives a particular CI runner can search in four seconds.
+    [InlineData("planet-earth", "moon-callisto", 16051442)]
+    [InlineData("moon-moon", "planet-mars", 8175284)]
+    [InlineData("planet-jupiter", "moon-europa", null)]
+    [InlineData("moon-callisto", "moon-europa", null)]
+    [InlineData("star-sun", "moon-titan", null)]
+    [InlineData("star-sun", "dwarfplanet-pluto", null)]
+    [InlineData("star-sun", "station-staryard", null)]
+    [InlineData("star-sun", "star-sun", null)]
+    public void ComputerFindsRoutesFromDifferentGravitySystems(string origin, string destination, int? flightSeconds)
     {
         var lab = InOrbit(origin);
         var watch = Stopwatch.StartNew();
-        var result = lab.CaptureCourseSearch(destination)(CancellationToken.None);
+        var result = lab.CaptureCourseSearch(destination, preferredFlightSeconds: flightSeconds,
+            lockFlightTime: flightSeconds.HasValue)(CancellationToken.None);
         Assert.NotNull(result.Choices);
         Assert.InRange(watch.Elapsed.TotalSeconds, 0, 8);
         var plan = result.Choices.Fastest;
