@@ -1,5 +1,23 @@
 # Quasar decision record
 
+## Approved — parameter-driven engineering and teaching (2026-11-10)
+
+The owner approved deep engineering design as a major gameplay activity across
+domains. Players configure components and assemblies with sliders, dropdowns,
+numeric and text fields, toggles, palettes, tables and other suitable controls.
+**No freehand drawing, art canvas, or CAD construction is required.**
+
+As parameters change, Quasar should generate live, meaningful technical visuals
+(the morphing rocket-nozzle cross-section is the reference example), with
+readouts, constraints and in-context lessons about what changes, why, and what
+that means for the whole machine. C# remains authoritative for engineering
+calculations and simulated behavior; browser graphics are representations.
+
+**Design principle approved; reusable designer not implemented.** SVG is a
+promising 2D renderer but not a universal requirement. Exact component models,
+engineering fidelity, domain-specific equations and implementation tasks are
+still open. See [design contract](PARAMETRIC_ENGINEERING_DESIGN.md).
+
 ## Approved — courses between gravity systems (2026-11-10)
 
 The owner explicitly requested automatic courses from the ship's current
