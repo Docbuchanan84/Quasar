@@ -16,6 +16,9 @@
   fixture coverage, not a promise that every fuel/lock/geometry combination is
   feasible. Searches stop after four seconds and retain completed candidates;
   bounded caches support repeated slider requests.
+- Reserve edits retain the requested minimum while asynchronous results arrive;
+  actual remaining fuel is reported separately. This prevents a completed
+  calculation from moving the control during an ongoing edit.
 - Checkpoint v7 rebuilds transitions and validates primary, fuel and history.
   Versions 1–6 remain readable. Callisto regressions cover execution, momentum,
   cancellation around every boundary, HTTP restart and Continuous interrupts.
