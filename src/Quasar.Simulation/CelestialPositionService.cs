@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Collections.Immutable;
 
 namespace Quasar.Simulation;
 
@@ -12,6 +13,7 @@ public sealed class CelestialPositionService : ICelestialPositionService
     private readonly FrozenDictionary<string, CelestialBody> bodies;
     private readonly FrozenDictionary<string, KeplerianPropagator.CompiledOrbit> orbits;
     private readonly FrozenDictionary<string, OrbitalEnvironment> environments;
+    private readonly FrozenDictionary<string, ImmutableArray<CelestialBody>> gravityChildren;
     private readonly string[] topologicalOrder;
     private readonly object gate = new();
     private readonly Dictionary<string, CelestialState> cache = new(StringComparer.Ordinal);
@@ -69,6 +71,10 @@ public sealed class CelestialPositionService : ICelestialPositionService
         topologicalOrder = [.. ordered];
         orbits = compiled.ToFrozenDictionary(StringComparer.Ordinal);
         environments = metadata.ToFrozenDictionary(StringComparer.Ordinal);
+        gravityChildren = bodies.Values.Where(body => body is { ParentId: not null, Orbit: not null, GravitationalParameterKm3PerSecond2: > 0 })
+            .GroupBy(body => body.ParentId!, StringComparer.Ordinal)
+            .ToFrozenDictionary(group => group.Key,
+                group => group.OrderBy(body => body.Id, StringComparer.Ordinal).ToImmutableArray(), StringComparer.Ordinal);
     }
 
     public CelestialPositionService WithBody(CelestialBody replacement)
@@ -79,6 +85,9 @@ public sealed class CelestialPositionService : ICelestialPositionService
     }
 
     public OrbitalEnvironment GetEnvironment(string bodyId) => environments[bodyId];
+
+    internal ImmutableArray<CelestialBody> GravityChildren(string primaryId) =>
+        gravityChildren.TryGetValue(primaryId, out var children) ? children : [];
 
     internal Vector3d OrbitalOffsetAt(string bodyId, long atTicks) =>
         Vector3d.From(OrbitalStateAt(bodyId, atTicks).PositionKm);

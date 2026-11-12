@@ -123,36 +123,30 @@ public class CoursePreviewTests
         Assert.Contains("no modeled gravity", Assert.Single(options.InfeasibleReasons));
     }
 
-    [Fact]
-    public void ContinuousStopsExactlyAtEachFiniteBoundaryAndApproachFinishesOutsideEarth()
+    [Theory]
+    [InlineData("once")]
+    [InlineData("continuous")]
+    public void CoursePausesOnlyAtArrivalAndRecordsEachFiniteBoundary(string mode)
     {
         var session = new LabSession();
         var initial = session.Snapshot();
         session.Execute(new(initial.InstanceId, initial.Revision, Client, "configure",
-            DurationSeconds: 2592000, Mode: "continuous"));
+            DurationSeconds: 2592000, Mode: mode));
         var preview = Assert.IsType<CoursePreview>(session.PreviewAutomaticCourse(SolarSystem.Earth, null, CancellationToken.None).Fastest);
         var schedule = preview.Trajectory.BurnSchedule!;
         Send(session, "commit-course", preview.PreviewId);
         var departureCutoff = long.Parse(schedule[0].StartTicks) + (long)Math.Round(schedule[0].DurationSeconds * TimeSpan.TicksPerSecond);
-        foreach (var (kind, ticks) in new[]
-        {
-            ("course-departure-cutoff", departureCutoff),
-            ("course-braking-start", long.Parse(schedule[1].StartTicks)),
-            ("course-approach-complete", long.Parse(preview.Trajectory.ArrivalTicks))
-        })
-        {
-            Assert.True(Send(session, "play").Running);
-            session.Tick();
-            var interrupted = session.Snapshot();
-            Assert.False(interrupted.Running);
-            Assert.Equal(kind, interrupted.Interrupt!.Kind);
-            Assert.Equal(ticks, interrupted.Interrupt.AtTicks);
-            Assert.Equal(ticks, interrupted.World.ElapsedTicks);
-            session.Tick();
-            Assert.Equal(interrupted.Revision, session.Snapshot().Revision);
-        }
-
+        Assert.True(Send(session, "play").Running);
+        Assert.Equal("Pathfinder arrived at Earth.", session.TickWithArrival());
         var after = session.Snapshot();
+        Assert.False(after.Running);
+        Assert.Equal(long.Parse(preview.Trajectory.ArrivalTicks), after.World.ElapsedTicks);
+        Assert.Equal(after.World.ElapsedTicks, after.Interrupt!.AtTicks);
+        Assert.Equal("course-approach-complete", after.Interrupt.Kind);
+        Assert.Equal(departureCutoff, Assert.Single(after.World.Events, e => e.Kind == "course-departure-cutoff").AtTicks);
+        Assert.Equal(long.Parse(schedule[1].StartTicks), Assert.Single(after.World.Events, e => e.Kind == "course-braking-start").AtTicks);
+        Assert.Null(session.TickWithArrival());
+        Assert.Equal(after.Revision, session.Snapshot().Revision);
         var spacecraft = after.World.Objects.Single(body => body.Id == SystemLab.ShipId);
         var earth = after.World.Objects.Single(body => body.Id == SolarSystem.Earth);
         Assert.Equal(preview.Trajectory.Points[^1].PositionKm, spacecraft.Position);

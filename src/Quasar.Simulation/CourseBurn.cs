@@ -10,13 +10,20 @@ internal sealed class CourseBurn(CelestialPositionService catalogue, SpacecraftP
     internal long StartTicks => startTicks;
     internal long EndTicks => endTicks;
     internal bool ExhaustsPropellant => parts.Any(part => part.Path.ExhaustsPropellant);
-    internal string PrimaryAt(long ticks) => parts.Last(part => part.Path.StartTicks <= ticks).Primary;
+    internal string PrimaryAt(long ticks) => PartAt(ticks).Primary;
     internal double RemainingPropellantKg(long ticks) => Math.Max(0, propulsion.Tank.QuantityKg
         - (ticks - startTicks) / (double)TimeSpan.TicksPerSecond * propulsion.CalculatePerformance().RatedMassFlowKgPerSecond);
     internal CelestialState StateAt(long ticks)
     {
-        var part = parts.Last(part => part.Path.StartTicks <= ticks);
+        var part = PartAt(ticks);
         return OrbitalNavigation.ToSystem(catalogue, part.Primary, ticks, part.Path.StateAt(ticks));
+    }
+
+    private Part PartAt(long ticks)
+    {
+        for (var index = parts.Length - 1; index >= 0; index--)
+            if (parts[index].Path.StartTicks <= ticks) return parts[index];
+        throw new InvalidOperationException("No course burn part at the requested time.");
     }
 
     internal static CourseBurn Single(CelestialPositionService catalogue, SpacecraftPropulsion propulsion,

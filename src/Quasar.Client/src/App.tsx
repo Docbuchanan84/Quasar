@@ -1,6 +1,8 @@
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { formatTime, isCourseDestination, type Snapshot } from './lab'
 import CampaignPanel from './CampaignPanel'
+import ArrivalNotifications from './ArrivalNotifications'
+import SiteNav from './SiteNav'
 import { useLabSession } from './useLabSession'
 import MapBoundary from './MapBoundary'
 import CoursePanel from './CoursePanel'
@@ -91,6 +93,7 @@ function App() {
           {online ? 'HOST CONNECTED' : 'CONNECTING / OFFLINE'}
         </span>
       </header>
+      <SiteNav current="/" />
       <CampaignPanel
         status={status}
         online={online}
@@ -98,6 +101,7 @@ function App() {
         message={campaignMessage}
         onAction={campaignAction}
       />
+      <ArrivalNotifications />
       {(notice || !online) && (
         <div className="notice" role="alert">
           {notice || 'Waiting for the authoritative host. Orders are disabled.'}
@@ -108,6 +112,7 @@ function App() {
   )
 
   if (!world || !snapshot) return <main>{campaignControls}</main>
+  const flightNotice = snapshot.interrupt ?? snapshot.flightNotice
   return (
     <main>
       {campaignControls}
@@ -167,11 +172,11 @@ function App() {
         </div>
       </section>
       <div role="status" aria-atomic="true">
-        {snapshot.interrupt && (
+        {flightNotice && (
           <div className="notice">
             <span>
-              <strong>Paused at {formatTime(snapshot.interrupt.atTicks)}</strong>
-              {' · '}{snapshot.interrupt.message}
+              <strong>{snapshot.interrupt ? 'Paused at' : 'At'} {formatTime(flightNotice.atTicks)}</strong>
+              {' · '}{flightNotice.message}
             </span>
           </div>
         )}
@@ -348,6 +353,7 @@ function App() {
                       Cancelling a committed course retains momentum.
                     </p>
                     <h3>Propulsion</h3>
+                    <a className="torch-designer-link" href="/torch-designer/">Open Torch Designer</a>
                     {world.ship.propulsion ? (
                       <dl>
                         {[
@@ -365,6 +371,14 @@ function App() {
                         ))}
                       </dl>
                     ) : <p className="muted">Propulsion not modeled</p>}
+                    {world.ship.propulsion && (
+                      <button
+                        disabled={disabled || snapshot.running || world.ship.status !== 'Coasting'}
+                        onClick={() => void command('debug-refuel', { shipId: selected.id })}
+                      >
+                        Debug refuel
+                      </button>
+                    )}
                     <details><summary>Lab refit and refuel</summary>
                     <button disabled={disabled || snapshot.running || world.ship.status !== 'Coasting'}
                       onClick={() => void command('fit-exploration-torch')}>
@@ -456,7 +470,7 @@ function App() {
       </details>
       <footer>
         Continuous play runs on the host, even with the browser closed.
-        A game interrupt or Stop pauses the clock.
+        An arrival or Stop pauses Continuous play.
       </footer>
     </main>
   )

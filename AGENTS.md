@@ -10,6 +10,25 @@
 - **Spatial direction:** true 3D galactic space and continuous planetary coordinates are stated project directions. Symbolic/technical maps and data-driven presentation are preferences for rendering and interaction; they do **not** imply a two-dimensional simulation world.
 - Use **Quasar** consistently; **Qasar** is an obsolete spelling.
 
+## Parametric engineering and learning pillar
+
+- **Approved (10 November 2026):** detailed component and assembly engineering
+  is a core cross-domain gameplay direction. Players configure with dropdowns,
+  sliders, exact numeric inputs, text fields, toggles, palettes, and structured
+  drill-down. No freehand drawing, CAD, or hand-built geometry is required.
+- **Generated interactive visuals:** changing dimensions and parameters should
+  reshape useful technical graphics (e.g. a nozzle section). Match highlighted
+  features to controls, derived results, constraints and explanations. SVG is a
+  promising candidate, not a universal mandatory renderer.
+- **Teach while designing:** explain what a parameter means, why a change matters,
+  its limits, and its consequences for connected equipment and game behavior.
+- **One engineering truth:** authoritative C# calculations govern validity,
+  performance and simulated outcomes. The frontend does not invent physics.
+- **Scope guard:** this principle is approved but the reusable designer is not
+  implemented. Do not assume approved component schema, physics equations,
+  technical rendering architecture or specific sprint. See
+  [parametric engineering design](docs/PARAMETRIC_ENGINEERING_DESIGN.md).
+
 ## iPhone browser pillar
 
 - **Approved (8 November 2026):** frequent iPhone browser play is a core Quasar pillar. The owner's iPhone 17 Pro is the primary phone test device; iOS/browser version remains to be recorded. See `docs/MOBILE_AND_REMOTE_ACCESS.md`.

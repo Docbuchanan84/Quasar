@@ -9,13 +9,16 @@ automatic course planning, interactive maps, and persistent campaigns. The
 | Delivered | Scope |
 | --- | --- |
 | System Lab | Solar System starter, Pathfinder, inspectable XYZ, shared 2D/3D selection, and event history |
-| Clock | Nine intervals, host-owned Once/Continuous, Stop, exact event interruption, and in-game notices on reconnect |
+| Clock | Nine intervals, host-owned Once/Continuous, Stop, exact arrival pauses, and non-pausing flight notices |
+| Arrival alerts | Per-device iPhone Home Screen Web Push opt-in for new arrivals that pause the clock |
 | Celestial mechanics | Analytical hierarchical position and velocity queries and sphere-of-influence data |
 | Spacecraft movement | Lambert transfers, analytical coasting, impulses, and headless event execution |
 | Navigation | Collapsible system object tree, gesture-safe selection, pan/orbit/zoom, Reset View, and Focus Selected in both maps |
 | Course plotting | All modeled destinations, automatic gravity transitions, finite burns, approach/orbit arrival, linked time/reserve controls and locks, shared map preview, and revision-bound commit |
 | Propulsion 1/4 | Single engine and tank, starting exploration torch, read-only Pathfinder performance, and compatible v3 checkpoints |
-| Propulsion 2/4 | Finite burns, fuel depletion, clock interrupts, and active-burn v4 checkpoints |
+| Propulsion 2/4 | Finite burns, fuel depletion notices, and active-burn v4 checkpoints |
+| Engineering prototype | [Fusion Torch Designer](TORCH_DESIGNER.md), comparative test burns, and compatible Pathfinder campaign refits |
+| Testing controls | Debug refill of the selected ship’s installed propellant tank |
 | Navigation 1/2 | Orbital target states, automatic coast primary changes, and checkpoint v5 |
 | Campaigns | SQLite checkpoints, autosave, startup restore, and player-facing New Game, Save Game, Named Save, and Load Game |
 
@@ -32,9 +35,10 @@ ship. Existing Helios campaigns retain their original world when loaded.
 
 ## Next validation
 
-Extend the initial phone play check to an end-to-end course order and arrival,
-both maps, and campaign save/load. Record iOS/browser versions. Cover gestures,
-landscape, background/reconnect, and cellular-only access separately.
+Lock Screen arrival delivery has been confirmed by the owner. Validate the
+designer’s controls, test burn and refit flow on the physical iPhone. Keep
+explicit coverage for both maps, save/load, reconnect, landscape and cellular
+access. Record the iOS and browser versions alongside device evidence.
 
 ## Persistence sequence
 
@@ -54,10 +58,14 @@ landscape, background/reconnect, and cellular-only access separately.
 
 ## Open implementation and design work
 
-- Cross-primary finite courses, fleets, collision,
-  docking, and player-facing moving-target/waypoint selection remain open. The
+- Extend the first torch prototype toward the approved cross-domain engineering
+  direction. Component architecture, reactor and thermal behavior, and a design
+  library remain open. See the [design contract](PARAMETRIC_ENGINEERING_DESIGN.md)
+  and [designer handoff](DESIGNER_HANDOFF.md).
+
+- Player-facing fleets, collision, docking, and moving-target or waypoint
+  selection remain open. The
   headless trajectory planner already supports moving-target interception.
-- Phone push delivery for game interrupts remains open.
 - Permanent scheduling, variable fidelity, look-ahead, cross-platform determinism,
   terrain, and sustained large-world and phone performance require further work.
 - Private hosting uses manual startup after reboot. Unattended startup remains open.

@@ -99,25 +99,31 @@ public sealed class FiniteBurnExecutionTests
             Assert.Throws<InvalidDataException>(() => SystemLab.RestoreState(state with { Simulation = invalid }));
     }
 
-    [Fact]
-    public void HostStopsContinuousProcessingAtBurnCutoffAndRejectsStaleCommands()
+    [Theory]
+    [InlineData("continuous", 30, 30, "burn-complete")]
+    [InlineData("once", 3600, 150, "burn-exhausted")]
+    public void HostSpendsTheFullIntervalAcrossBurnEndAndRejectsStaleCommands(string mode, int burnSeconds,
+        int cutoffSeconds, string kind)
     {
-        var session = new LabSession();
+        var session = new LabSession(SystemLab.CreateChemicalFixture());
         var client = Guid.NewGuid().ToString();
         var initial = session.Snapshot();
         LabCommand Command(SessionSnapshot snapshot, string operation) =>
             new(snapshot.InstanceId, snapshot.Revision, client, operation);
-        var burn = Command(initial, "start-burn") with { BurnDirection = "prograde", BurnSeconds = 30 };
+        var burn = Command(initial, "start-burn") with { BurnDirection = "prograde", BurnSeconds = burnSeconds };
         var started = session.Execute(burn);
         Assert.Throws<InvalidOperationException>(() => session.Execute(burn));
-        var configured = session.Execute(Command(started, "configure") with { DurationSeconds = 2_592_000, Mode = "continuous" });
+        var configured = session.Execute(Command(started, "configure") with { DurationSeconds = 3600, Mode = mode });
         session.Execute(Command(configured, "play"));
-        session.Tick();
-        var stopped = session.Snapshot();
-        Assert.False(stopped.Running);
-        Assert.Equal(TimeSpan.FromSeconds(30).Ticks, stopped.World.ElapsedTicks);
-        Assert.Equal("Burn complete — coasting", stopped.StopReason);
-        Assert.Equal(Assert.Single(stopped.World.Events, e => e.Kind == "burn-complete"), stopped.Interrupt);
+        Assert.Null(session.TickWithArrival());
+        var advanced = session.Snapshot();
+        Assert.Equal(mode == "continuous", advanced.Running);
+        Assert.Equal(TimeSpan.TicksPerHour, advanced.World.ElapsedTicks);
+        Assert.Equal(mode == "continuous" ? "Processing" : "Advance complete", advanced.StopReason);
+        Assert.Null(advanced.Interrupt);
+        var notice = Assert.Single(advanced.World.Events, e => e.Kind == kind);
+        Assert.Equal(TimeSpan.FromSeconds(cutoffSeconds).Ticks, notice.AtTicks);
+        Assert.Equal(notice, advanced.FlightNotice);
     }
 
     private static SystemLab Restore(SystemLab lab) =>

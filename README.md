@@ -29,8 +29,12 @@ the local view. See the [Solar System guide](docs/SOLAR_SYSTEM.md).
    committed paths. Both views show departure and future arrival markers.
 4. Choose 1, 5, or 30 seconds, 1 minute, 1 hour, or 1, 5, 15, or 30 days.
    Select **Once** or **Continuous** and press **Play**. Continuous runs on the
-   host even when you lock your phone or close the browser. **Stop** or a game
-   interrupt pauses it. The clock displays the event and its simulation time.
+   host even when you lock your phone or close the browser. A ship arrival or
+   **Stop** pauses it. The clock displays flight events and their simulation time.
+
+On iPhone, open Quasar from the Home Screen, tap **Enable arrival notifications**,
+and allow the permission prompt. Quasar can then alert you when an arrival
+pauses the game. Tap the notification to return to Quasar.
 
 Drag or swipe to pan in 2D. In 3D, drag to orbit and use right/middle/Ctrl-drag or
 two fingers to pan. Both views support wheel/pinch zoom and **Reset View**.
@@ -42,12 +46,17 @@ gravity transitions during burns and coasting. The reusable
 simulation also supports hierarchical celestial queries and moving targets.
 The browser exposes one ship. Use **Engine burn** on Pathfinder to command a
 prograde or retrograde burn while paused and freely coasting. Course burn
-boundaries, timed cutoff, and propellant exhaustion interrupt time processing.
+boundaries, timed cutoff, and propellant exhaustion appear as flight notices.
 The lab is shared across browsers. The host restores SQLite checkpoints
 and exposes **New Game**, **Save Game**, **Named Save**, and **Load Game**.
 Choose **Continue** inside Load Game to recover the latest readable save.
 See the [campaign workflow](docs/CAMPAIGN_LIFECYCLE.md) for first run,
 confirmation, and recovery.
+
+Open **Torch Designer** from the top navigation or Pathfinder’s Propulsion
+panel to compare fusion drives in a test burn or fit a validated design to the
+campaign ship. **Debug refuel** fills the installed tank while paused and
+coasting. See the [Torch Designer guide](docs/TORCH_DESIGNER.md).
 
 ## Run and verify
 
@@ -69,6 +78,12 @@ checks. See [development setup](docs/DEVELOPMENT_SETUP.md) and the disposable
 [course planning](docs/COURSE_PLOTTING.md#verification) browser checks.
 
 ## Project records
+
+- [Parametric engineering designers](docs/PARAMETRIC_ENGINEERING_DESIGN.md)
+  documents the approved engineering and teaching direction behind the
+  Fusion Torch Designer.
+- [Designer handoff](docs/DESIGNER_HANDOFF.md) covers the playable workflow,
+  the first slice’s design decisions, and the questions for the next slice.
 
 - [System Lab](docs/SYSTEM_LAB.md) covers the clock, movement, and HTTP contract.
 - [Course plotting](docs/COURSE_PLOTTING.md) and [map navigation](docs/MAP_NAVIGATION.md)

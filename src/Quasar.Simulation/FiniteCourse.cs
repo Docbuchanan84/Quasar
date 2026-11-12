@@ -9,6 +9,7 @@ internal sealed record FiniteCourse(FiniteCourseState State, CourseBurn Departur
 {
     internal const double PositionToleranceKm = 0.01;
     internal const double VelocityToleranceKmPerSecond = 1e-6;
+    private (long Ticks, string Kind)[]? boundaries;
 
     internal double PropellantAt(long ticks) => ticks <= Departure.EndTicks
         ? Departure.RemainingPropellantKg(ticks)
@@ -17,17 +18,26 @@ internal sealed record FiniteCourse(FiniteCourseState State, CourseBurn Departur
     internal CelestialState StateAt(long ticks) => ticks == Departure.StartTicks ? State.InitialState.ToRuntime()
         : ticks <= Departure.EndTicks
         ? Departure.StateAt(ticks)
-        : ticks < Braking.StartTicks ? Coasts.Last(coast => coast.StartTicks <= ticks).StateAt(ticks)
+        : ticks < Braking.StartTicks ? CoastAt(ticks).StateAt(ticks)
         : Braking.StateAt(ticks);
 
     internal string PrimaryAt(long ticks) => ticks < Departure.EndTicks ? Departure.PrimaryAt(ticks)
-        : ticks < Braking.StartTicks ? Coasts.Last(coast => coast.StartTicks <= ticks).PrimaryBodyId : Braking.PrimaryAt(ticks);
+        : ticks < Braking.StartTicks ? CoastAt(ticks).PrimaryBodyId : Braking.PrimaryAt(ticks);
+
+    private TrajectorySegment CoastAt(long ticks)
+    {
+        for (var index = Coasts.Length - 1; index >= 0; index--)
+            if (Coasts[index].StartTicks <= ticks) return Coasts[index];
+        throw new InvalidOperationException("No course coast at the requested time.");
+    }
 
     internal long[] GravityTransitionTicks => Departure.Parts.Select(part => part.Path.StartTicks)
         .Concat(Coasts.Select(coast => coast.StartTicks)).Concat(Braking.Parts.Select(part => part.Path.StartTicks))
         .Distinct().Where(ticks => ticks > Departure.StartTicks && PrimaryAt(ticks) != PrimaryAt(ticks - 1)).Order().ToArray();
 
-    internal (long Ticks, string Kind)[] Boundaries => GravityTransitionTicks
+    internal (long Ticks, string Kind)[] Boundaries => boundaries ?? LazyInitializer.EnsureInitialized(ref boundaries, BuildBoundaries);
+
+    private (long Ticks, string Kind)[] BuildBoundaries() => GravityTransitionTicks
         .Where(ticks => ticks != Departure.EndTicks && ticks != Braking.StartTicks).Select(ticks => (ticks, "primary-change"))
         .Concat([(Departure.EndTicks, "course-departure-cutoff"), (Braking.StartTicks, "course-braking-start")])
         .Append((Braking.EndTicks, Arrival.Kind == "orbit" ? "course-orbit-inserted" : "course-approach-complete"))

@@ -90,7 +90,9 @@ fresh browser tab and check **Plot Course** or the read-only automatic preview
 endpoint while time processing is stopped. Route availability depends on the
 current departure state and maneuver budget. The page and health response use
 `Cache-Control: no-store`. Built JS/CSS/favicon assets return
-200; unknown API paths return 404 rather than the HTML page.
+200; unknown API paths return 404 rather than the HTML page. Check the
+standalone `/torch-designer/` page, its assets, the read-only test burn, and
+the links between it and System Lab.
 
 The pre-change Serve configuration was saved locally as
 `%LOCALAPPDATA%\Quasar\host\tailscale-serve-before.json`. To remove **only** the
@@ -108,6 +110,12 @@ The hosted game keeps data in `%LOCALAPPDATA%\Quasar\saves` by default,
 separate from the release and deployment metadata. Development uses
 `%LOCALAPPDATA%\Quasar\dev-saves`. Check any configured data-root override
 before publishing and keep it outside the checkout and the release directory.
+
+The host keeps its Web Push signing keys and iPhone subscriptions in
+`arrival-notifications.json` under the same data root. Include it in private
+host backups and keep it out of Git. The ASP.NET process sends outbound HTTPS
+to Apple's Web Push endpoints under `*.push.apple.com`. Quasar continues to
+serve the game over its existing private HTTPS route.
 
 1. Record the active release and copy `deployment.json` to a separate file
    before publishing. Check that time is stopped and the latest checkpoint
@@ -172,7 +180,7 @@ the controls and inspector available and offers **Reload display**.
 
 Continuous play starts on Play and processes at most four selected intervals per
 second. The host runs through browser reloads and disconnects, and pauses on Stop
-or a game interrupt. See the current process lifetime section for the running
+or ship arrival. See the current process lifetime section for the running
 launcher.
 
 ## Requested reset and later acceptance (2026-11-08)

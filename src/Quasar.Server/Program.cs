@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Lib.Net.Http.WebPush;
+using Quasar.Server.Notifications;
 using Quasar.Server.Persistence;
 
 namespace Quasar.Server;
@@ -26,12 +28,23 @@ public static class QuasarHost
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<CheckpointKind>(JsonNamingPolicy.CamelCase));
         });
         builder.Services.AddHostedService<CampaignRunner>();
+        builder.Services.AddSingleton(new ArrivalSubscriptionStore(Path.Combine(paths.DataRoot, "arrival-notifications.json")));
+        builder.Services.AddHttpClient<PushServiceClient>(client => client.Timeout = TimeSpan.FromSeconds(8))
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                AllowAutoRedirect = false,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(10)
+            })
+            .RemoveAllLoggers();
+        builder.Services.AddSingleton<ArrivalNotifications>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<ArrivalNotifications>());
         builder.Services.AddHostedService<LabRunner>();
         var app = builder.Build();
 
         app.Use(async (context, next) =>
         {
-            if (context.Request.Path == "/" || context.Request.Path == "/index.html" || context.Request.Path.StartsWithSegments("/api"))
+            if (context.Request.Path == "/" || context.Request.Path == "/index.html"
+                || context.Request.Path.StartsWithSegments("/torch-designer") || context.Request.Path.StartsWithSegments("/api"))
             {
                 context.Response.Headers.CacheControl = "no-store";
             }
@@ -130,6 +143,8 @@ public static class QuasarHost
         });
 
         app.MapCampaignEndpoints();
+        app.MapArrivalNotificationEndpoints();
+        app.MapTorchDesigner();
         return app;
     }
 }

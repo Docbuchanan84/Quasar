@@ -1,16 +1,18 @@
 using Quasar.Simulation;
+using Quasar.Server.Notifications;
 
 namespace Quasar.Server;
 
 public sealed record LabCommand(string InstanceId, long Revision, string ClientId, string Operation,
     int? DurationSeconds = null, string? Mode = null, string? DestinationId = null, int? FlightSeconds = null,
-    string? PreviewId = null, string? BurnDirection = null, int? BurnSeconds = null);
+    string? PreviewId = null, string? BurnDirection = null, int? BurnSeconds = null, string? ShipId = null,
+    FusionTorchDesign? TorchDesign = null);
 public sealed record CoursePreview(string? PreviewId, string InstanceId, long Revision, string ShipId,
     string DestinationId, double SampledDistanceKm, string[] Warnings, TrajectoryDisplay Trajectory);
 public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePreview? LowestManeuverCost, string[] InfeasibleReasons,
     CoursePreview? Tuned = null);
 public sealed record SessionSnapshot(string InstanceId, long Revision, bool Running, string StopReason,
-    int DurationSeconds, string Mode, LabSnapshot World, LabEvent? Interrupt);
+    int DurationSeconds, string Mode, LabSnapshot World, LabEvent? Interrupt, LabEvent? FlightNotice = null);
 
 /// <summary>The host is the only writer. This gate also makes polling snapshots internally consistent.</summary>
 public sealed partial class LabSession(bool startWithWorld = true)
@@ -27,6 +29,7 @@ public sealed partial class LabSession(bool startWithWorld = true)
     private int durationSeconds = 3600;
     private string mode = "once";
     private LabEvent? interrupt;
+    private LabEvent? flightNotice;
     public static readonly int[] Durations = [1, 5, 30, 60, 3600, 86400, 432000, 1296000, 2592000];
 
     public SessionSnapshot Snapshot()
@@ -124,6 +127,18 @@ public sealed partial class LabSession(bool startWithWorld = true)
             : ["Bounded search with finite burns and automatic gravity transitions. Faster or cheaper routes may exist."], trajectory);
     }
 
+    internal TorchFitStatus GetTorchFitStatus()
+    {
+        lock (gate)
+        {
+            var reason = world is null ? "Create or load a campaign in the System Lab to fit a drive."
+                : switchingCampaign || shuttingDown ? "The campaign is changing. Try again in a moment."
+                : running ? "Stop time processing in the System Lab before fitting a drive."
+                : world.TorchFitBlockReason();
+            return new(instanceId, revision, reason);
+        }
+    }
+
     public SessionSnapshot Execute(LabCommand command)
     {
         lock (gate)
@@ -146,6 +161,7 @@ public sealed partial class LabSession(bool startWithWorld = true)
                 case "play":
                     if (running) throw new InvalidOperationException("Already processing time.");
                     interrupt = null;
+                    flightNotice = null;
                     running = true;
                     stopReason = "Processing";
                     break;
@@ -196,6 +212,18 @@ public sealed partial class LabSession(bool startWithWorld = true)
                     MarkWorldChanged(significant: true);
                     stopReason = "Exploration torch fitted — ready to plot a course";
                     break;
+                case "debug-refuel":
+                    if (running) throw new InvalidOperationException("Stop time processing before refuelling.");
+                    if (!activeWorld.DebugRefuel(command.ShipId ?? "")) return Read();
+                    MarkWorldChanged(significant: true);
+                    stopReason = "Propellant tank refilled";
+                    break;
+                case "fit-designed-torch":
+                    if (running) throw new InvalidOperationException("Stop time processing before fitting a drive.");
+                    activeWorld.FitDesignedTorch(command.TorchDesign ?? throw new ArgumentException("Provide a torch design."));
+                    MarkWorldChanged(significant: true);
+                    stopReason = "Fusion torch fitted — ready to plot a course";
+                    break;
                 default: throw new ArgumentException("Unknown command.");
             }
             revision++;
@@ -204,31 +232,47 @@ public sealed partial class LabSession(bool startWithWorld = true)
         }
     }
 
-    public void Tick()
+    public void Tick() => TickWithArrival();
+
+    internal string? TickWithArrival()
     {
         lock (gate)
         {
-            if (!running || switchingCampaign || shuttingDown) return;
+            if (!running || switchingCampaign || shuttingDown) return null;
+            string? arrivalNotice = null;
             try
             {
                 var activeWorld = RequireWorld();
                 var before = activeWorld.ElapsedTicks;
-                var interrupted = activeWorld.Advance(TimeSpan.FromSeconds(durationSeconds));
-                if (interrupted || activeWorld.ElapsedTicks != before) MarkWorldChanged(significant: interrupted);
-                if (interrupted || mode == "once")
+                var previousEventSequence = activeWorld.LastEvent.Sequence;
+                var destination = activeWorld.CourseDestinationName;
+                var deadline = checked(before + durationSeconds * TimeSpan.TicksPerSecond);
+                // Movement still resolves each boundary at its own tick. Spend the rest of this interval after a notice.
+                while (activeWorld.ElapsedTicks < deadline
+                    && activeWorld.Advance(TimeSpan.FromTicks(deadline - activeWorld.ElapsedTicks)))
+                {
+                    var flightEvent = activeWorld.LastEvent;
+                    if (flightEvent.ArrivalLabel is not null)
+                    {
+                        interrupt = flightEvent;
+                        break;
+                    }
+                    flightNotice = flightEvent;
+                }
+
+                var recordedEvent = activeWorld.LastEvent.Sequence != previousEventSequence;
+                if (recordedEvent || activeWorld.ElapsedTicks != before) MarkWorldChanged(significant: recordedEvent);
+                if (interrupt is not null || mode == "once")
                 {
                     running = false;
-                    interrupt = interrupted ? activeWorld.LastEvent : null;
-                    stopReason = interrupt?.ArrivalLabel ?? interrupt?.Kind switch
+                    stopReason = interrupt?.ArrivalLabel ?? "Advance complete";
+                    if (interrupt is { } arrival)
                     {
-                        null => "Advance complete",
-                        "burn-complete" => "Burn complete — coasting",
-                        "burn-exhausted" => "Propellant exhausted — coasting",
-                        "course-departure-cutoff" => "Departure burn complete — coasting",
-                        "course-braking-start" => "Braking burn ready — resume to execute",
-                        "patch" or "primary-change" => "Gravity primary changed — coasting",
-                        _ => "Game event — awaiting orders"
-                    };
+                        arrivalNotice = destination is null ? arrival.Message
+                            : arrival.Kind == "course-orbit-inserted"
+                                ? $"Pathfinder entered orbit at {destination}."
+                                : $"Pathfinder arrived at {destination}.";
+                    }
                 }
             }
             catch (OverflowException)
@@ -238,10 +282,12 @@ public sealed partial class LabSession(bool startWithWorld = true)
             }
             revision++;
             previews.Clear();
+            return arrivalNotice;
         }
     }
 
-    private SessionSnapshot Read() => new(instanceId, revision, running, stopReason, durationSeconds, mode, RequireWorld().Snapshot(), interrupt);
+    private SessionSnapshot Read() => new(instanceId, revision, running, stopReason, durationSeconds, mode,
+        RequireWorld().Snapshot(), interrupt, flightNotice);
 
     private static void RequireLegacyOrderAllowed(SystemLab world)
     {
@@ -250,11 +296,14 @@ public sealed partial class LabSession(bool startWithWorld = true)
     }
 }
 
-public sealed class LabRunner(LabSession session) : BackgroundService
+internal sealed class LabRunner(LabSession session, ArrivalNotifications notifications) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(250));
-        while (await timer.WaitForNextTickAsync(stoppingToken)) session.Tick();
+        while (await timer.WaitForNextTickAsync(stoppingToken))
+        {
+            if (session.TickWithArrival() is { } arrival) notifications.Enqueue(arrival);
+        }
     }
 }

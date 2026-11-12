@@ -159,7 +159,8 @@ The first crossing interrupts advancement and seeds the next conic with the
 same inertial position and velocity. Earliest time wins in overlapping
 spheres. At the same tick, exit takes precedence over entry, child IDs break
 entry ties, and simultaneous events across ships are processed together.
-Resume after each interrupt to reach the original requested end time.
+The System Lab host continues through these movement boundaries to reach the
+requested end time unless a ship arrives.
 
 The scanner works in windows of up to 30 days. Read-only predictions allow
 30 days inclusive from the current tick for an eligible coast, or from the
@@ -224,11 +225,11 @@ periapsis. Tight-orbit departures use a six-variable damped shooting solve.
 Every accepted course is rebuilt forward and must meet the same 10 m / 1 mm/s
 arrival tolerances. Automatic gravity-assist optimization remains outside scope.
 
-The departure cutoff, braking ignition, and final cutoff are separate clock
-interrupts. At final cutoff the ship coasts from its integrated state and the
-clock and history identify the completed approach or insertion. Cancelling
-or replacing the course uses the current position, velocity, and remaining
-propellant. Gravity changes also interrupt Continuous processing. See
+The departure cutoff, braking ignition, and gravity changes appear in the
+flight notices as the clock advances. At final cutoff the ship coasts from
+its integrated state and the clock pauses on the completed approach or
+insertion. Cancelling or replacing the course uses the current position,
+velocity, and remaining propellant. See
 [checkpoint version 7](SIMULATION_STATE.md).
 
 ## Performance and validation
@@ -236,8 +237,9 @@ propellant. Gravity changes also interrupt Continuous processing. See
 - Solves have bounded scalar iterations and endpoint verification. A planner memo
   holds at most 256 single-leg requests for one immutable catalogue. Patched plans
   are reusable immutable results but are not automatically memoized.
-- Position queries locate a segment in O(log segments), then evaluate one prepared
-  conic and primary ephemeris. They never solve a trajectory or integrate frames.
+- Position queries reuse the solved trajectory. Coast queries evaluate a
+  prepared conic and the primary ephemeris. Powered queries integrate from
+  the start of the selected burn segment.
 - The explicit event queue handles committed transfers and burn cutoff.
   Automatic SOI detection also checks the active free coasts. Its work depends
   on how many boundaries survive radial and time-interval pruning. Near-grazing
@@ -275,6 +277,63 @@ coast, catalogue change, or restore. A bounded cache of parent-relative body
 positions shared across ships within one advance is a separate option if
 profiling shows repeated ephemeris evaluation.
 
+### Repeated fleet travel benchmark
+
+Run the production finite-burn planner and movement engine directly in a fresh,
+in-memory Solar System. The command takes ship count, planner worker count, and
+number of measured runs. Each process warms up on a small fleet first.
+
+```powershell
+. .\scripts\Use-DevEnvironment.ps1
+dotnet run -c Release --file scripts/Benchmark-FleetTravel.cs -- 1000 12 3
+```
+
+The ships start at distinct positions near Earth Staryard with the stock
+exploration torch. They fly to O’Neill Habitat, back to Earth Staryard, then
+to O’Neill Habitat again. Flight times are locked near 12 hours and staggered
+by ship. The fleet regroups at the last arrival of each leg and carries fuel
+forward. Planning workers evaluate captured departure inputs concurrently.
+Course commits and clock advancement run on one writer. The query stage
+samples position and velocity at 1,000 shared timestamps spread over the
+three legs. It mostly samples analytical coasts. Timings cover calculations
+inside the process and exclude startup, HTTP, browser rendering, and saves.
+
+Windows x64 Release, .NET 10.0.14, SDK 10.0.403, Intel Core i5-11600KF
+(6 cores, 12 logical processors). Three samples per row, medians in milliseconds.
+Each sample verified 3,000 finite-burn arrivals and processed 9,000 events
+across 1.53469 simulated days, with an identical query checksum across runs.
+
+| Implementation | Planner workers | Plan 3,000 courses | Commit | Process events | Query 1M states |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Before optimization | 1 | 9,947 | 4.54 | 665 | 398 |
+| Before optimization | 6 | 1,899 | 5.14 | 689 | 435 |
+| After optimization | 1 | 10,606 | 3.57 | 107 | 411 |
+| After optimization | 6 | 1,892 | 4.25 | 100 | 412 |
+| After optimization | 12 | 1,400 | 4.40 | 115 | 439 |
+
+With six workers, allocated bytes over the advance stage fell from 1,579.13
+MiB to 2.84 MiB. Query allocations fell from 83.92 MiB to 0.08 MiB. These are
+cumulative allocations, separate from peak memory. The immutable celestial
+catalogue now indexes orbiting gravity bodies by primary. Committed finite
+courses reuse their event schedule, and coast/burn queries select their segment
+without allocating a predicate. The six-worker planning median was similar
+before and after these changes. Additional planner workers reduced batch wall
+time for this fixture.
+
+At 10,000 ships and 12 planner workers, three further samples each verified
+30,000 arrivals, 90,000 events in 70,800 advances, and 10 million queries.
+The median was 12.99 s for planning, 66 ms for commit, 9.62 s for advances,
+and 6.44 s for queries. The event stage grew about 84 times for 10 times the
+ships. Each advance still scans the fleet for ships eligible for free-coast
+gravity checks. Staggered events multiply the number of scans. This makes
+the scan a target for the next scheduling experiment.
+
+The fixture uses local station transfers at specified durations. Unlocked
+interplanetary planning, gravity handoffs, and long powered state queries need
+their own workloads.
+
+### Regression checks
+
 Tests cover independent circular geometry, energy/angular-momentum conservation,
 reverse hyperbolic propagation, both arcs, future interception, translating
 primaries, deterministic queries, preview isolation, stale state/catalogue
@@ -290,4 +349,4 @@ node src/Quasar.Client/scripts/test-trajectory-api.mjs http://127.0.0.1:5093
 The live Game Design Record was read on 8 November 2026, including Project
 overview, Time behavior, and Control, orders and delegation. Edit tooling was
 exposed; writes were not tested and no shared-document edits were performed.
-Propulsion-aware course feasibility remains open. See [the project plan](PROJECT_PLAN.md).
+For the later implementation, see [propulsion-aware courses](#propulsion-aware-courses).

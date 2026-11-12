@@ -69,6 +69,8 @@ public sealed partial class SystemLab
     public ICelestialPositionService CelestialPositions => celestialPositions;
     public long ElapsedTicks => movement.ElapsedTicks;
     public bool HasModeledPropulsion => movement.PropulsionOf(ShipId) is not null;
+    public string? CourseDestinationName => movement.CommittedPlan(ShipId)?.TargetBodyId is { } id
+        ? celestialPositions.Bodies[id].Name : null;
 
     public SystemLab() : this(ExplorationTorch()) { }
 
@@ -97,7 +99,7 @@ public sealed partial class SystemLab
         return lab;
     }
 
-    private SystemLab(MovementExecution movement)
+    internal SystemLab(MovementExecution movement)
     {
         this.movement = movement;
         celestialPositions = movement.Catalogue;
@@ -128,21 +130,22 @@ public sealed partial class SystemLab
     {
         if (flightSeconds is < 1 or > CourseSearch.MaximumSeconds)
             throw new ArgumentException("Flight time must be between one second and ten Julian years.");
-        var (state, departure, leg) = CaptureDeparture(destinationId);
+        var (state, departure, leg) = CaptureDeparture(ShipId, destinationId);
         leg = leg with { ArrivalTicks = checked(departure + (long)flightSeconds * TimeSpan.TicksPerSecond) };
         return maneuverBudget is { } budget && leg.PrimaryBodyId == SolarSystem.Sun
             ? planner.PlanWithFlyby(state, departure, leg, budget)
             : planner.Plan(new(state, departure, leg, maneuverBudget));
     }
 
-    private (CelestialState State, long Departure, TransferLeg Leg) CaptureDeparture(string destinationId, bool automatic = false)
+    private (CelestialState State, long Departure, TransferLeg Leg) CaptureDeparture(string shipId, string destinationId,
+        bool automatic = false)
     {
         if (!celestialPositions.Bodies.TryGetValue(destinationId, out var destination)
             || (!automatic && destination.Kind is not (CelestialBodyKind.Planet or CelestialBodyKind.Moon)))
             throw new ArgumentException("Choose a destination in this system.", nameof(destinationId));
-        if (movement.IsBurning(ShipId)) throw new InvalidOperationException("Cut thrust before plotting a course.");
+        if (movement.IsBurning(shipId)) throw new InvalidOperationException("Cut thrust before plotting a course.");
         var departure = ElapsedTicks;
-        var state = movement.StateAt(ShipId, departure);
+        var state = movement.StateAt(shipId, departure);
         if (state.PositionKm.DistanceTo(celestialPositions.GetState(destinationId, departure).PositionKm) < 1e-6)
             throw new InvalidOperationException("Already at that destination.");
         var primary = PrimaryId;
@@ -189,13 +192,21 @@ public sealed partial class SystemLab
     }
 
     internal static SpacecraftPropulsion ExplorationTorch() => new(8000,
-        new(1000, 3, 1.5, 300_000, 1_000_000, "torch-test"),
-        new(1000, 20_000, 20_000, "torch-test"));
+        FusionTorchDesigner.BuildEngine(FusionTorchDesign.Stock, out _),
+        new(1000, 20_000, 20_000, FusionTorchDesigner.ReactionMassId));
 
     public void FitExplorationTorch()
     {
         movement.RefitCoastingSpacecraft(ShipId, ExplorationTorch());
         Record("refit", "Pathfinder fitted the exploration torch and loaded 20,000 kg of reaction mass.");
+    }
+
+    public bool DebugRefuel(string shipId)
+    {
+        if (shipId != ShipId) throw new ArgumentException("Choose a spacecraft in this lab.", nameof(shipId));
+        if (!movement.RefillPropellant(shipId)) return false;
+        Record("refit", "Debug refuel filled Pathfinder's propellant tank.");
+        return true;
     }
 
     public LabEvent LastEvent => events[^1];

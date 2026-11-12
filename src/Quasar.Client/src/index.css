@@ -105,6 +105,16 @@ main {
   content: '●';
   margin-right: 7px;
 }
+.arrival-notifications {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-block: 0.75rem;
+}
+.arrival-notifications button {
+  min-height: 44px;
+}
 .time-console {
   display: flex;
   align-items: center;
@@ -336,6 +346,43 @@ main {
   background: #462b20;
   padding: 12px;
   font-size: 13px;
+}
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-block: 0.75rem;
+}
+.site-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: 0.8rem;
+  border: 1px solid #385062;
+  border-radius: 4px;
+  background: #152633;
+  color: #b4e2fa;
+  text-decoration: none;
+}
+.site-nav a:hover {
+  background: #243e50;
+  text-decoration: underline;
+}
+.site-nav a:focus-visible {
+  outline: 2px solid #87e4bd;
+  outline-offset: 3px;
+}
+.site-nav a[aria-current='page'] {
+  border-color: #85c9e2;
+  background: #234658;
+  color: #f0faff;
+  font-weight: 650;
+}
+.torch-designer-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: #b4e2fa;
 }
 .inspector summary,
 .history summary {

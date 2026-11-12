@@ -6,7 +6,7 @@ public sealed partial class MovementExecution
     private const long SearchWindow = 30 * TimeSpan.TicksPerDay;
     private readonly record struct CoastSample(CelestialState Local, Vector3d RelativePosition);
     private sealed record CoastPatch(long AtTicks, string Primary, TwoBodyTrajectory Coast);
-    private sealed record SphereBoundary(string BodyId, string NextPrimary, double RadiusKm, bool IsExit, double ChildAcceleration = 0);
+    private readonly record struct SphereBoundary(string BodyId, string NextPrimary, double RadiusKm, bool IsExit, double ChildAcceleration = 0);
 
     internal string PrimaryOf(string id) => spacecraft[id].Primary;
 
@@ -122,13 +122,33 @@ public sealed partial class MovementExecution
         if (through < from) return null;
         CoastPatch? chosen = null;
         var samples = 0;
-        foreach (var boundary in SphereBoundaries(coast, primary))
+        if (catalogue.Bodies[primary].ParentId is { } parent
+            && catalogue.Bodies[parent].GravitationalParameterKm3PerSecond2 > 0
+            && catalogue.GetEnvironment(primary).SphereOfInfluenceRadiusKm is { } sphere
+            && (coast.ApoapsisKm is not { } apoapsis || apoapsis >= sphere * 1.01))
+        {
+            if (ConsiderBoundary(new(primary, parent, sphere * 1.01, true)) is { } crossing) return crossing;
+        }
+        foreach (var child in catalogue.GravityChildren(primary))
         {
             // Exit precedes ordered child IDs, so only an earlier tick can replace the winner.
             if (chosen?.AtTicks == from) break;
+            var environment = catalogue.GetEnvironment(child.Id);
+            var entry = environment.SphereOfInfluenceRadiusKm!.Value * 0.99;
+            var orbit = child.Orbit!;
+            var periapsis = orbit.SemiMajorAxisKm * (1 - orbit.Eccentricity);
+            if (coast.PeriapsisKm > orbit.SemiMajorAxisKm * (1 + orbit.Eccentricity) + entry
+                || coast.ApoapsisKm < periapsis - entry) continue;
+            var acceleration = environment.RelativeGravitationalParameterKm3PerSecond2!.Value / periapsis / periapsis;
+            if (ConsiderBoundary(new(child.Id, child.Id, entry, false, acceleration)) is { } crossing) return crossing;
+        }
+        return chosen;
+
+        CoastPatch? ConsiderBoundary(SphereBoundary boundary)
+        {
             var limit = chosen is null ? through : chosen.AtTicks - 1;
             var radius = boundary.RadiusKm + (boundary.IsExit ? BoundaryToleranceKm : -BoundaryToleranceKm);
-            if (radius <= 0) continue;
+            if (radius <= 0) return null;
             var left = SampleAt(from);
             var right = SampleAt(limit);
             var cursor = from;
@@ -166,6 +186,7 @@ public sealed partial class MovementExecution
                     allowCurrent = false;
                 }
             }
+            return null;
 
             CoastSample SampleAt(long ticks)
             {
@@ -208,29 +229,6 @@ public sealed partial class MovementExecution
                 return FirstOnSide(low, lowSample, mid, midSample, outside)
                     ?? FirstOnSide(mid, midSample, high, highSample, outside);
             }
-        }
-        return chosen;
-    }
-
-    private IEnumerable<SphereBoundary> SphereBoundaries(TwoBodyTrajectory coast, string primary)
-    {
-        if (catalogue.Bodies[primary].ParentId is { } parent
-            && catalogue.Bodies[parent].GravitationalParameterKm3PerSecond2 > 0
-            && catalogue.GetEnvironment(primary).SphereOfInfluenceRadiusKm is { } sphere
-            && (coast.ApoapsisKm is not { } apoapsis || apoapsis >= sphere * 1.01))
-            yield return new(primary, parent, sphere * 1.01, true);
-
-        foreach (var child in catalogue.Bodies.Values.Where(body => body.ParentId == primary).OrderBy(body => body.Id, StringComparer.Ordinal))
-        {
-            if (catalogue.GetEnvironment(child.Id).SphereOfInfluenceRadiusKm is not { } radius
-                || child.GravitationalParameterKm3PerSecond2 <= 0) continue;
-            var entry = radius * 0.99;
-            if (child.Orbit is not { } orbit) continue;
-            var periapsis = orbit.SemiMajorAxisKm * (1 - orbit.Eccentricity);
-            if (coast.PeriapsisKm > orbit.SemiMajorAxisKm * (1 + orbit.Eccentricity) + entry
-                || coast.ApoapsisKm < periapsis - entry) continue;
-            var mu = catalogue.GetEnvironment(child.Id).RelativeGravitationalParameterKm3PerSecond2!.Value;
-            yield return new(child.Id, child.Id, entry, false, mu / periapsis / periapsis);
         }
     }
 }

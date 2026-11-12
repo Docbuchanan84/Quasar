@@ -1,4 +1,18 @@
-# Recent agent integration — 8 November 2026
+# Quasar integration record
+
+## 11 November 2026 — Phone release consolidation
+
+The integration starts from the exact privately played runtime and retains
+the fleet benchmark ([PR #40](https://github.com/Docbuchanan84/Quasar/pull/40)),
+arrival push and arrival-only pauses ([PR #42](https://github.com/Docbuchanan84/Quasar/pull/42)),
+debug refill ([PR #43](https://github.com/Docbuchanan84/Quasar/pull/43)), and
+Torch Designer with shared navigation ([PR #45](https://github.com/Docbuchanan84/Quasar/pull/45)).
+It incorporates the approved engineering direction
+([PR #39](https://github.com/Docbuchanan84/Quasar/pull/39)) and historical
+release notes. The [development log](DEVLOG.md) and
+[designer handoff](DESIGNER_HANDOFF.md) describe the current release.
+
+## 8 November 2026 — Agents 1–5
 
 The owner explicitly requested coherent merging of Agents 1–5 and authorized
 adjustments for consistency. This prerequisite consolidation contains:

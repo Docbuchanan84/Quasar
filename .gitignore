@@ -20,6 +20,8 @@ output/playwright/
 /dev-saves/
 last-played
 .last-played-*
+arrival-notifications.json
+arrival-notifications.json.*.tmp
 *.user
 *.suo
 .env
