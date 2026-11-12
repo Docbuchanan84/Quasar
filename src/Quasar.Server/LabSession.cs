@@ -4,7 +4,7 @@ namespace Quasar.Server;
 
 public sealed record LabCommand(string InstanceId, long Revision, string ClientId, string Operation,
     int? DurationSeconds = null, string? Mode = null, string? DestinationId = null, int? FlightSeconds = null,
-    string? PreviewId = null, string? BurnDirection = null, int? BurnSeconds = null);
+    string? PreviewId = null, string? BurnDirection = null, int? BurnSeconds = null, FusionTorchDesign? TorchDesign = null);
 public sealed record CoursePreview(string? PreviewId, string InstanceId, long Revision, string ShipId,
     string DestinationId, double SampledDistanceKm, string[] Warnings, TrajectoryDisplay Trajectory);
 public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePreview? LowestManeuverCost, string[] InfeasibleReasons,
@@ -124,6 +124,18 @@ public sealed partial class LabSession(bool startWithWorld = true)
             : ["Bounded search with finite burns and automatic gravity transitions. Faster or cheaper routes may exist."], trajectory);
     }
 
+    internal TorchFitStatus GetTorchFitStatus()
+    {
+        lock (gate)
+        {
+            var reason = world is null ? "Create or load a campaign in the System Lab to fit a drive."
+                : switchingCampaign || shuttingDown ? "The campaign is changing. Try again in a moment."
+                : running ? "Stop time processing in the System Lab before fitting a drive."
+                : world.TorchFitBlockReason();
+            return new(instanceId, revision, reason);
+        }
+    }
+
     public SessionSnapshot Execute(LabCommand command)
     {
         lock (gate)
@@ -195,6 +207,12 @@ public sealed partial class LabSession(bool startWithWorld = true)
                     activeWorld.FitExplorationTorch();
                     MarkWorldChanged(significant: true);
                     stopReason = "Exploration torch fitted — ready to plot a course";
+                    break;
+                case "fit-designed-torch":
+                    if (running) throw new InvalidOperationException("Stop time processing before fitting a drive.");
+                    activeWorld.FitDesignedTorch(command.TorchDesign ?? throw new ArgumentException("Provide a torch design."));
+                    MarkWorldChanged(significant: true);
+                    stopReason = "Fusion torch fitted — ready to plot a course";
                     break;
                 default: throw new ArgumentException("Unknown command.");
             }

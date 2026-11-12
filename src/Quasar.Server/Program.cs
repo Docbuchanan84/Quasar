@@ -31,7 +31,8 @@ public static class QuasarHost
 
         app.Use(async (context, next) =>
         {
-            if (context.Request.Path == "/" || context.Request.Path == "/index.html" || context.Request.Path.StartsWithSegments("/api"))
+            if (context.Request.Path == "/" || context.Request.Path == "/index.html"
+                || context.Request.Path.StartsWithSegments("/torch-designer") || context.Request.Path.StartsWithSegments("/api"))
             {
                 context.Response.Headers.CacheControl = "no-store";
             }
@@ -130,6 +131,7 @@ public static class QuasarHost
         });
 
         app.MapCampaignEndpoints();
+        app.MapTorchDesigner();
         return app;
     }
 }

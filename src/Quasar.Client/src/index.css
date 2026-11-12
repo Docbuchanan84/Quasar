@@ -337,6 +337,12 @@ main {
   padding: 12px;
   font-size: 13px;
 }
+.torch-designer-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: #b4e2fa;
+}
 .inspector summary,
 .history summary {
   cursor: pointer;

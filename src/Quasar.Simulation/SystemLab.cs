@@ -189,8 +189,8 @@ public sealed partial class SystemLab
     }
 
     internal static SpacecraftPropulsion ExplorationTorch() => new(8000,
-        new(1000, 3, 1.5, 300_000, 1_000_000, "torch-test"),
-        new(1000, 20_000, 20_000, "torch-test"));
+        FusionTorchDesigner.BuildEngine(FusionTorchDesign.Stock, out _),
+        new(1000, 20_000, 20_000, FusionTorchDesigner.ReactionMassId));
 
     public void FitExplorationTorch()
     {

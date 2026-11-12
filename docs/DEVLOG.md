@@ -1,5 +1,14 @@
 # Development log
 
+## 2026-11-11 — Fusion Torch Designer
+
+- Added a standalone page for designing a fusion drive with jet power,
+  exhaust speed and nozzle diameter. The page explains their effects and
+  compares the draft with Pathfinder’s stock drive in a simulated test burn.
+- Campaign refits preserve the installed tank and remaining reaction mass.
+  The existing checkpoint records the realized drive and the refit event.
+  See the [designer guide](TORCH_DESIGNER.md) and [issue #44](https://github.com/Docbuchanan84/Quasar/issues/44).
+
 ## 2026-11-10 — Courses across gravity systems
 
 - The owner clarified that the computer must plan between locations across
