@@ -1,5 +1,16 @@
 # Development log
 
+## 2026-11-11 — Consolidated phone release
+
+- Consolidated the privately played fleet runtime, arrival notifications and
+  clock behavior, debug refuel, Torch Designer, and shared navigation for
+  release from `main`. Included the approved parametric engineering spec
+  and the [designer handoff](DESIGNER_HANDOFF.md).
+- The owner’s iPhone Lock Screen screenshot confirmed delivery of Quasar’s
+  arrival alert for Pathfinder at Earth. Torch Designer layout and navigation
+  were checked in a phone-sized browser. The fitted drive survived a
+  disposable campaign restart and flew an Earth approach.
+
 ## 2026-11-11 — Fusion Torch Designer
 
 - Added a standalone page for designing a fusion drive with jet power,
@@ -10,6 +21,16 @@
   See the [designer guide](TORCH_DESIGNER.md) and [issue #44](https://github.com/Docbuchanan84/Quasar/issues/44).
 - Added shared top navigation with a current-page indicator for System Lab
   and Torch Designer.
+
+## 2026-11-11 — Arrival-only pauses, iPhone alerts, and debug refuel
+
+- The clock consumes the remaining interval across burn cutoffs, braking,
+  and gravity events. Only arrivals pause automatically. Those other events
+  are recorded and shown as flight notices. Opt-in iPhone Web Push sends an
+  alert after the host pauses at arrival. See [PR #42](https://github.com/Docbuchanan84/Quasar/pull/42).
+- **Debug refuel** fills the installed tank while the ship is paused and
+  coasting. A disposable campaign verified the refill through a restart.
+  See [PR #43](https://github.com/Docbuchanan84/Quasar/pull/43).
 
 ## 2026-11-10 — Headless 1,000-ship travel benchmark
 
@@ -26,7 +47,9 @@
 - The 10,000-ship scale run verified 30,000 arrivals and 10 million queries.
   Event processing reached 9.62 s median with 70,800 staggered advances.
   The next scheduling experiment should target the repeated fleet scans for
-  potential free-coast gravity changes.
+  potential free-coast gravity changes. [Issue #41](https://github.com/Docbuchanan84/Quasar/issues/41)
+  tracks that follow-up. The benchmark build was also published to the private
+  preview with a verified backup and an exact paused campaign restore.
 
 ## 2026-11-10 — Courses across gravity systems
 
@@ -100,6 +123,10 @@
 
 ## 2026-11-10 — Propulsion-aware automatic courses
 
+- The private release of `65def4c` verified a restored v5 legacy course, a
+  disposable finite Earth approach, its 10.141 kg reserve warning, and the
+  advisory fixed-duration endpoint. The stopped save directory was backed up.
+  Merged-main checks passed 250 .NET and 11 client tests.
 - [Issue #28](https://github.com/Docbuchanan84/Quasar/issues/28) makes automatic
   course confirmation depend on the installed engine, current mass and fuel,
   and forward verification of the requested arrival state.
@@ -168,6 +195,9 @@
 
 ## 2026-11-10 — Continuous play through browser disconnects
 
+- Private release `347acc4` restored the paused checkpoint. In a disposable
+  campaign, Continuous advanced 32 simulated seconds over eight wall-clock
+  seconds with Chromium closed. Stop held the clock after reopening.
 - The host advances Continuous play through phone lock, tab closure, and lost
   connections. Stop from a connected browser or a game interrupt pauses it.
   Once still advances one selected interval, with interrupts able to end it early.
@@ -212,6 +242,8 @@
 
 ## 2026-11-09 — System object tree
 
+- Private release `58c8a6b` verified paused campaign restoration and tree
+  expansion, station selection, and collapse over private HTTPS in Chromium.
 - Replaced the object grid with a collapsible tree based on the campaign's
   orbital hierarchy. Planet rows run from Mercury to Neptune by orbital size.
   Moons stay with their planets, stations appear under Constructed, and small

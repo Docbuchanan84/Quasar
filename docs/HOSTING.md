@@ -90,7 +90,9 @@ fresh browser tab and check **Plot Course** or the read-only automatic preview
 endpoint while time processing is stopped. Route availability depends on the
 current departure state and maneuver budget. The page and health response use
 `Cache-Control: no-store`. Built JS/CSS/favicon assets return
-200; unknown API paths return 404 rather than the HTML page.
+200; unknown API paths return 404 rather than the HTML page. Check the
+standalone `/torch-designer/` page, its assets, the read-only test burn, and
+the links between it and System Lab.
 
 The pre-change Serve configuration was saved locally as
 `%LOCALAPPDATA%\Quasar\host\tailscale-serve-before.json`. To remove **only** the

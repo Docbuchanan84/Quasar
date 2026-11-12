@@ -53,9 +53,10 @@ Choose **Continue** inside Load Game to recover the latest readable save.
 See the [campaign workflow](docs/CAMPAIGN_LIFECYCLE.md) for first run,
 confirmation, and recovery.
 
-Open **Torch Designer** from the top navigation or Pathfinder’s Propulsion panel to compare fusion
-drives in a test burn or fit a validated design to the campaign ship. See the
-[Torch Designer guide](docs/TORCH_DESIGNER.md).
+Open **Torch Designer** from the top navigation or Pathfinder’s Propulsion
+panel to compare fusion drives in a test burn or fit a validated design to the
+campaign ship. **Debug refuel** fills the installed tank while paused and
+coasting. See the [Torch Designer guide](docs/TORCH_DESIGNER.md).
 
 ## Run and verify
 
@@ -77,6 +78,12 @@ checks. See [development setup](docs/DEVELOPMENT_SETUP.md) and the disposable
 [course planning](docs/COURSE_PLOTTING.md#verification) browser checks.
 
 ## Project records
+
+- [Parametric engineering designers](docs/PARAMETRIC_ENGINEERING_DESIGN.md)
+  documents the approved engineering and teaching direction behind the
+  Fusion Torch Designer.
+- [Designer handoff](docs/DESIGNER_HANDOFF.md) covers the playable workflow,
+  the first slice’s design decisions, and the questions for the next slice.
 
 - [System Lab](docs/SYSTEM_LAB.md) covers the clock, movement, and HTTP contract.
 - [Course plotting](docs/COURSE_PLOTTING.md) and [map navigation](docs/MAP_NAVIGATION.md)

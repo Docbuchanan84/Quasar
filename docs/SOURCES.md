@@ -7,6 +7,9 @@
 - `docs/PROJECT_PLAN.md`: incremental milestones.
 - `docs/DEVLOG.md`: dated development results and validation.
 - `docs/SYSTEM_LAB.md` and `docs/COURSE_PLOTTING.md`: current gameplay and API contracts.
+- `docs/TORCH_DESIGNER.md`, `docs/PARAMETRIC_ENGINEERING_DESIGN.md`, and
+  `docs/DESIGNER_HANDOFF.md`: the playable designer, approved engineering
+  direction, and current review questions.
 - `docs/AGENT_INTEGRATION.md`: source branches and merged release history.
 - Code, tests, pull requests, and CI: implemented behavior and its verification.
 - `docs/MOBILE_AND_REMOTE_ACCESS.md`: owner feedback, screenshot observations,

@@ -2,11 +2,17 @@
 
 ## Current validation
 
-The owner gave positive feedback after the automatic course planner reached
-the private preview. A portrait Chromium check against that endpoint verified
-destination selection, the maneuver budget control, and both route choices.
-End-to-end order and arrival, 3D, save/load, and reconnect still need explicit
-physical-device checks. See the [development log](DEVLOG.md) for release history.
+The owner supplied an iPhone Lock Screen screenshot on 11 November 2026
+showing Quasar’s alert for Pathfinder arriving at Earth and the game pausing.
+The screenshot confirms push delivery on a physical device. The owner’s
+original is private.
+
+A 393 px Chromium check on the private site verified navigation between the
+System Lab and Torch Designer, the designer’s test burn, and its fit
+availability. The fit, checkpoint reload, and flight on the new drive were
+verified on disposable campaigns. Physical iPhone designer, 3D, save/load,
+reconnect, and full end-to-end order checks remain open. See the
+[development log](DEVLOG.md) for release history.
 
 ## Initial phone evidence — 8 November 2026
 

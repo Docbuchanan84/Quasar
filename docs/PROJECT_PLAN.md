@@ -18,6 +18,7 @@ automatic course planning, interactive maps, and persistent campaigns. The
 | Propulsion 1/4 | Single engine and tank, starting exploration torch, read-only Pathfinder performance, and compatible v3 checkpoints |
 | Propulsion 2/4 | Finite burns, fuel depletion notices, and active-burn v4 checkpoints |
 | Engineering prototype | [Fusion Torch Designer](TORCH_DESIGNER.md), comparative test burns, and compatible Pathfinder campaign refits |
+| Testing controls | Debug refill of the selected ship’s installed propellant tank |
 | Navigation 1/2 | Orbital target states, automatic coast primary changes, and checkpoint v5 |
 | Campaigns | SQLite checkpoints, autosave, startup restore, and player-facing New Game, Save Game, Named Save, and Load Game |
 
@@ -34,10 +35,10 @@ ship. Existing Helios campaigns retain their original world when loaded.
 
 ## Next validation
 
-Extend the initial phone play check to an end-to-end course order and arrival,
-both maps, and campaign save/load. Record iOS/browser versions. Cover gestures,
-landscape, background/reconnect, and cellular-only access separately.
-Confirm arrival push delivery with Quasar closed and the iPhone locked.
+Lock Screen arrival delivery has been confirmed by the owner. Validate the
+designer’s controls, test burn and refit flow on the physical iPhone. Keep
+explicit coverage for both maps, save/load, reconnect, landscape and cellular
+access. Record the iOS and browser versions alongside device evidence.
 
 ## Persistence sequence
 
@@ -57,8 +58,13 @@ Confirm arrival push delivery with Quasar closed and the iPhone locked.
 
 ## Open implementation and design work
 
-- Cross-primary finite courses, fleets, collision,
-  docking, and player-facing moving-target/waypoint selection remain open. The
+- Extend the first torch prototype toward the approved cross-domain engineering
+  direction. Component architecture, reactor and thermal behavior, and a design
+  library remain open. See the [design contract](PARAMETRIC_ENGINEERING_DESIGN.md)
+  and [designer handoff](DESIGNER_HANDOFF.md).
+
+- Player-facing fleets, collision, docking, and moving-target or waypoint
+  selection remain open. The
   headless trajectory planner already supports moving-target interception.
 - Permanent scheduling, variable fidelity, look-ahead, cross-platform determinism,
   terrain, and sustained large-world and phone performance require further work.

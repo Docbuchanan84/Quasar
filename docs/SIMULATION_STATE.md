@@ -56,6 +56,9 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   History distinguishes a completed approach, an orbital insertion, and a
   legacy body-center arrival. Older v6 histories used one kind for both finite
   outcomes. Restore resolves those from the original generated event text.
+- A Torch Designer fit saves the realized drive in the existing propulsion
+  fields. Debug refuel updates the existing tank quantity. Both use the
+  existing refit history entry and checkpoint format.
 - Export is a detached immutable capture. Bodies and ships are exported in
   ordinal ID order. History, segments, and burns retain their execution order.
   Use the same single-writer synchronization as for world commands. Encoding can

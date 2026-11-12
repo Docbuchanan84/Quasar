@@ -349,4 +349,4 @@ node src/Quasar.Client/scripts/test-trajectory-api.mjs http://127.0.0.1:5093
 The live Game Design Record was read on 8 November 2026, including Project
 overview, Time behavior, and Control, orders and delegation. Edit tooling was
 exposed; writes were not tested and no shared-document edits were performed.
-Propulsion-aware course feasibility remains open. See [the project plan](PROJECT_PLAN.md).
+For the later implementation, see [propulsion-aware courses](#propulsion-aware-courses).

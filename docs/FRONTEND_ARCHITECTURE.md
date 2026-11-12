@@ -61,7 +61,8 @@ Departure and future arrival markers use planned positions. See [System Lab cont
   failed lazy imports after deployment so clock/orders/inspection remain available.
 - The UI refreshes server state on reconnect/resume and never resends an uncertain
   command automatically. The host continues a running simulation while the browser
-  is disconnected and publishes any game interrupt in the next snapshot.
+  is disconnected and publishes the arrival pause and latest flight notice in
+  the next snapshot.
 
 Keep these boundaries as further views are added. Layer geography, infrastructure,
 borders, resources, and military overlays onto deliberate view contracts when

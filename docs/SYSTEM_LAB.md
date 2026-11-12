@@ -109,6 +109,11 @@ scheduled cutoff as a decimal tick string during an active burn.
 coasting. The operation preserves position, velocity and time and is recorded
 in campaign history. See the [torch fixture](SOLAR_SYSTEM.md#pathfinder-propulsion).
 
+`debug-refuel` takes the selected `shipId` and fills its installed tank while
+paused and freely coasting. It keeps the ship’s equipment. The
+[Torch Designer](TORCH_DESIGNER.md) adds a separate campaign refit that keeps
+the tank and its current reaction mass.
+
 The host retains up to 32 solved preview plans. A successful command or clock
 tick invalidates them. Automatic searches use a captured departure outside the
 session gate and recheck the instance and revision before issuing previews. The server
@@ -129,5 +134,5 @@ course previews. See [course plotting](COURSE_PLOTTING.md) for browser test repr
 Initial phone play and owner feedback are recorded in
 [mobile validation](MOBILE_AND_REMOTE_ACCESS.md). End-to-end course and campaign
 checks on the physical phone, 3D, lifecycle behavior, and measured performance
-remain open. Propulsion-aware course planning, collision, docking, and fleets
-are future work. See the [project plan](PROJECT_PLAN.md).
+remain open. Collision, docking, and player-facing fleet controls remain
+future work. See the [project plan](PROJECT_PLAN.md).
