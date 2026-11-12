@@ -8,6 +8,8 @@
 - Campaign refits preserve the installed tank and remaining reaction mass.
   The existing checkpoint records the realized drive and the refit event.
   See the [designer guide](TORCH_DESIGNER.md) and [issue #44](https://github.com/Docbuchanan84/Quasar/issues/44).
+- Added shared top navigation with a current-page indicator for System Lab
+  and Torch Designer.
 
 ## 2026-11-10 — Headless 1,000-ship travel benchmark
 

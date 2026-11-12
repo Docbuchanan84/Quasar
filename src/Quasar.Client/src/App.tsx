@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { formatTime, isCourseDestination, type Snapshot } from './lab'
 import CampaignPanel from './CampaignPanel'
 import ArrivalNotifications from './ArrivalNotifications'
+import SiteNav from './SiteNav'
 import { useLabSession } from './useLabSession'
 import MapBoundary from './MapBoundary'
 import CoursePanel from './CoursePanel'
@@ -92,6 +93,7 @@ function App() {
           {online ? 'HOST CONNECTED' : 'CONNECTING / OFFLINE'}
         </span>
       </header>
+      <SiteNav current="/" />
       <CampaignPanel
         status={status}
         online={online}

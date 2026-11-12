@@ -53,7 +53,7 @@ Choose **Continue** inside Load Game to recover the latest readable save.
 See the [campaign workflow](docs/CAMPAIGN_LIFECYCLE.md) for first run,
 confirmation, and recovery.
 
-Open **Torch Designer** from Pathfinder’s Propulsion panel to compare fusion
+Open **Torch Designer** from the top navigation or Pathfinder’s Propulsion panel to compare fusion
 drives in a test burn or fit a validated design to the campaign ship. See the
 [Torch Designer guide](docs/TORCH_DESIGNER.md).
 
