@@ -6,7 +6,7 @@
 
 .torch-page a { color: #a7e9fa; }
 .torch-heading { margin-bottom: 1.5rem; }
-.torch-heading a, .torch-nozzle a { display: inline-flex; align-items: center; min-height: 44px; }
+.torch-nozzle a { display: inline-flex; align-items: center; min-height: 44px; }
 .torch-heading h1 { margin: .5rem 0; font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.1; }
 .torch-page p { line-height: 1.55; }
 .torch-heading p, .torch-help, .torch-control p, .torch-nozzle figcaption { color: #b7ccd6; }

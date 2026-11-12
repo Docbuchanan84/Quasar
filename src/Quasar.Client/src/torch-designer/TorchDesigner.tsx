@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import SiteNav from '../SiteNav'
 
 const stock = { jetPowerGw: 150, exhaustSpeedKmPerSecond: 1000, nozzleDiameterM: 1.5 }
 type Design = typeof stock
@@ -197,8 +198,8 @@ export default function TorchDesigner() {
 
   return (
     <main className="torch-page">
+      <SiteNav current="/torch-designer/" />
       <header className="torch-heading">
-        <a href="/">← Back to System Lab</a>
         <h1>Torch Designer</h1>
         <p>Tune a fusion drive for Pathfinder. Start with the stock torch, change one setting, then compare the result.</p>
       </header>

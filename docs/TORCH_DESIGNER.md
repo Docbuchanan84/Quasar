@@ -1,7 +1,8 @@
 # Fusion Torch Designer
 
-Open **Torch Designer** from Pathfinder’s Propulsion panel or go directly to
-`/torch-designer/`. Start from stock, change one setting, and look for the
+Use **System Lab** and **Torch Designer** at the top of either page to switch
+between them. The designer is also available from Pathfinder’s Propulsion
+panel or at `/torch-designer/`. Start from stock, change one setting, and look for the
 performance differences below the diagram. The three controls set jet power,
 effective exhaust speed, and magnetic nozzle diameter. Exact numeric inputs
 and sliders edit the same draft. Reset restores the stock settings.
