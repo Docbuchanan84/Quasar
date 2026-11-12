@@ -351,6 +351,7 @@ function App() {
                       Cancelling a committed course retains momentum.
                     </p>
                     <h3>Propulsion</h3>
+                    <a className="torch-designer-link" href="/torch-designer/">Open Torch Designer</a>
                     {world.ship.propulsion ? (
                       <dl>
                         {[

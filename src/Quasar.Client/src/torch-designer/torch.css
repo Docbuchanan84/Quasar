@@ -1,0 +1,57 @@
+.torch-page {
+  width: min(100%, 74rem);
+  margin-inline: auto;
+  padding: clamp(1rem, 3vw, 2.5rem);
+}
+
+.torch-page a { color: #a7e9fa; }
+.torch-heading { margin-bottom: 1.5rem; }
+.torch-heading a, .torch-nozzle a { display: inline-flex; align-items: center; min-height: 44px; }
+.torch-heading h1 { margin: .5rem 0; font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.1; }
+.torch-page p { line-height: 1.55; }
+.torch-heading p, .torch-help, .torch-control p, .torch-nozzle figcaption { color: #b7ccd6; }
+
+.torch-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.torch-panel, .torch-dialog {
+  min-width: 0;
+  padding: clamp(.9rem, 3vw, 1.5rem);
+  border: 1px solid #334952;
+  border-radius: .8rem;
+  background: #151f29;
+  color: #edf5f7;
+}
+.torch-panel h2, .torch-dialog h2 { margin: 0; font-size: 1.3rem; }
+.torch-row { display: flex; align-items: center; gap: .6rem; }
+.torch-panel > .torch-row { justify-content: space-between; flex-wrap: wrap; }
+.torch-control { margin-top: 1rem; }
+.torch-control label { display: block; font-weight: 650; margin-bottom: .3rem; }
+.torch-control .torch-row { display: grid; grid-template-columns: minmax(0, 1fr) 5.75rem 2.5rem; }
+.torch-control input { width: 100%; min-width: 0; }
+.torch-control input[type='range'] { accent-color: #85e5f6; }
+.torch-control p { margin: .35rem 0 0; font-size: .9rem; }
+.torch-panel details { margin-top: 1rem; }
+.torch-panel summary { cursor: pointer; min-height: 44px; padding-block: .6rem; }
+
+.torch-nozzle { margin: 1rem 0; padding: .5rem; border-radius: .6rem; background: #0d1822; }
+.torch-nozzle svg { display: block; width: 100%; }
+.torch-nozzle figcaption { padding-inline: .4rem; font-size: .9rem; }
+.torch-metrics { margin: 0; }
+.torch-metrics div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; padding: .55rem 0; border-top: 1px solid #334952; }
+.torch-metrics dd { margin: 0; text-align: right; font-weight: 650; }
+.torch-metrics small { display: block; color: #b7ccd6; font-weight: 400; }
+.torch-results { border-collapse: collapse; width: 100%; margin-top: 1rem; text-align: left; }
+.torch-results th, .torch-results td { border-bottom: 1px solid #334952; padding: .45rem .25rem; }
+.torch-error { color: #ffbdad; }
+.torch-success { color: #a1efc8; }
+.torch-dialog { width: min(calc(100% - 2rem), 30rem); }
+.torch-dialog::backdrop { background: #000a; }
+
+@media (max-width: 700px) {
+  .torch-grid { grid-template-columns: minmax(0, 1fr); }
+}
