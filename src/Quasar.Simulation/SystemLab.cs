@@ -3,7 +3,8 @@ using System.Text.Json.Serialization;
 namespace Quasar.Simulation;
 
 public sealed record LabObject(string Id, string Name, string Kind, Position3 Position, string? ParentId,
-    Velocity3? VelocityKmPerSecond = null, KeplerianOrbit? Orbit = null, double RadiusKm = 0);
+    Velocity3? VelocityKmPerSecond = null, KeplerianOrbit? Orbit = null, double RadiusKm = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? FlightPathVersion = null);
 public sealed record LabEvent(long Sequence,
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long AtTicks, string Kind, string ObjectId, string Message)
 {
@@ -120,7 +121,7 @@ public sealed partial class SystemLab
         var distance = ship.DestinationId is null ? 0 : ship.State.PositionKm.DistanceTo(display?.Arrival is not null
             ? display.Points[^1].PositionKm : states[ship.DestinationId].PositionKm);
         return new(ElapsedTicks,
-            [.. bodies, new(ShipId, "Pathfinder", "spacecraft", ship.State.PositionKm, null, ship.State.VelocityKmPerSecond),
+            [.. bodies, SpacecraftObject(ShipId, "Pathfinder", ship.State),
                 .. SailObjects()],
             new(ship.Status, Vector3d.From(ship.State.VelocityKmPerSecond).Length, ship.DestinationId,
                 ship.ArrivalTicks, distance, ship.Propulsion, ship.BurnEndTicks,
@@ -249,6 +250,13 @@ public sealed partial class SystemLab
     }
 
     public CelestialState ShipStateAt(long atTicks) => movement.StateAt(ShipId, atTicks);
+
+    public (string Version, Func<CancellationToken, FlightForecast> Forecast) CaptureFlightForecast(string shipId) =>
+        (movement.FlightPathVersion(shipId), movement.CaptureFlightForecast(shipId));
+
+    private LabObject SpacecraftObject(string id, string name, CelestialState state) =>
+        new(id, name, "spacecraft", state.PositionKm, null, state.VelocityKmPerSecond,
+            FlightPathVersion: movement.FlightPathVersion(id));
 
     public static TrajectoryDisplay Present(TrajectoryPlan plan) => new(Ticks(plan.DepartureTicks), Ticks(plan.ArrivalTicks),
         plan.TravelSeconds, plan.RequiredDeltaVKmPerSecond, plan.Fuel,

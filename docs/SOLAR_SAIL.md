@@ -15,6 +15,10 @@ Solar System campaigns and in new ones. Launch is an explicit campaign order.
    Sundiver coasts into and out of Earth’s gravity sphere. Use **Feather sail
    now** while paused to end a trim early. You can save in either flight mode.
 
+Select Sundiver while flying to see its cyan **Flight path**. It includes the
+rest of the current trim, the coast after cutoff, and predicted gravity
+handoffs within the forecast window.
+
 At the starter epoch, the feathered coast passes 14,000 km above Earth and
 gains 4.12 km/s of Sun-relative speed across the encounter. The one-day +35°
 trim changes that to about 3,503 km and 5.69 km/s. Launch date and sail order

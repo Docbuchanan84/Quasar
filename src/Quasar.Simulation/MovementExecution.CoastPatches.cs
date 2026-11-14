@@ -126,7 +126,7 @@ public sealed partial class MovementExecution
     }
 
     private CoastPatch? FindCoastPatch(TwoBodyTrajectory coast, string primary, long from, long through,
-        CancellationToken? courseCancellation = null, bool buildPatch = false)
+        CancellationToken? courseCancellation = null, bool buildPatch = false, bool skipUnsupportedHandoff = false)
     {
         if (through < from) return null;
         CoastPatch? chosen = null;
@@ -188,7 +188,8 @@ public sealed partial class MovementExecution
                 }
                 catch (ArgumentException)
                 {
-                    if (buildPatch) throw new ArgumentException("Gravity transition creates an unsupported radial coast state.");
+                    if (buildPatch && !skipUnsupportedHandoff)
+                        throw new ArgumentException("Gravity transition creates an unsupported radial coast state.");
                     // A centre-directed course can leave a radial state the local solver cannot propagate.
                     cursor = crossing.Value;
                     left = SampleAt(cursor);

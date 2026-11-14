@@ -80,6 +80,13 @@ public static class QuasarHost
         });
 
         app.MapGet("/api/lab", (LabSession session) => session.Snapshot());
+        app.MapGet("/api/lab/spacecraft/{shipId}/flight-path", (string shipId, LabSession session, CancellationToken cancellationToken) =>
+        {
+            try { return Results.Ok(session.ForecastFlight(shipId, cancellationToken)); }
+            catch (ArgumentException error) { return Results.BadRequest(new { error = error.Message }); }
+            catch (Exception error) when (error is InvalidOperationException or ArithmeticException)
+            { return Results.Conflict(new { error = "Flight forecast is unavailable from this state." }); }
+        });
         app.MapGet("/api/lab/sail-preview", (double? angleDegrees, int? durationSeconds, LabSession session, CancellationToken cancellationToken) =>
         {
             try { return Results.Ok(session.PreviewSail(angleDegrees, durationSeconds ?? 0, cancellationToken)); }

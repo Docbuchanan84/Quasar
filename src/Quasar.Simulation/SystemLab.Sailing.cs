@@ -75,7 +75,7 @@ public sealed partial class SystemLab
     {
         if (!movement.ContainsSpacecraft(SailcraftId)) yield break;
         var state = movement.StateAt(SailcraftId, ElapsedTicks);
-        yield return new(SailcraftId, SailcraftName, "spacecraft", state.PositionKm, null, state.VelocityKmPerSecond);
+        yield return SpacecraftObject(SailcraftId, SailcraftName, state);
     }
 
     private void RecordSailEvent(MovementEvent consequence)

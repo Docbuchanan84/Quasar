@@ -13,6 +13,7 @@ public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePrevie
     CoursePreview? Tuned = null);
 public sealed record SailFlightPreview(string InstanceId, long Revision, string? PreviewId,
     SailFlightPath? Coast, SailFlightPath? Trim, SailFlyby[] CoastFlybys, SailFlyby[] TrimFlybys, string? CoastWarning);
+public sealed record SpacecraftFlightForecast(string InstanceId, string ShipId, string PathVersion, FlightForecast Path);
 public sealed record SessionSnapshot(string InstanceId, long Revision, bool Running, string StopReason,
     int DurationSeconds, string Mode, LabSnapshot World, LabEvent? Interrupt, LabEvent? FlightNotice = null);
 
@@ -61,6 +62,19 @@ public sealed partial class LabSession(bool startWithWorld = true)
     public CelestialState ShipStateAt(long atTicks)
     {
         lock (gate) return RequireWorld().ShipStateAt(atTicks);
+    }
+
+    public SpacecraftFlightForecast ForecastFlight(string shipId, CancellationToken cancellationToken)
+    {
+        string instance;
+        string version;
+        Func<CancellationToken, FlightForecast> predict;
+        lock (gate)
+        {
+            instance = instanceId;
+            (version, predict) = RequireWorld().CaptureFlightForecast(shipId);
+        }
+        return new(instance, shipId, version, predict(cancellationToken));
     }
 
     public SailFlightPreview PreviewSail(double? angleDegrees, int durationSeconds, CancellationToken cancellationToken = default)
