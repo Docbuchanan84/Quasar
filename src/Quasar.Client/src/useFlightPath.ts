@@ -24,6 +24,8 @@ export function useFlightPath(snapshot: Snapshot | null, ship: LabObject | undef
     ? key + (path?.startTicks ?? failedAt ?? '') : null
   useEffect(() => {
     if (!requestKey || !shipId || !key) return
+    const pathUrl = `/api/lab/spacecraft/${encodeURIComponent(shipId)}/flight-path`
+    const responseKey = key
     const controller = new AbortController()
     let started = false
     function start() {
@@ -32,7 +34,7 @@ export function useFlightPath(snapshot: Snapshot | null, ship: LabObject | undef
       started = true
       void (async () => {
         try {
-          const response = await fetch(`/api/lab/spacecraft/${encodeURIComponent(shipId)}/flight-path`, {
+          const response = await fetch(pathUrl, {
             cache: 'no-store',
             signal: AbortSignal.any([controller.signal, AbortSignal.timeout(5000)]),
           })
@@ -43,7 +45,7 @@ export function useFlightPath(snapshot: Snapshot | null, ship: LabObject | undef
             setResult({ key: returnedKey, data })
           }
         } catch {
-          if (!controller.signal.aborted) setResult({ key, tick: requestTick.current })
+          if (!controller.signal.aborted) setResult({ key: responseKey, tick: requestTick.current })
         }
       })()
     }
