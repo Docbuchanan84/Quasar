@@ -10,11 +10,11 @@ public class FiniteCourseTests
         var baseline = Fastest(SystemLab.CreateChemicalFixture());
         var higherThrust = Fastest(WithShip(ship => ship with
         {
-            Propulsion = ship.Propulsion! with { Engine = ship.Propulsion.Engine with { ThrustN = 400_000 } }
+            Propulsion = ship.Propulsion! with { Engine = ship.Propulsion.Engine! with { ThrustN = 400_000 } }
         }));
         var lowThrust = WithShip(ship => ship with
         {
-            Propulsion = ship.Propulsion! with { Engine = ship.Propulsion.Engine with { ThrustN = 0.001 } }
+            Propulsion = ship.Propulsion! with { Engine = ship.Propulsion.Engine! with { ThrustN = 0.001 } }
         });
         var halfFuel = Fastest(WithFuel(5000));
         var dry = Find(WithFuel(0));

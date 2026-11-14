@@ -66,7 +66,7 @@ public sealed partial class SystemLab
 
     public void CancelCourse(string shipId)
     {
-        if (shipId == ShipId) { CancelTravel(); return; }
+        if (shipId != SailcraftId) { CancelPoweredCourse(shipId); return; }
         RequireSelectedSailcraft(shipId);
         movement.Cancel(shipId);
         Record("sail-course-cancel", "Sundiver cancelled its flyby course and resumed coasting.", shipId);

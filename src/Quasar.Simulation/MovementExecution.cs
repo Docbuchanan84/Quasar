@@ -99,6 +99,12 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
 
     public TrajectoryPlan? CommittedPlan(string id) => spacecraft[id].Plan;
 
+    internal IEnumerable<(string ShipId, string TargetId)> PoweredCourseDestinations()
+    {
+        foreach (var (shipId, ship) in spacecraft)
+            if (ship.Plan?.TargetBodyId is { } targetId) yield return (shipId, targetId);
+    }
+
     internal NavigationOptions? NavigationOf(string id)
     {
         var ship = spacecraft[id];

@@ -1,5 +1,17 @@
 # Quasar decision record
 
+## Approved — shared component models (2026-11-14)
+
+Use one authoritative spacecraft motion and navigation model with a shared
+destination-order interface. Installed propulsion components supply their own
+forces, resources, operating limits, and maneuver capabilities. Apply the
+same design principle to other equipment families as they are developed,
+including sensors. Specific sensor mechanics remain open.
+
+The approved third propulsion prototype is a fission-electric survey ship
+with acceleration between the sail and the torch. Verify a velocity-matched
+Mars approach from the starter campaign. See [Surveyor](SURVEYOR.md).
+
 ## Approved — Fusion Torch Designer first slice (2026-11-11)
 
 Players can tune jet power, effective exhaust speed, and magnetic nozzle

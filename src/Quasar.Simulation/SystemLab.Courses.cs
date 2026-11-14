@@ -28,7 +28,7 @@ public sealed partial class SystemLab
         {
             var performance = propulsion.CalculatePerformance();
             var finalMass = performance.DryMassKg + performance.AvailablePropellantKg * minimum / 100;
-            var reserveBudget = propulsion.Engine.ExhaustVelocityMPerSecond / 1000 * Math.Log(performance.WetMassKg / finalMass);
+            var reserveBudget = propulsion.Drive.ExhaustVelocityMPerSecond / 1000 * Math.Log(performance.WetMassKg / finalMass);
             maneuverBudget = maneuverBudget is { } existing ? Math.Min(existing, reserveBudget) : reserveBudget;
         }
         var primary = movement.PrimaryOf(shipId);

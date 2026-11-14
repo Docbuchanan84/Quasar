@@ -7,7 +7,9 @@ public sealed partial class TrajectoryPlanner
         Vector3d departure, Vector3d braking, CancellationToken token)
     {
         var performance = propulsion.CalculatePerformance();
-        var exhaust = propulsion.Engine.ExhaustVelocityMPerSecond / 1000;
+        var drive = propulsion.Drive;
+        var exhaust = drive.ExhaustVelocityMPerSecond / 1000;
+        var maxBurnTicks = drive.MaximumBurnSeconds * TimeSpan.TicksPerSecond;
         var tracer = new MovementExecution(catalogue);
         var scale = (end - start) / (double)TimeSpan.TicksPerSecond;
         var input = new[] { departure.X, departure.Y, departure.Z, braking.X, braking.Y, braking.Z };
@@ -74,7 +76,7 @@ public sealed partial class TrajectoryPlanner
             var (firstTicks, firstThrottle) = Timing(performance.WetMassKg, first.Length);
             var remaining = performance.AvailablePropellantKg - firstTicks / (double)TimeSpan.TicksPerSecond * firstThrottle * performance.RatedMassFlowKgPerSecond;
             var (lastTicks, lastThrottle) = Timing(performance.DryMassKg + remaining, last.Length);
-            if (firstTicks <= 0 || lastTicks <= 0 || firstTicks > TimeSpan.TicksPerDay || lastTicks > TimeSpan.TicksPerDay || start + firstTicks >= end - lastTicks) return null;
+            if (firstTicks <= 0 || lastTicks <= 0 || firstTicks > maxBurnTicks || lastTicks > maxBurnTicks || start + firstTicks >= end - lastTicks) return null;
             try
             {
                 var launch = CourseBurn.Build(catalogue, initial, primary, start, firstTicks, (first / first.Length).Velocity,
@@ -97,7 +99,7 @@ public sealed partial class TrajectoryPlanner
         (long Ticks, double Throttle) Timing(double mass, double deltaV)
         {
             var seconds = -mass * double.ExpM1(-deltaV / exhaust) / performance.RatedMassFlowKgPerSecond;
-            if (!double.IsFinite(seconds) || seconds <= 0 || seconds > 86400) return (long.MaxValue / 4, 1);
+            if (!double.IsFinite(seconds) || seconds <= 0 || seconds > drive.MaximumBurnSeconds) return (long.MaxValue / 4, 1);
             var ticks = Math.Max(1, (long)Math.Ceiling(seconds * TimeSpan.TicksPerSecond));
             return (ticks, Math.Min(1, seconds / (ticks / (double)TimeSpan.TicksPerSecond)));
         }

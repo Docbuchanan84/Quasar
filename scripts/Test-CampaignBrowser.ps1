@@ -77,6 +77,7 @@ function ConvertTo-ComparableWorld($World) {
     $json = $World | ConvertTo-Json -Depth 30 -Compress | ConvertFrom-Json -AsHashtable
     # Trial availability is derived from the catalogue and does not change saved state.
     $null = $json.Remove('canLaunchSailcraft')
+    $null = $json.Remove('canLaunchSurveyor')
     foreach ($body in $json.objects) { $null = $body.Remove('navigation') }
     # Orbital navigation adds presentation metadata to the existing trajectory.
     $null = $json.ship.Remove('arrivalKind')

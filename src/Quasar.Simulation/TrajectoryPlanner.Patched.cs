@@ -41,7 +41,9 @@ public sealed partial class TrajectoryPlanner
     {
         reason = "No verified finite-burn route was found for this flight time and geometry.";
         var performance = propulsion.CalculatePerformance();
-        var exhaust = propulsion.Engine.ExhaustVelocityMPerSecond / 1000;
+        var drive = propulsion.Drive;
+        var exhaust = drive.ExhaustVelocityMPerSecond / 1000;
+        var maxBurnTicks = drive.MaximumBurnSeconds * TimeSpan.TicksPerSecond;
         var tracer = new MovementExecution(catalogue);
         try
         {
@@ -96,7 +98,7 @@ public sealed partial class TrajectoryPlanner
                 var (firstTicks, firstThrottle) = BurnTicks(performance.WetMassKg, departure.Length);
                 var remaining = performance.AvailablePropellantKg - firstTicks / (double)TimeSpan.TicksPerSecond * performance.RatedMassFlowKgPerSecond * firstThrottle;
                 var (lastTicks, lastThrottle) = BurnTicks(performance.DryMassKg + remaining, braking.Length);
-                if (firstTicks < 1 || lastTicks < 1 || firstTicks > TimeSpan.TicksPerDay || lastTicks > TimeSpan.TicksPerDay
+                if (firstTicks < 1 || lastTicks < 1 || firstTicks > maxBurnTicks || lastTicks > maxBurnTicks
                     || departureTicks + firstTicks >= arrivalTicks - lastTicks)
                 {
                     reason = "The flight time leaves insufficient time for the required finite burns and coast.";
@@ -167,7 +169,7 @@ public sealed partial class TrajectoryPlanner
         (long Ticks, double Throttle) BurnTicks(double wetMass, double deltaV)
         {
             var seconds = -wetMass * double.ExpM1(-deltaV / exhaust) / performance.RatedMassFlowKgPerSecond;
-            if (seconds is not (> 0 and <= PoweredTrajectory.MaximumCourseDurationSeconds)) return (long.MaxValue / 4, 1);
+            if (!(seconds > 0 && seconds <= drive.MaximumBurnSeconds)) return (long.MaxValue / 4, 1);
             var ticks = Math.Max(1, (long)Math.Ceiling(seconds * TimeSpan.TicksPerSecond));
             // A tiny throttle reduction preserves the exact rocket-equation impulse while
             // placing cutoff on a clock tick. Thrust and mass flow decrease together.

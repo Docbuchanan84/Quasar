@@ -7,7 +7,7 @@ namespace Quasar.Simulation;
 public sealed record SimulationState(int FormatVersion, long ElapsedTicks,
     ImmutableArray<CelestialBodyState> Bodies, ImmutableArray<SpacecraftState> Spacecraft)
 {
-    public const int CurrentFormatVersion = 9;
+    public const int CurrentFormatVersion = 10;
 
     public static bool SupportsFormatVersion(int version) => version is >= 1 and <= CurrentFormatVersion;
 
@@ -29,6 +29,9 @@ public sealed record SimulationState(int FormatVersion, long ElapsedTicks,
             throw new InvalidDataException("Solar sails require simulation state version 8.");
         if (FormatVersion < 9 && !Spacecraft.IsDefault && Spacecraft.Any(ship => ship?.SailCourse is not null))
             throw new InvalidDataException("Sail courses require simulation state version 9.");
+        if (FormatVersion < 10 && !Spacecraft.IsDefault && Spacecraft.Any(ship =>
+            ship?.Propulsion?.ElectricDrive is not null || ship?.FiniteCourse?.Propulsion?.ElectricDrive is not null))
+            throw new InvalidDataException("Fission-electric equipment requires simulation state version 10.");
     }
 }
 

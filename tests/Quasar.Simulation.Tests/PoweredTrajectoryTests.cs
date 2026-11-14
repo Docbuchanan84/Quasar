@@ -79,7 +79,7 @@ public sealed class PoweredTrajectoryTests
         ]);
         var initial = new CelestialState(new(orbitRadius + radialOffset, -50, 0),
             new(0, Math.Sqrt((mu + childMu) / orbitRadius) + 100, 0));
-        var propulsion = Propulsion with { Engine = Propulsion.Engine with { ThrustN = 1 } };
+        var propulsion = Propulsion with { Engine = Propulsion.Engine! with { ThrustN = 1 } };
         var burn = new PoweredTrajectory(initial, new(0, 1, 0), mu, propulsion, 0, 1);
         double Distance(long ticks) => burn.StateAt(ticks).PositionKm.DistanceTo(catalogue.GetState("child", ticks).PositionKm);
 
@@ -103,7 +103,7 @@ public sealed class PoweredTrajectoryTests
             new("child", "Child", CelestialBodyKind.Asteroid, childMu, "star", new(radius, 0), RadiusKm: 1)
         ]);
         var initial = new CelestialState(new(radius + offset, -50, 0), new(0, Math.Sqrt((mu + childMu) / radius) + 100, 0));
-        var propulsion = Propulsion with { Engine = Propulsion.Engine with { ThrustN = 1 } };
+        var propulsion = Propulsion with { Engine = Propulsion.Engine! with { ThrustN = 1 } };
         var burn = CourseBurn.Build(catalogue, initial, "star", 0, TimeSpan.TicksPerSecond, new(0, 1, 0), propulsion, CancellationToken.None);
         Assert.Equal(enters, burn.Parts.Any(part => part.Primary == "child"));
         Assert.Equal("star", burn.PrimaryAt(0));

@@ -65,7 +65,7 @@ public sealed class SpacecraftPropulsionTests
     public void EngineAndFuelInputsDeterminePerformance()
     {
         var input = Pathfinder();
-        var engine = input.Engine with { ThrustN = 100_000, ExhaustVelocityMPerSecond = 6000 };
+        var engine = input.Engine! with { ThrustN = 100_000, ExhaustVelocityMPerSecond = 6000 };
         var performance = (input with { Engine = engine, Tank = input.Tank with { QuantityKg = 5000 } }).CalculatePerformance();
         Assert.Equal(15_000, performance.WetMassKg);
         Assert.Equal(5000, performance.AvailablePropellantKg);
@@ -88,10 +88,10 @@ public sealed class SpacecraftPropulsionTests
         [
             input with { BaseDryMassKg = double.NaN },
             input with { BaseDryMassKg = -1 },
-            input with { BaseDryMassKg = double.MaxValue, Engine = input.Engine with { DryMassKg = double.MaxValue } },
-            input with { Engine = input.Engine with { ThrustN = double.PositiveInfinity } },
-            input with { Engine = input.Engine with { LengthM = 0 } },
-            input with { Engine = input.Engine with { ExhaustVelocityMPerSecond = double.Epsilon } },
+            input with { BaseDryMassKg = double.MaxValue, Engine = input.Engine! with { DryMassKg = double.MaxValue } },
+            input with { Engine = input.Engine! with { ThrustN = double.PositiveInfinity } },
+            input with { Engine = input.Engine! with { LengthM = 0 } },
+            input with { Engine = input.Engine! with { ExhaustVelocityMPerSecond = double.Epsilon } },
             input with { Tank = input.Tank with { PropellantId = "incompatible" } },
             input with { Tank = input.Tank with { CapacityKg = 0 } },
             input with { Tank = input.Tank with { QuantityKg = -1 } },

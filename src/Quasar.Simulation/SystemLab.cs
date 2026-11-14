@@ -7,6 +7,8 @@ public sealed record LabObject(string Id, string Name, string Kind, Position3 Po
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public NavigationOptions? Navigation { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ShipStatus? ShipStatus { get; init; }
 }
 public sealed record LabEvent(long Sequence,
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long AtTicks, string Kind, string ObjectId, string Message)
@@ -33,12 +35,15 @@ public sealed record ShipStatus(string Status, double SpeedKmPerSecond, string? 
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long? ArrivalTicks, double RemainingDistanceKm,
     PropulsionPerformance? Propulsion = null,
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long? BurnEndTicks = null,
-    string? ArrivalKind = null);
+    string? ArrivalKind = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ElectricDriveStatus? ElectricDrive = null);
+public sealed record ElectricDriveStatus(double ElectricalPowerMw, double Efficiency, double ThrustN, double ExhaustVelocityMPerSecond);
 public sealed record LabSnapshot(
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long ElapsedTicks, LabObject[] Objects, ShipStatus Ship, LabEvent[] Events,
     TrajectoryDisplay? Trajectory = null, string? ReferenceEpoch = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] SailStatus? SolarSail = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool CanLaunchSailcraft = false);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool CanLaunchSailcraft = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool CanLaunchSurveyor = false);
 public sealed record TrajectoryDisplayPoint(string AtTicks, Position3 PositionKm, Velocity3 VelocityKmPerSecond);
 public sealed record TrajectoryDisplay(string DepartureTicks, string ArrivalTicks, double TravelSeconds,
     double RequiredDeltaVKmPerSecond, TransferFuelEstimate Fuel, TrajectoryDisplayPoint[] Points, FlybyDisplay? Flyby = null,
@@ -82,8 +87,8 @@ public sealed partial class SystemLab
     public ICelestialPositionService CelestialPositions => celestialPositions;
     public long ElapsedTicks => movement.ElapsedTicks;
     public bool HasModeledPropulsion => movement.PropulsionOf(ShipId) is not null;
-    public string? CourseDestinationName => movement.CommittedPlan(ShipId)?.TargetBodyId is { } id
-        ? celestialPositions.Bodies[id].Name : null;
+    public Dictionary<string, string> PoweredCourseDestinations() => movement.PoweredCourseDestinations().ToDictionary(
+        course => course.ShipId, course => celestialPositions.Bodies[course.TargetId].Name, StringComparer.Ordinal);
 
     public SystemLab() : this(ExplorationTorch()) { }
 
@@ -128,18 +133,14 @@ public sealed partial class SystemLab
             .ThenBy(body => body.Id, StringComparer.Ordinal).ToArray();
         var ship = movement.View(ShipId);
         if (display is null && movement.CommittedPlan(ShipId) is { } plan) display = Present(plan);
-        var distance = ship.DestinationId is null ? 0 : ship.State.PositionKm.DistanceTo(display?.Arrival is not null
-            ? display.Points[^1].PositionKm : states[ship.DestinationId].PositionKm);
         return new(ElapsedTicks,
             [.. bodies, new LabObject(ShipId, "Pathfinder", "spacecraft", ship.State.PositionKm, null, ship.State.VelocityKmPerSecond)
                 { Navigation = movement.NavigationOf(ShipId) },
-                .. SailObjects()],
-            new(ship.Status, Vector3d.From(ship.State.VelocityKmPerSecond).Length, ship.DestinationId,
-                ship.ArrivalTicks, distance, ship.Propulsion, ship.BurnEndTicks,
-                display?.ArrivalKind ?? events.LastOrDefault(entry => entry.ObjectId == ShipId)?.ArrivalKind), [.. events],
+                .. SailObjects(), .. SurveyorObjects()],
+            PoweredShipStatus(ship), [.. events],
             display is null ? null : display with { Points = [.. display.Points], BurnSchedule = display.BurnSchedule?.ToArray() },
             PrimaryId == SolarSystem.Sun ? SolarSystem.Epoch : null,
-            movement.ContainsSpacecraft(SailcraftId) ? movement.SailView(SailcraftId) : null, CanLaunchSailcraft);
+            movement.ContainsSpacecraft(SailcraftId) ? movement.SailView(SailcraftId) : null, CanLaunchSailcraft, CanLaunchSurveyor);
     }
 
     public TrajectoryPlan PreviewTravel(string destinationId, int flightSeconds = 21600, double? maneuverBudget = null)
@@ -188,27 +189,33 @@ public sealed partial class SystemLab
         movement.Commit(shipId, plan);
         if (shipId == ShipId) display = presentation;
         var name = celestialPositions.Bodies[destinationId].Name;
-        var shipName = shipId == ShipId ? "Pathfinder" : shipId;
+        var shipName = PoweredShipName(shipId);
         Record("order", plan.Finite is null ? $"{shipName} transfer committed to {name}; departure impulse applied."
             : $"{shipName} began the planned departure burn toward {name}.", shipId);
     }
 
-    public void CancelTravel()
+    public void CancelTravel() => CancelPoweredCourse(ShipId);
+
+    private void CancelPoweredCourse(string shipId)
     {
-        movement.Cancel(ShipId); display = null;
-        Record("cancel", "Pathfinder course cancelled; retaining velocity on an unforced gravitational coast.");
+        RequirePoweredShip(shipId);
+        movement.Cancel(shipId);
+        if (shipId == ShipId) display = null;
+        Record("cancel", $"{PoweredShipName(shipId)} course cancelled; retaining velocity on an unforced gravitational coast.", shipId);
     }
 
-    public void StartBurn(string direction, int durationSeconds)
+    public void StartBurn(string direction, int durationSeconds, string shipId = ShipId)
     {
-        movement.StartBurn(ShipId, direction, durationSeconds);
-        Record("burn-start", $"Pathfinder ignited for a {direction} burn.");
+        RequirePoweredShip(shipId);
+        movement.StartBurn(shipId, direction, durationSeconds);
+        Record("burn-start", $"{PoweredShipName(shipId)} ignited for a {direction} burn.", shipId);
     }
 
-    public void CutThrust()
+    public void CutThrust(string shipId = ShipId)
     {
-        movement.CutThrust(ShipId);
-        Record("burn-cutoff", "Pathfinder cut thrust and resumed an unforced coast.");
+        RequirePoweredShip(shipId);
+        movement.CutThrust(shipId);
+        Record("burn-cutoff", $"{PoweredShipName(shipId)} cut thrust and resumed an unforced coast.", shipId);
     }
 
     internal static SpacecraftPropulsion ExplorationTorch() => new(8000,
@@ -223,9 +230,9 @@ public sealed partial class SystemLab
 
     public bool DebugRefuel(string shipId)
     {
-        if (shipId != ShipId) throw new ArgumentException("Choose a spacecraft in this lab.", nameof(shipId));
+        RequirePoweredShip(shipId);
         if (!movement.RefillPropellant(shipId)) return false;
-        Record("refit", "Debug refuel filled Pathfinder's propellant tank.");
+        Record("refit", $"Debug refuel filled {PoweredShipName(shipId)}'s propellant tank.", shipId);
         return true;
     }
 
@@ -301,20 +308,25 @@ public sealed partial class SystemLab
                 RecordSailEvent(consequence);
                 continue;
             }
-            if (consequence.Kind is "arrival" or "course-approach-complete" or "course-orbit-inserted") display = null;
+            var shipId = consequence.SpacecraftId;
+            var name = PoweredShipName(shipId);
+            var courseFlyby = shipId == ShipId ? flyby : null;
+            if (shipId == ShipId && consequence.Kind is "arrival" or "course-approach-complete" or "course-orbit-inserted")
+                display = null;
             Record(consequence.Kind, consequence.Kind switch
             {
-                "burn-complete" => "Pathfinder completed its timed burn and resumed an unforced coast.",
-                "burn-exhausted" => "Pathfinder exhausted its propellant and resumed an unforced coast.",
-                "arrival" => "Body-center arrival. Pathfinder applied the planned velocity-matching impulse.",
-                "course-departure-cutoff" => "Pathfinder completed the departure burn and began the transfer coast.",
-                "course-braking-start" => "Pathfinder began the planned braking burn.",
-                "course-orbit-inserted" => "Pathfinder completed braking and entered the requested orbit.",
-                "course-approach-complete" => "Pathfinder completed braking at the velocity-matched approach point and resumed a gravitational coast.",
-                "primary-change" => $"Pathfinder changed gravity primary to {celestialPositions.Bodies[movement.PrimaryOf(ShipId)].Name} without thrust.",
-                _ => flyby is null ? "Pathfinder changed gravitational primary at a committed patch boundary."
-                    : $"Pathfinder completed a gravity assist at {celestialPositions.Bodies[flyby.BodyId].Name}."
-            });
+                "burn-complete" => $"{name} completed its timed burn and resumed an unforced coast.",
+                "burn-exhausted" => $"{name} exhausted its propellant and resumed an unforced coast.",
+                "arrival" => $"Body-center arrival. {name} applied the planned velocity-matching impulse.",
+                "course-departure-cutoff" => $"{name} completed the departure burn and began the transfer coast.",
+                "course-braking-start" => $"{name} began the planned braking burn.",
+                "course-orbit-inserted" => $"{name} completed braking and entered the requested orbit.",
+                "course-approach-complete" => $"{name} completed braking at the velocity-matched approach point and resumed a gravitational coast.",
+                "primary-change" => $"{name} changed gravity primary to {celestialPositions.Bodies[movement.PrimaryOf(shipId)].Name}"
+                    + (shipId == ShipId ? " without thrust." : "."),
+                _ => courseFlyby is null ? $"{name} changed gravitational primary at a committed patch boundary."
+                    : $"{name} completed a gravity assist at {celestialPositions.Bodies[courseFlyby.BodyId].Name}."
+            }, shipId);
         }
         return consequences.Length > 0;
     }

@@ -62,6 +62,10 @@ Use **Launch Sundiver sail trial** in a paused Solar System campaign to add a
 solar sailcraft and compare sail trim with a ballistic Earth gravity assist.
 See the [Sundiver flight guide](docs/SOLAR_SAIL.md).
 
+Use **Launch Surveyor** to add a fission-electric ship and plot a multi-day
+burn to Mars through the same **Plot Course** interface. See the
+[Surveyor flight guide](docs/SURVEYOR.md).
+
 ## Run and verify
 
 Use PowerShell 7:

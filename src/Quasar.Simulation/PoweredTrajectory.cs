@@ -4,8 +4,7 @@ namespace Quasar.Simulation;
 internal sealed class PoweredTrajectory
 {
     internal const int MaximumDurationSeconds = 3600;
-    internal const int MaximumCourseDurationSeconds = 86400;
-    private const double StepSeconds = 1;
+    private readonly double maximumStepSeconds;
     private readonly CelestialState initial;
     private readonly Vector3d direction;
     private readonly double mu;
@@ -30,7 +29,8 @@ internal sealed class PoweredTrajectory
             throw new ArgumentException("Burn direction must be a finite unit vector.", nameof(unitDirection));
         if (!double.IsFinite(mu) || mu <= 0)
             throw new ArgumentOutOfRangeException(nameof(mu));
-        if (durationTicks is < 1 or > MaximumCourseDurationSeconds * TimeSpan.TicksPerSecond)
+        var drive = propulsion.Drive;
+        if (durationTicks < 1 || durationTicks > drive.MaximumBurnSeconds * TimeSpan.TicksPerSecond)
             throw new ArgumentOutOfRangeException(nameof(durationTicks));
 
         performance = propulsion.CalculatePerformance();
@@ -39,7 +39,8 @@ internal sealed class PoweredTrajectory
 
         this.initial = initial;
         this.mu = mu;
-        thrust = propulsion.Engine.ThrustN;
+        thrust = drive.ThrustN;
+        maximumStepSeconds = drive.MaximumStepSeconds;
         acceleration = Acceleration;
         StartTicks = startTicks;
         var durationSeconds = durationTicks / (double)TimeSpan.TicksPerSecond;
@@ -104,7 +105,18 @@ internal sealed class PoweredTrajectory
         // Anchor every substep to ignition so queries and caller advance partitions agree.
         for (var time = from; time != to;)
         {
-            var next = Math.Abs(to - time) <= StepSeconds ? to : time + directionOfTime * StepSeconds;
+            var stepSeconds = maximumStepSeconds;
+            if (maximumStepSeconds > 1)
+            {
+                // Long electric burns need fewer steps far from a primary and finer
+                // steps during close passes. Limit local orbital angle and traversal.
+                var radius = r.Length;
+                var gravityTime = Math.Sqrt(radius / mu) * radius;
+                var traversalTime = radius / v.Length;
+                stepSeconds = Math.Clamp(Math.Min(gravityTime / 2000, traversalTime / 100), 1, maximumStepSeconds);
+            }
+            var remaining = Math.Abs(to - time);
+            var next = remaining <= stepSeconds ? to : time + directionOfTime * stepSeconds;
             var step = next - time;
             if (inspect is not null && !inspect(time, r, v, step)) return (default, false);
             RungeKutta.Step(ref r, ref v, time, step, acceleration);
