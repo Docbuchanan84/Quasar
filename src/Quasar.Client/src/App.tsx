@@ -35,6 +35,7 @@ function App() {
   const [sailDraft, setSailDraft] = useState<SailPreview | null>(null)
   const onInstanceChange = useCallback((next: Snapshot | null) => {
     setPlotting(null)
+    setSailDraft(null)
     if (next) {
       setSelectedId((id) =>
         next.world.objects.some((object) => object.id === id)
@@ -79,6 +80,7 @@ function App() {
   )
   const selectObject = (id: string) => {
     setSelectedId(id)
+    if (id !== sailcraftId) setSailDraft(null)
     if (id === sailcraftId) setPlotting(null)
     if (
       plotting &&
