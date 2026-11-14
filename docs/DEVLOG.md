@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-13 — Map scale indicators
+
+- Added a zoom-responsive scale bar to the 2D and 3D System Lab maps, with
+  kilometres for local distances and astronomical units for system-wide views.
+  The 3D bar uses the depth of the camera focus. See
+  [map navigation](MAP_NAVIGATION.md).
+
 ## 2026-11-11 — Consolidated phone release
 
 - Consolidated the privately played fleet runtime, arrival notifications and

@@ -230,15 +230,36 @@ main {
   pointer-events: none;
   text-shadow: 0 1px 3px #080f16;
 }
-.camera-controls {
+.map-hud {
   position: absolute;
   bottom: 12px;
   left: 12px;
   right: 12px;
+  display: grid;
+  gap: 5px;
+  pointer-events: none;
+}
+.map-scale {
+  justify-self: start;
+  display: grid;
+  justify-items: start;
+  gap: 3px;
+  padding: 5px 8px 6px;
+  border: 1px solid #2b404f;
+  border-radius: 4px;
+  background: #09131ced;
+  color: #d4e5ef;
+  font: 12px / 1.3 ui-monospace, monospace;
+}
+.map-scale-line {
+  height: 6px;
+  border: 1px solid currentColor;
+  border-top: 0;
+}
+.camera-controls {
   display: flex;
   gap: 5px;
   flex-wrap: wrap;
-  pointer-events: none;
 }
 .camera-controls button {
   pointer-events: auto;

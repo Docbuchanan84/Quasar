@@ -16,6 +16,12 @@ interactive map. The two interactive maps are `SystemMap.tsx` and `SpaceMap.tsx`
 | Recover orientation | **Reset View** restores the initial centred fit | **Reset View** restores origin, home angles and distance |
 | Focus | **Focus Selected** centers and follows the selected object | **Focus Selected** makes the selected object the tracked orbit pivot |
 
+The scale bar above the camera controls updates as you zoom, using kilometres
+for local views and astronomical units (AU) for wide views. In 2D the bar
+measures distances in the XY projection. In 3D it measures distances on the
+plane through the camera's focus, parallel to the screen. Objects closer to or
+farther from the camera have a different apparent scale.
+
 The four directional arrows and 3D rotate-step button are removed because their
 gestures provide equivalent movement. Visible gesture hints describe the inputs.
 Reset and zoom alternatives remain; object-list selection remains keyboard/touch

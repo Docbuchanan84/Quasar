@@ -3,6 +3,7 @@ import { Application, Container, Graphics, Text } from 'pixi.js'
 import { MapGesture, wheelPixels } from './mapGestures'
 import { courseColor, objectColor, type MapProps } from './lab'
 import { focusRadius, mapScale, orbitPath, showObject } from './mapCoordinates'
+import MapScaleBar from './MapScaleBar'
 
 export default function SystemMap(props: MapProps) {
   const host = useRef<HTMLDivElement>(null)
@@ -10,6 +11,7 @@ export default function SystemMap(props: MapProps) {
   const controls = useRef<(action: string) => void>(() => {})
   const redraw = useRef<() => void>(() => {})
   const [error, setError] = useState('')
+  const [kilometresPerPixel, setKilometresPerPixel] = useState(0)
   useEffect(() => {
     current.current = props
     redraw.current()
@@ -45,6 +47,7 @@ export default function SystemMap(props: MapProps) {
       let zoom = 100,
         panX = 0,
         panY = 0
+      let lastZoom = 0
       let focusedId: string | null = null
       let origin = { x: 0, y: 0, z: 0 }
       const lines = new Graphics()
@@ -78,6 +81,10 @@ export default function SystemMap(props: MapProps) {
         }
         const focused = objects.find((o) => o.id === focusedId)
         if (focused) origin = focused.position
+        if (zoom !== lastZoom) {
+          lastZoom = zoom
+          setKilometresPerPixel(1 / (mapScale * zoom))
+        }
         const span = Math.min(app.screen.width, app.screen.height) / (mapScale * zoom)
         const visible = (object: MapProps['objects'][number]) => showObject(object, selectedId, focusedId, span)
         lines.clear()
@@ -354,27 +361,30 @@ export default function SystemMap(props: MapProps) {
       <p className="map-gestures">
         Drag or swipe to pan · wheel or pinch to zoom
       </p>
-      <div className="camera-controls" aria-label="2D camera controls">
-        {[
-          ['in', '+'],
-          ['out', '−'],
-          ['reset', 'Reset View'],
-          ['focus', 'Focus Selected'],
-        ].map(([action, label]) => (
-          <button
-            key={action}
-            aria-label={
-              action === 'reset' || action === 'focus'
-                ? label
-                : action === 'in'
-                  ? 'Zoom in'
-                  : 'Zoom out'
-            }
-            onClick={() => controls.current(action)}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="map-hud">
+        {!error && <MapScaleBar kilometresPerPixel={kilometresPerPixel} />}
+        <div className="camera-controls" aria-label="2D camera controls">
+          {[
+            ['in', '+'],
+            ['out', '−'],
+            ['reset', 'Reset View'],
+            ['focus', 'Focus Selected'],
+          ].map(([action, label]) => (
+            <button
+              key={action}
+              aria-label={
+                action === 'reset' || action === 'focus'
+                  ? label
+                  : action === 'in'
+                    ? 'Zoom in'
+                    : 'Zoom out'
+              }
+              onClick={() => controls.current(action)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
     </>
   )

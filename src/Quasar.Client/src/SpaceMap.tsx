@@ -21,12 +21,14 @@ import {
   type MapProps,
 } from './lab'
 import { focusRadius, mapScale, orbitPath, showObject, toMapPosition } from './mapCoordinates'
+import MapScaleBar from './MapScaleBar'
 
 export default function SpaceMap(props: MapProps) {
   const host = useRef<HTMLDivElement>(null),
     current = useRef(props)
   const controls = useRef<(action: string) => void>(() => {})
   const [error, setError] = useState('')
+  const [kilometresPerPixel, setKilometresPerPixel] = useState(0)
   useEffect(() => {
     current.current = props
   }, [props])
@@ -188,6 +190,7 @@ export default function SpaceMap(props: MapProps) {
         lastProjection = -1
       let lastWidth = 0,
         lastHeight = 0
+      let lastKilometresPerPixel = 0
       controls.current = (action) => {
         if (action === 'reset') {
           focusedId = null
@@ -346,7 +349,8 @@ export default function SpaceMap(props: MapProps) {
           engine.getRenderHeight(),
         )
         const viewVersion = camera.getViewMatrix().updateFlag
-        const projectionVersion = camera.getProjectionMatrix().updateFlag
+        const projection = camera.getProjectionMatrix()
+        const projectionVersion = projection.updateFlag
         const width = element.clientWidth,
           height = element.clientHeight
         if (
@@ -362,6 +366,15 @@ export default function SpaceMap(props: MapProps) {
         lastProjection = projectionVersion
         lastWidth = width
         lastHeight = height
+        // Perspective scale on the screen-parallel plane through the camera target.
+        // Use CSS pixels, independent of Babylon's hardware render resolution.
+        const scale = width > 0
+          ? 2 * camera.radius / (projection.m[0] * width * mapScale)
+          : 0
+        if (scale !== lastKilometresPerPixel) {
+          lastKilometresPerPixel = scale
+          setKilometresPerPixel(scale)
+        }
         // Read layout once before writing labels; interleaving reads/writes per object forces repeated layout.
         for (const object of objects) {
           const projected = Vector3.Project(
@@ -441,33 +454,36 @@ export default function SpaceMap(props: MapProps) {
         Drag to orbit · right/middle/Ctrl-drag or two fingers to pan ·
         wheel/pinch to zoom
       </p>
-      <div className="camera-controls" aria-label="3D camera controls">
-        {[
-          ['in', '+'],
-          ['out', '−'],
-          ['focus', 'Focus Selected'],
-          ['reset', 'Reset View'],
-        ].map(([action, label]) => (
-          <button
-            key={action}
-            aria-label={
-              action === 'reset'
-                ? 'Reset View'
-                : action === 'focus'
-                  ? 'Focus Selected Object'
-                  : action === 'in'
-                    ? 'Zoom in'
-                    : 'Zoom out'
-            }
-            disabled={
-              action === 'focus' &&
-              !props.objects.some((o) => o.id === props.selectedId)
-            }
-            onClick={() => controls.current(action)}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="map-hud">
+        {!error && <MapScaleBar kilometresPerPixel={kilometresPerPixel} atFocusDepth />}
+        <div className="camera-controls" aria-label="3D camera controls">
+          {[
+            ['in', '+'],
+            ['out', '−'],
+            ['focus', 'Focus Selected'],
+            ['reset', 'Reset View'],
+          ].map(([action, label]) => (
+            <button
+              key={action}
+              aria-label={
+                action === 'reset'
+                  ? 'Reset View'
+                  : action === 'focus'
+                    ? 'Focus Selected Object'
+                    : action === 'in'
+                      ? 'Zoom in'
+                      : 'Zoom out'
+              }
+              disabled={
+                action === 'focus' &&
+                !props.objects.some((o) => o.id === props.selectedId)
+              }
+              onClick={() => controls.current(action)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
     </>
   )
