@@ -15,7 +15,7 @@ public sealed class FlightForecastTests
         var forecast = session.ForecastFlight(SystemLab.SailcraftId, CancellationToken.None);
         Assert.Equal(before, SimulationStateJson.Serialize(lab.ExportState()));
         Assert.Equal(session.Snapshot().InstanceId, forecast.InstanceId);
-        Assert.Equal(forecast.PathVersion, Object(lab, SystemLab.SailcraftId).FlightPathVersion);
+        Assert.Equal(forecast.PathVersion, session.Snapshot().FlightPathVersions![SystemLab.SailcraftId]);
         var path = forecast.Path;
         Assert.Equal(180 * TimeSpan.TicksPerDay, path.EndTicks);
         Assert.Equal(Object(lab, SystemLab.SailcraftId).Position, path.Points[0].PositionKm);
@@ -24,7 +24,7 @@ public sealed class FlightForecastTests
         Assert.Equal([SolarSystem.Earth, SolarSystem.Sun], path.GravityTransitions.Take(2).Select(entry => entry.BodyId));
         Assert.All(path.GravityTransitions, transition => Assert.Contains(path.Points, point => point.AtTicks == transition.AtTicks));
         AdvanceTo(lab, long.Parse(path.GravityTransitions[1].AtTicks) + TimeSpan.TicksPerDay);
-        Assert.NotEqual(forecast.PathVersion, Object(lab, SystemLab.SailcraftId).FlightPathVersion);
+        Assert.NotEqual(forecast.PathVersion, lab.FlightPathVersions()[SystemLab.SailcraftId]);
         AdvanceTo(lab, path.EndTicks);
         Assert.InRange(Object(lab, SystemLab.SailcraftId).Position.DistanceTo(path.Points[^1].PositionKm), 0, .001);
     }
@@ -43,7 +43,7 @@ public sealed class FlightForecastTests
         var sample = Assert.Single(powered.Path.Points, point => long.Parse(point.AtTicks) == cutoff);
         AdvanceTo(lab, cutoff);
         Assert.Equal(Object(lab, SystemLab.ShipId).Position, sample.PositionKm);
-        Assert.NotEqual(powered.PathVersion, Object(lab, SystemLab.ShipId).FlightPathVersion);
+        Assert.NotEqual(powered.PathVersion, lab.FlightPathVersions()[SystemLab.ShipId]);
         Assert.Throws<ArgumentException>(() => session.ForecastFlight("planet-mars", CancellationToken.None));
     }
 
@@ -60,7 +60,7 @@ public sealed class FlightForecastTests
         Assert.Equal(plan.ArrivalTicks, path.EndTicks);
         Assert.All(path.Points, point => Assert.Equal(plan.StateAt(long.Parse(point.AtTicks)).PositionKm, point.PositionKm));
         AdvanceTo(lab, path.EndTicks);
-        Assert.NotEqual(versioned.Version, Object(lab, SystemLab.ShipId).FlightPathVersion);
+        Assert.NotEqual(versioned.Version, lab.FlightPathVersions()[SystemLab.ShipId]);
     }
 
     private static LabObject Object(SystemLab lab, string id) => lab.Snapshot().Objects.Single(item => item.Id == id);

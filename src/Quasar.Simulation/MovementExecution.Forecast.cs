@@ -17,6 +17,9 @@ public sealed partial class MovementExecution
         return FormattableString.Invariant($"{ship.Generation}:{(ship.Plan is null ? 0 : 1)}");
     }
 
+    internal Dictionary<string, string> FlightPathVersions() =>
+        spacecraft.Keys.ToDictionary(id => id, FlightPathVersion, StringComparer.Ordinal);
+
     // Capture on the writer. The forecast uses immutable paths and the catalogue after releasing it.
     internal Func<CancellationToken, FlightForecast> CaptureFlightForecast(string id)
     {

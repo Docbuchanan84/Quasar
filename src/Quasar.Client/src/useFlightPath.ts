@@ -10,7 +10,7 @@ export function useFlightPath(snapshot: Snapshot | null, ship: LabObject | undef
   useEffect(() => { requestTick.current = tick }, [tick])
   const instance = snapshot?.instanceId
   const shipId = ship?.id
-  const version = ship?.flightPathVersion
+  const version = shipId ? snapshot?.flightPathVersions?.[shipId] : undefined
   const key = enabled && instance && shipId && version ? JSON.stringify([instance, shipId, version]) : null
   const current = key && result?.key === key ? result : null
   const path = current?.data?.path

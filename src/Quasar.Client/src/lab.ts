@@ -33,7 +33,6 @@ export type LabObject = {
   velocityKmPerSecond: Position | null
   parentId: string | null
   radiusKm?: number
-  flightPathVersion?: string
   orbit?: {
     semiMajorAxisKm: number
     eccentricity: number
@@ -103,6 +102,7 @@ export type Snapshot = {
   mode: 'once' | 'continuous'
   interrupt?: LabEvent | null
   flightNotice?: LabEvent | null
+  flightPathVersions?: Record<string, string>
   world: {
     trajectory: Trajectory | null
     elapsedTicks: string
