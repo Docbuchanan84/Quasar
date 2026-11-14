@@ -10,7 +10,7 @@ public sealed record LabCommand(string InstanceId, long Revision, string ClientI
 public sealed record CoursePreview(string? PreviewId, string InstanceId, long Revision, string ShipId,
     string DestinationId, double SampledDistanceKm, string[] Warnings, TrajectoryDisplay Trajectory);
 public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePreview? LowestManeuverCost, string[] InfeasibleReasons,
-    CoursePreview? Tuned = null);
+    CoursePreview? Tuned = null, CoursePreview? MostDirect = null);
 public sealed record SailFlightPreview(string InstanceId, long Revision, string? PreviewId,
     SailFlightPath? Coast, SailFlightPath? Trim, SailFlyby[] CoastFlybys, SailFlyby[] TrimFlybys, string? CoastWarning);
 public sealed record SpacecraftFlightForecast(string InstanceId, string ShipId, string PathVersion, FlightForecast Path);
@@ -25,7 +25,7 @@ public sealed partial class LabSession(bool startWithWorld = true)
     private SystemLab? world = startWithWorld ? new() : null;
     internal LabSession(SystemLab fixture) : this(false) => world = fixture;
 
-    private readonly Dictionary<string, (long Revision, TrajectoryPlan Plan)> previews = [];
+    private readonly Dictionary<string, (long Revision, string ShipId, Action Commit)> previews = [];
     private readonly Dictionary<string, (double Angle, int Duration)> sailPreviews = [];
     private string instanceId = Guid.NewGuid().ToString();
     private long revision;
@@ -143,6 +143,40 @@ public sealed partial class LabSession(bool startWithWorld = true)
         }
     }
 
+    public AutomaticCoursePreview PreviewDestination(DestinationOrder order, CancellationToken cancellationToken)
+    {
+        string departureInstance;
+        long departureRevision;
+        Func<CancellationToken, DestinationRoutes> search;
+        lock (gate)
+        {
+            if (running || switchingCampaign || shuttingDown) throw new InvalidOperationException("Pause before plotting a course.");
+            search = RequireWorld().CaptureDestinationOrder(order);
+            departureInstance = instanceId;
+            departureRevision = revision;
+        }
+        var choices = search(cancellationToken);
+        lock (gate)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (running || switchingCampaign || shuttingDown || departureInstance != instanceId || departureRevision != revision)
+                throw new InvalidOperationException("State changed during planning. Refresh state and recalculate.");
+            if (choices.Fastest is null) return new(null, null, choices.Reasons);
+            var presented = new Dictionary<NavigationCandidate, CoursePreview>();
+            CoursePreview? Retain(NavigationCandidate? route)
+            {
+                if (route is null) return null;
+                if (presented.TryGetValue(route, out var existing)) return existing;
+                var token = RetainPreview(order.ShipId, route.Commit);
+                var preview = new CoursePreview(token, instanceId, revision, order.ShipId, order.DestinationId,
+                    route.DistanceKm, [], route.Trajectory);
+                presented.Add(route, preview);
+                return preview;
+            }
+            return new(Retain(choices.Fastest), Retain(choices.Efficient), [], Retain(choices.Tuned), Retain(choices.Direct));
+        }
+    }
+
     private CoursePreview PresentPreview(string destinationId, TrajectoryPlan plan, bool executable = true)
     {
         var trajectory = SystemLab.Present(plan);
@@ -152,14 +186,25 @@ public sealed partial class LabSession(bool startWithWorld = true)
         string? id = null;
         if (executable)
         {
-            if (previews.Count >= 32) previews.Remove(previews.Keys.First());
-            id = Guid.NewGuid().ToString();
-            previews.Add(id, (revision, plan));
+            id = RetainPreview(SystemLab.ShipId, () =>
+            {
+                var active = RequireWorld();
+                if (!plan.UsesFiniteBurns) RequireLegacyOrderAllowed(active);
+                active.CommitTravel(plan);
+            });
         }
         return new(id, instanceId, revision, SystemLab.ShipId, destinationId, distance, trajectory.Arrival is null
             ? [executable ? "Legacy test course with instantaneous maneuvers and no propulsion accounting."
                 : "Advisory only. Use automatic course planning to issue an order for this spacecraft."]
             : ["Bounded search with finite burns and automatic gravity transitions. Faster or cheaper routes may exist."], trajectory);
+    }
+
+    private string RetainPreview(string shipId, Action commit)
+    {
+        if (previews.Count >= 32) previews.Remove(previews.Keys.First());
+        var id = Guid.NewGuid().ToString();
+        previews.Add(id, (revision, shipId, commit));
+        return id;
     }
 
     internal TorchFitStatus GetTorchFitStatus()
@@ -185,7 +230,7 @@ public sealed partial class LabSession(bool startWithWorld = true)
             if (!Guid.TryParse(command.ClientId, out _)) throw new ArgumentException("Invalid browser identity.");
             var activeWorld = RequireWorld();
             if (command.ShipId is { } shipId && shipId != SystemLab.ShipId
-                && command.Operation is "travel" or "commit-course" or "cancel-travel" or "start-burn" or "cut-thrust"
+                && command.Operation is "travel" or "start-burn" or "cut-thrust"
                     or "fit-exploration-torch" or "fit-designed-torch")
                 throw new ArgumentException("These controls apply to Pathfinder.");
             switch (command.Operation)
@@ -222,14 +267,15 @@ public sealed partial class LabSession(bool startWithWorld = true)
                     if (command.PreviewId is null || !previews.TryGetValue(command.PreviewId, out var preview)
                         || preview.Revision != revision)
                         throw new InvalidOperationException("Course preview expired. Recalculate and review before issuing an order.");
-                    if (!preview.Plan.UsesFiniteBurns) RequireLegacyOrderAllowed(activeWorld);
-                    activeWorld.CommitTravel(preview.Plan);
+                    if ((command.ShipId ?? SystemLab.ShipId) != preview.ShipId)
+                        throw new ArgumentException("This course belongs to a different ship.");
+                    preview.Commit();
                     MarkWorldChanged(significant: true);
                     stopReason = "Course committed — ready to advance";
                     break;
                 case "cancel-travel":
                     if (running) throw new InvalidOperationException("Stop before cancelling a course.");
-                    activeWorld.CancelTravel();
+                    activeWorld.CancelCourse(command.ShipId ?? SystemLab.ShipId);
                     MarkWorldChanged(significant: true);
                     stopReason = "Course cancelled — coasting";
                     break;
@@ -328,7 +374,7 @@ public sealed partial class LabSession(bool startWithWorld = true)
                     stopReason = interrupt?.ArrivalLabel ?? "Advance complete";
                     if (interrupt is { } arrival)
                     {
-                        arrivalNotice = destination is null ? arrival.Message
+                        arrivalNotice = arrival.ObjectId != SystemLab.ShipId || destination is null ? arrival.Message
                             : arrival.Kind == "course-orbit-inserted"
                                 ? $"Pathfinder entered orbit at {destination}."
                                 : $"Pathfinder arrived at {destination}.";

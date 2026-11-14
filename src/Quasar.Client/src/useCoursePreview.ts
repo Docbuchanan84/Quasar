@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { AutomaticCoursePreview, Snapshot } from './lab'
+import type { ArrivalKind, AutomaticCoursePreview, Snapshot } from './lab'
 
 export type PlotInputs = {
   shipId: string
   destinationId: string
-  arrivalKind: 'approach' | 'orbit'
+  arrivalKind: ArrivalKind
   preferredFlightSeconds?: number
   reservePercent?: number
   lockFlightTime?: boolean
@@ -46,6 +46,7 @@ export function useCoursePreview(
           const response = await fetch(
             `/api/lab/course-preview?${new URLSearchParams({
               destinationId: destinationId!,
+              shipId: shipId!,
               mode: 'auto',
               arrivalKind: arrivalKind!,
               ...(preferredFlightSeconds === undefined ? {} : { preferredFlightSeconds: String(preferredFlightSeconds) }),
@@ -64,7 +65,7 @@ export function useCoursePreview(
           if (!response.ok)
             throw new Error(data.error ?? 'Course planning failed.')
           const routes = data as AutomaticCoursePreview
-          const stale = [routes.fastest, routes.lowestManeuverCost, routes.tuned].some(
+          const stale = [routes.fastest, routes.lowestManeuverCost, routes.tuned, routes.mostDirect].some(
             (preview) => preview && (
               preview.instanceId !== instanceId ||
               preview.revision !== revision ||

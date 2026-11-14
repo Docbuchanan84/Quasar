@@ -18,7 +18,9 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   `History` entries. `SimulationState` contains `FormatVersion`,
   `ElapsedTicks`, `Bodies`, and `Spacecraft`. The nested
   `Simulation.FormatVersion` versions the entire checkpoint. The current version
-  is `SimulationState.CurrentFormatVersion` (8). Version 8 adds sail
+  is `SimulationState.CurrentFormatVersion` (9). Version 9 adds confirmed
+  sail flyby courses, storing departure state, destination and trim schedule.
+  Version 8 adds sail
   equipment, active sail trims, and independent history for the optional
   Sundiver spacecraft. Version 7 adds finite courses
   across gravity systems, recording the arrival primary and burn throttle.
@@ -26,7 +28,7 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   rocket-equation impulses on integer clock ticks without exceeding rated thrust.
   All patched paths and their boundaries are rebuilt and validated on load,
   including current primary, remaining fuel, and consumed history events.
-  Versions 1–7 remain readable with their original equipment and motion state.
+  Versions 1–8 remain readable with their original equipment and motion state.
   Version 6 adds finite courses.
   Version 5 records automatic
   primary selection on eligible free coasts. Older free coasts keep their
@@ -38,7 +40,7 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   reference state and epoch, and orbital elements and epoch. `SpacecraftState`
   carries the ship ID, gravity primary (last primary while in rendezvous), and
   exactly one of `CoastState`, `CommittedTrajectoryState`, `RendezvousState`,
-  `ActiveBurnState`, `FiniteCourseState`, or `ActiveSailState`.
+  `ActiveBurnState`, `FiniteCourseState`, `ActiveSailState`, or `SailCourseState`.
 - A coast stores its epoch and initial primary-relative position and velocity.
   A committed plan stores its departure state, target, ordered conic segments,
   impulses, fuel estimate, and zero-based `NextBoundaryIndex`. The segment

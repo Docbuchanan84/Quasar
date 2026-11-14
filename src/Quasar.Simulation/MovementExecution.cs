@@ -16,6 +16,7 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
         public IPropulsionComponent? Propulsion = propulsion;
         public ActiveBurn? Burn;
         public SailTrajectory? Sailing;
+        public SailCourse? SailCourse;
         public string Primary = primary;
         public TwoBodyTrajectory? Coast = coast;
         public bool AutomaticPrimary;
@@ -46,6 +47,9 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
     {
         RequireFuture(atTicks);
         var ship = spacecraft[id];
+        if (ship.SailCourse is { } sailCourse)
+            return atTicks <= sailCourse.ArrivalTicks ? sailCourse.StateAt(atTicks)
+                : PredictCoast(sailCourse.ArrivalCoast, sailCourse.State.TargetId, atTicks, sailCourse.ArrivalTicks).State;
         if (ship.Sailing is { } sailing)
         {
             if (atTicks > sailing.EndTicks)
@@ -82,16 +86,28 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
             { Sailing: not null } => "Sailing",
             { Burn: not null } => "Burning",
             { Plan: not null } => "Underway",
+            { SailCourse: not null } => "Underway",
             { Rendezvous: not null } => "Arrived",
             _ => "Coasting"
         };
         return new(id, ElapsedTicks, StateAt(id, ElapsedTicks),
             status,
-            plan?.TargetBodyId, plan?.ArrivalTicks, plan?.RequiredDeltaVKmPerSecond, plan?.Fuel, PropulsionAt(ship, ElapsedTicks)?.CalculatePerformance(),
+            plan?.TargetBodyId ?? ship.SailCourse?.State.TargetId, plan?.ArrivalTicks ?? ship.SailCourse?.ArrivalTicks,
+            plan?.RequiredDeltaVKmPerSecond, plan?.Fuel, PropulsionAt(ship, ElapsedTicks)?.CalculatePerformance(),
             ship.Burn?.Path.EndTicks);
     }
 
     public TrajectoryPlan? CommittedPlan(string id) => spacecraft[id].Plan;
+
+    internal NavigationOptions? NavigationOf(string id)
+    {
+        var ship = spacecraft[id];
+        return ship.Propulsion?.Navigation is { } navigation ? navigation with
+        {
+            CanPlot = ship is { Burn: null, Sailing: null, SailCourse: null },
+            HasCourse = ship.Plan is not null || ship.SailCourse is not null
+        } : null;
+    }
 
     public void Commit(string id, TrajectoryPlan plan)
     {
@@ -118,6 +134,15 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
     public void Cancel(string id)
     {
         var ship = spacecraft[id];
+        if (ship.SailCourse is not null)
+        {
+            ship.Coast = NewCoast(StateAt(id, ElapsedTicks), ship.Primary);
+            ship.SailCourse = null;
+            ship.AutomaticPrimary = true;
+            ship.Generation++;
+            CompactQueue();
+            return;
+        }
         if (ship.Plan is null) throw new InvalidOperationException("No committed course to cancel.");
 
         ship.Coast = NewCoast(StateAt(id, ElapsedTicks), ship.Primary);
@@ -165,6 +190,21 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
             boundaries.Dequeue();
             var ship = spacecraft[entry.Id];
             if (entry.Generation != ship.Generation) continue;
+            if (ship.SailCourse is { } sailCourse)
+            {
+                var boundary = sailCourse.Boundaries[ship.NextBoundary++];
+                ship.Primary = sailCourse.PrimaryAt(at);
+                if (at == sailCourse.ArrivalTicks)
+                {
+                    ship.SailCourse = null;
+                    ship.Coast = sailCourse.ArrivalCoast;
+                    ship.AutomaticPrimary = true;
+                    ship.Generation++;
+                }
+                Schedule(entry.Id, ship);
+                events.Add(new(at, entry.Id, boundary.Kind));
+                continue;
+            }
             if (ship.Sailing is { } sailing)
             {
                 EndSailing(ship, sailing.EndCoast);
@@ -221,7 +261,8 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
 
     private static long? BoundaryTicks(Spacecraft ship) => ship.Plan?.Finite is { } finite
         ? finite.Boundaries[ship.NextBoundary].Ticks
-        : ship.Sailing?.EndTicks ?? ship.Burn?.Path.EndTicks ?? ship.Plan?.Segments[ship.NextBoundary].EndTicks;
+        : ship.SailCourse?.Boundaries[ship.NextBoundary].At ?? ship.Sailing?.EndTicks
+            ?? ship.Burn?.Path.EndTicks ?? ship.Plan?.Segments[ship.NextBoundary].EndTicks;
 
     private void Schedule(string id, Spacecraft ship)
     {

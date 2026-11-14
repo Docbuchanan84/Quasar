@@ -63,11 +63,12 @@ function App() {
     ? sailDraft : null
   const selectedShip = selected?.kind === 'spacecraft' ? selected : undefined
   const flightPath = useFlightPath(snapshot, selectedShip, showFlightPath && online && !sailPreview)
-  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
+  const [selectedRoute, setSelectedRoute] = useState<{ id: string; label: string } | null>(null)
   const fastest = course.routes?.fastest ?? null
   const lowestCost = course.routes?.lowestManeuverCost ?? null
   const tuned = course.routes?.tuned ?? null
-  const preview = [fastest, lowestCost, tuned].find((route) => route?.previewId === selectedRouteId)
+  const direct = course.routes?.mostDirect ?? null
+  const preview = [fastest, lowestCost, tuned, direct].find((route) => route?.previewId === selectedRoute?.id)
     ?? tuned ?? fastest
   const courses = useMemo<CourseLayer[]>(
     () => [
@@ -86,7 +87,8 @@ function App() {
   const selectObject = (id: string) => {
     setSelectedId(id)
     if (id !== sailcraftId) setSailDraft(null)
-    if (id === sailcraftId) setPlotting(null)
+    if (plotting && id !== plotting.shipId && world?.objects.some((object) => object.id === id && object.kind === 'spacecraft'))
+      setPlotting(null)
     if (
       plotting &&
       world?.objects.some((o) => o.id === id && isCourseDestination(o))
@@ -295,7 +297,8 @@ function App() {
               objects={world.objects}
               preview={preview}
               routes={course.routes}
-              onSelectRoute={setSelectedRouteId}
+              selectedLabel={selectedRoute?.id === preview?.previewId ? selectedRoute?.label : undefined}
+              onSelectRoute={(id, label) => setSelectedRoute({ id, label })}
               error={course.error}
               loading={course.loading}
               disabled={disabled}
@@ -307,7 +310,8 @@ function App() {
                 if (!preview) return
                 void command('commit-course', {
                   previewId: preview.previewId,
-                }).then(() => setPlotting(null))
+                  shipId: preview.shipId,
+                }).then((issued) => { if (issued) setPlotting(null) })
               }}
             />
           )}
@@ -334,16 +338,39 @@ function App() {
                     </div>
                   ))}
                 </dl>
+                {selected.navigation && (
+                  <div className="order-buttons">
+                    <button className="primary" disabled={disabled || snapshot.running || !!plotting || !selected.navigation.canPlot}
+                    onClick={() => {
+                      setSailDraft(null)
+                      setPlotting({ shipId: selected.id, destinationId: '', arrivalKind: selected.navigation!.arrivalKinds[0] })
+                    }}>Plot Course</button>
+                    {selected.navigation.hasCourse && (
+                      <button disabled={disabled || snapshot.running}
+                        onClick={() => void command('cancel-travel', { shipId: selected.id })}>Cancel committed course</button>
+                    )}
+                  </div>
+                )}
                 {selected.id === sailcraftId && world.solarSail ? (
+                  <>
+                  {world.solarSail.destinationId && (
+                    <p>Fly past {world.objects.find((object) => object.id === world.solarSail?.destinationId)?.name}
+                      {' · '}{formatTime(world.solarSail.arrivalTicks!)}</p>
+                  )}
+                  {world.solarSail.status !== 'Underway' && <details
+                    onToggle={(event) => { if (!event.currentTarget.open) setSailDraft(null) }}>
+                  <summary>Manual sail controls</summary>
                   <SailPanel
                     key={snapshot.instanceId}
                     ship={world.solarSail}
                     primary={world.objects.find((object) => object.id === world.solarSail?.primaryBodyId)?.name}
-                    disabled={disabled || snapshot.running}
+                    disabled={disabled || snapshot.running || !!plotting}
                     onCommand={command}
                     preview={sailPreview}
                     onPreview={setSailDraft}
                   />
+                  </details>}
+                  </>
                 ) : selected.kind === 'spacecraft' ? (
                   <>
                     <div className="ship-state">
@@ -375,31 +402,14 @@ function App() {
                         </>
                       )}
                     </div>
-                    <h3>Course orders</h3>
-                    <button
-                      disabled={disabled || snapshot?.running || !!plotting || !!world.ship.burnEndTicks}
-                      onClick={() =>
-                        setPlotting({
-                          shipId: selected.id,
-                          destinationId: '',
-                          arrivalKind: 'approach',
-                        })
-                      }
-                    >
-                      Plot Course
-                    </button>
-                    {world.ship.destinationId && (
+                    {!selected.navigation && (
                       <button
-                        disabled={disabled || snapshot?.running}
-                        onClick={() => void command('cancel-travel')}
+                        disabled={disabled || snapshot.running || !!plotting}
+                        onClick={() => setPlotting({ shipId: selected.id, destinationId: '', arrivalKind: 'approach' })}
                       >
-                        Cancel committed course
+                        Plot Course
                       </button>
                     )}
-                    <p className="muted">
-                      Stop time processing to plot, replace or cancel an order.
-                      Cancelling a committed course retains momentum.
-                    </p>
                     <h3>Propulsion</h3>
                     <a className="torch-designer-link" href="/torch-designer/">Open Torch Designer</a>
                     {world.ship.propulsion ? (

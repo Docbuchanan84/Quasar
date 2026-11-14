@@ -24,6 +24,7 @@ async (page) => {
   assert(!new URL(initialResponse.url()).searchParams.has('maneuverBudget'), 'Planning uses the spacecraft capability')
   const initial = await initialResponse.json()
   assert(initial.fastest.trajectory.requiredDeltaVKmPerSecond > 25, 'Torch course exceeds the obsolete test budget')
+  await panel.getByText('Advanced constraints', { exact: true }).click()
   await panel.getByText('Tune course', { exact: true }).waitFor()
 
   const locked = page.waitForResponse(response => new URL(response.url()).searchParams.get('lockFlightTime') === 'true')

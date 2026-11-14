@@ -38,12 +38,12 @@ public interface ITransferFuelEstimator
 public sealed class TrajectorySegment
 {
     internal TrajectorySegment(CelestialPositionService catalogue, string primaryId, TwoBodyTrajectory coast,
-        long endTicks)
-    { Catalogue = catalogue; PrimaryBodyId = primaryId; Coast = coast; EndTicks = endTicks; }
+        long endTicks, long? startTicks = null)
+    { Catalogue = catalogue; PrimaryBodyId = primaryId; Coast = coast; EndTicks = endTicks; StartTicks = startTicks ?? coast.EpochTicks; }
     internal CelestialPositionService Catalogue { get; }
     public string PrimaryBodyId { get; }
     public TwoBodyTrajectory Coast { get; }
-    public long StartTicks => Coast.EpochTicks;
+    public long StartTicks { get; }
     public long EndTicks { get; }
     public CelestialState StateAt(long atTicks)
     {

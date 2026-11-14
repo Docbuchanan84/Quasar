@@ -95,7 +95,7 @@ public static class QuasarHost
             { return Results.BadRequest(new { error = error.Message }); }
         });
         app.MapGet("/api/lab/course-preview", (string destinationId, int? flightSeconds, double? maneuverBudget,
-            string? mode, string? arrivalKind, int? preferredFlightSeconds, double? reservePercent, bool? lockFlightTime,
+            string? mode, string? arrivalKind, int? preferredFlightSeconds, double? reservePercent, bool? lockFlightTime, string? shipId,
             LabSession session, CancellationToken cancellationToken) =>
         {
             try
@@ -103,6 +103,9 @@ public static class QuasarHost
                 return mode switch
                 {
                     null when arrivalKind is null => Results.Ok(session.PreviewCourse(destinationId, flightSeconds ?? 21600, maneuverBudget)),
+                    "auto" when flightSeconds is null && shipId is not null => Results.Ok(session.PreviewDestination(
+                        new(shipId, destinationId, arrivalKind ?? "approach", maneuverBudget, preferredFlightSeconds, reservePercent,
+                            lockFlightTime ?? false), cancellationToken)),
                     "auto" when flightSeconds is null => Results.Ok(session.PreviewAutomaticCourse(destinationId, maneuverBudget,
                         cancellationToken, arrivalKind ?? "approach", preferredFlightSeconds, reservePercent, lockFlightTime ?? false)),
                     _ => Results.BadRequest(new { error = "Use automatic mode without specifying a flight duration." })

@@ -5,6 +5,17 @@ Sundiver alongside Pathfinder and places it on an inbound Earth flyby about
 four simulated days from closest approach. The trial is available in existing
 Solar System campaigns and in new ones. Launch is an explicit campaign order.
 
+Choose **Plot Course**, set Earth as the destination, and select **Fly past**.
+Compare the quickest verified flyby with the route that spends the least time
+under sail or follows the shortest route with fewest intermediate encounters.
+The confirmed course schedules trimming and feathered coasting automatically.
+The clock pauses at closest approach. Resume to continue the outgoing orbit.
+The sail search tests coast, single trims, and two trims separated by coasting
+within a two-year horizon. It accounts for intervening gravity handoffs.
+A missed search can mean there was no safe course among the candidates tested.
+
+Open **Manual sail controls** to steer directly.
+
 1. Select **Preview coast** to see the ballistic encounter.
 2. Set the angle to **+35°** and the duration to **1 day**. Select **Compare trim
    with coast**. Both maps show the coast in blue and the trim followed by
@@ -50,6 +61,7 @@ pressure. [NASA NEA Scout thrust and torque model](https://ntrs.nasa.gov/api/cit
 - Checkpoint v8 adds optional sail equipment and active trim state. Restore
   rebuilds the physical path and boundary using the saved initial conditions.
   Existing checkpoints through v7 retain their original ships and trajectories.
-- The trial uses a prepared encounter and manual sail angles. It models
+- The trial starts on a prepared encounter and models
   ideal reflective thrust and patched-conic gravity. Eclipse, attitude slew,
-  thermal limits, and automatic sail route search are open.
+  thermal limits, sail capture and rendezvous, and unrestricted sail route
+  optimization are open.

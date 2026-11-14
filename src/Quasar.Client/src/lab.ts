@@ -18,6 +18,9 @@ export type Trajectory = {
   brakingMarginPercent?: number
   criticalBrakingReserve?: boolean
   gravityTransitions?: { bodyId: string; bodyName: string; atTicks: string }[]
+  sailSchedule?: { startTicks: string; durationSeconds: number; angleDegrees: number }[]
+  flybyRelativeSpeedKmPerSecond?: number
+  assistBodies?: string[]
   flyby?: { bodyId: string; bodyName: string; atTicks: string; closestApproachKm: number } | null
   points: {
     atTicks: string
@@ -33,6 +36,13 @@ export type LabObject = {
   velocityKmPerSecond: Position | null
   parentId: string | null
   radiusKm?: number
+  navigation?: {
+    arrivalKinds: ArrivalKind[]
+    efficiencyMetric: string
+    advancedConstraints: boolean
+    canPlot: boolean
+    hasCourse: boolean
+  }
   orbit?: {
     semiMajorAxisKm: number
     eccentricity: number
@@ -43,6 +53,7 @@ export type LabObject = {
 }
 export const isCourseDestination = (object: LabObject) =>
   object.kind !== 'spacecraft'
+export type ArrivalKind = 'approach' | 'orbit' | 'flyby'
 
 type LabEvent = {
   sequence: number
@@ -55,7 +66,7 @@ type LabEvent = {
 
 export const sailcraftId = 'ship-sundiver'
 export type SailStatus = {
-  status: 'Coasting' | 'Sailing'
+  status: 'Coasting' | 'Sailing' | 'Underway'
   primaryBodyId: string
   speedKmPerSecond: number
   solarDistanceAu: number
@@ -64,6 +75,8 @@ export type SailStatus = {
   faceOnAccelerationMPerSecond2: number
   angleDegrees: number | null
   trimEndTicks: string | null
+  destinationId?: string | null
+  arrivalTicks?: string | null
 }
 export type SailFlyby = {
   bodyId: string
@@ -151,6 +164,7 @@ export type AutomaticCoursePreview = {
   lowestManeuverCost: CoursePreview | null
   infeasibleReasons: string[]
   tuned?: CoursePreview | null
+  mostDirect?: CoursePreview | null
 }
 
 export type CourseLayer = {
