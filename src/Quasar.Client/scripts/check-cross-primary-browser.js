@@ -13,11 +13,13 @@ async (page) => {
   const initialResponse = page.waitForResponse(response => new URL(response.url()).searchParams.get('destinationId') === 'moon-callisto')
   const began = Date.now()
   await page.getByLabel('Course destination').selectOption('moon-callisto')
+  await panel.getByText('Advanced constraints', { exact: true }).click()
   await page.getByRole('slider', { name: 'Travel time', exact: true }).waitFor()
   const initial = await (await initialResponse).json()
   assert(Date.now() - began < 8000, 'Initial Callisto response stays inside the client timeout')
   assert(initial.fastest, 'Callisto has a verified route')
   assert(initial.fastest.trajectory.gravityTransitions.some(transition => transition.bodyId === 'planet-jupiter'), 'The computer plans Jupiter entry')
+  await panel.getByText('Maneuvers and navigation', { exact: true }).click()
   await panel.getByRole('heading', { name: 'Automatic gravity transitions' }).waitFor()
   assert(JSON.stringify(before) === JSON.stringify(await read()), 'Planning does not alter the campaign')
 
