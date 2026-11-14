@@ -5,6 +5,7 @@ const dayTicks = 864_000_000_000n
 
 export function useFlightPath(snapshot: Snapshot | null, ship: LabObject | undefined, enabled: boolean) {
   const [result, setResult] = useState<{ key: string; data?: FlightForecast; tick?: string } | null>(null)
+  const [retry, setRetry] = useState(0)
   const tick = snapshot?.world.elapsedTicks
   const requestTick = useRef(tick)
   useEffect(() => { requestTick.current = tick }, [tick])
@@ -21,7 +22,15 @@ export function useFlightPath(snapshot: Snapshot | null, ship: LabObject | undef
   const failedAt = current && !path ? current.tick : undefined
   // Stable between polls while one request is running. Large clock jumps can refresh immediately after it.
   const requestKey = key && (!current || needsRefresh || failedAt !== undefined && failedAt !== tick)
-    ? key + (path?.startTicks ?? failedAt ?? '') : null
+    ? JSON.stringify([key, path?.startTicks ?? failedAt, retry]) : null
+  useEffect(() => {
+    if (!key || !current || path) return
+    const timer = window.setTimeout(() => {
+      setResult((previous) => previous === current ? null : previous)
+      setRetry((value) => value + 1)
+    }, 3000)
+    return () => clearTimeout(timer)
+  }, [key, current, path])
   useEffect(() => {
     if (!requestKey || !shipId || !key) return
     const pathUrl = `/api/lab/spacecraft/${encodeURIComponent(shipId)}/flight-path`
@@ -75,5 +84,9 @@ export function useFlightPath(snapshot: Snapshot | null, ship: LabObject | undef
     endTicks: layer ? path?.endTicks : undefined,
     unavailable: !!current && !path,
     loading: !!key && !current,
+    refresh: () => {
+      setResult(null)
+      setRetry((value) => value + 1)
+    },
   }
 }

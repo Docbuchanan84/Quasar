@@ -246,7 +246,10 @@ function App() {
               Reference guides
             </label>
             <label>
-              <input type="checkbox" checked={showFlightPath} onChange={(event) => setShowFlightPath(event.target.checked)} />{' '}
+              <input type="checkbox" checked={showFlightPath} onChange={(event) => {
+                setShowFlightPath(event.target.checked)
+                if (event.target.checked) flightPath.refresh()
+              }} />{' '}
               Flight path
             </label>
             <span>
