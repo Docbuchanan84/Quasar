@@ -2,7 +2,7 @@
 
 [Issue #10](https://github.com/Docbuchanan84/Quasar/issues/10) adds a headless
 checkpoint boundary in `Quasar.Simulation`. The format describes the current
-physics model and the current single-ship System Lab.
+physics model and the System Lab spacecraft.
 
 ## Capture, encode, and restore
 
@@ -18,13 +18,15 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   `History` entries. `SimulationState` contains `FormatVersion`,
   `ElapsedTicks`, `Bodies`, and `Spacecraft`. The nested
   `Simulation.FormatVersion` versions the entire checkpoint. The current version
-  is `SimulationState.CurrentFormatVersion` (7). Version 7 adds finite courses
+  is `SimulationState.CurrentFormatVersion` (8). Version 8 adds sail
+  equipment, active sail trims, and independent history for the optional
+  Sundiver spacecraft. Version 7 adds finite courses
   across gravity systems, recording the arrival primary and burn throttle.
   Thrust and mass flow scale together; the tiny cutoff adjustment places exact
   rocket-equation impulses on integer clock ticks without exceeding rated thrust.
   All patched paths and their boundaries are rebuilt and validated on load,
   including current primary, remaining fuel, and consumed history events.
-  Versions 1–6 remain readable with their original equipment and motion state.
+  Versions 1–7 remain readable with their original equipment and motion state.
   Version 6 adds finite courses.
   Version 5 records automatic
   primary selection on eligible free coasts. Older free coasts keep their
@@ -36,7 +38,7 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   reference state and epoch, and orbital elements and epoch. `SpacecraftState`
   carries the ship ID, gravity primary (last primary while in rendezvous), and
   exactly one of `CoastState`, `CommittedTrajectoryState`, `RendezvousState`,
-  `ActiveBurnState`, or `FiniteCourseState`.
+  `ActiveBurnState`, `FiniteCourseState`, or `ActiveSailState`.
 - A coast stores its epoch and initial primary-relative position and velocity.
   A committed plan stores its departure state, target, ordered conic segments,
   impulses, fuel estimate, and zero-based `NextBoundaryIndex`. The segment
@@ -59,6 +61,10 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
 - A Torch Designer fit saves the realized drive in the existing propulsion
   fields. Debug refuel updates the existing tank quantity. Both use the
   existing refit history entry and checkpoint format.
+- An active sail trim stores the initial primary-relative position and velocity,
+  angle, duration and start tick along with the installed sail area and masses.
+  Restore rebuilds the bounded trim and validates its clock, end boundary,
+  and ship-specific history before activation.
 - Export is a detached immutable capture. Bodies and ships are exported in
   ordinal ID order. History, segments, and burns retain their execution order.
   Use the same single-writer synchronization as for world commands. Encoding can
@@ -67,7 +73,7 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   64-bit field uses an invariant decimal string (including ticks and event
   sequence), and celestial kinds use camel-case enum names. Nullable fields
   are generally present with JSON null when unused. Absent propulsion, active
-  burns, and finite courses are omitted. The decoder rejects missing,
+  burns, finite courses, sails, and active trims are omitted. The decoder rejects missing,
   unknown, or duplicate fields, invalid tick strings, and unsupported versions.
   It checks the format and shape. The restore factory checks the relationships
   and physics. Malformed payloads and invalid state throw `InvalidDataException`.

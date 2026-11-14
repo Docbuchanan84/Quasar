@@ -7,7 +7,7 @@ namespace Quasar.Simulation;
 public sealed record SimulationState(int FormatVersion, long ElapsedTicks,
     ImmutableArray<CelestialBodyState> Bodies, ImmutableArray<SpacecraftState> Spacecraft)
 {
-    public const int CurrentFormatVersion = 7;
+    public const int CurrentFormatVersion = 8;
 
     public static bool SupportsFormatVersion(int version) => version is >= 1 and <= CurrentFormatVersion;
 
@@ -25,6 +25,8 @@ public sealed record SimulationState(int FormatVersion, long ElapsedTicks,
             throw new InvalidDataException("Finite courses require simulation state version 6.");
         if (FormatVersion < 7 && !Spacecraft.IsDefault && Spacecraft.Any(ship => ship?.FiniteCourse?.ArrivalPrimaryBodyId is not null))
             throw new InvalidDataException("Courses with gravity transitions require simulation state version 7.");
+        if (FormatVersion < 8 && !Spacecraft.IsDefault && Spacecraft.Any(ship => ship is { Sail: not null } or { ActiveSail: not null }))
+            throw new InvalidDataException("Solar sails require simulation state version 8.");
     }
 }
 
@@ -46,7 +48,12 @@ public sealed record SpacecraftState(string Id, string PrimaryBodyId, CoastState
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     ActiveBurnState? ActiveBurn = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    FiniteCourseState? FiniteCourse = null);
+    FiniteCourseState? FiniteCourse = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    SolarSail? Sail = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    ActiveSailState? ActiveSail = null);
+public sealed record ActiveSailState(long StartTicks, int DurationSeconds, double AngleDegrees, KinematicState InitialRelativeState);
 public sealed record FiniteCourseState(string PrimaryBodyId, string TargetId, string ArrivalKind,
     long DepartureTicks, long ArrivalTicks, KinematicState InitialState, KinematicState TargetLocalState,
     SpacecraftPropulsion Propulsion, CartesianState DepartureDirection, long DepartureDurationTicks,

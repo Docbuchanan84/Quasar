@@ -1,5 +1,20 @@
 # Development log
 
+## 2026-11-13 — Sundiver solar sail trial
+
+- Added an opt-in sailcraft alongside Pathfinder. Its installed component
+  supplies sunlight-driven acceleration without fuel. Both craft use the same
+  movement owner, integrator step, gravity handoffs, and checkpoint pipeline.
+- In the starter trial, a one-day +35° trim changed closest Earth altitude from
+  14,000 km to about 3,503 km. The Sun-relative speed gain across the encounter
+  increased from 4.12 km/s to 5.69 km/s.
+- Headless tests cover force, flyby geometry, mixed propulsion, and save and
+  restore. Phone-sized Chromium exercised the two map views, preview,
+  confirmation, Earth entry and exit, and named-save rewind mid-trim.
+  Physical iPhone play remains to be checked.
+- The trial uses manual trim and a prepared encounter. See the [flight
+  guide](SOLAR_SAIL.md) for the model and how to try it.
+
 ## 2026-11-13 — Map scale indicators
 
 - Added a zoom-responsive scale bar to the 2D and 3D System Lab maps, with

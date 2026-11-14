@@ -82,6 +82,7 @@ public sealed partial class LabSession
                 ? world.LastEvent : null;
             flightNotice = null;
             previews.Clear();
+            sailPreviews.Clear();
         }
     }
 

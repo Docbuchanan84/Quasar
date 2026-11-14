@@ -80,6 +80,13 @@ public static class QuasarHost
         });
 
         app.MapGet("/api/lab", (LabSession session) => session.Snapshot());
+        app.MapGet("/api/lab/sail-preview", (double? angleDegrees, int? durationSeconds, LabSession session, CancellationToken cancellationToken) =>
+        {
+            try { return Results.Ok(session.PreviewSail(angleDegrees, durationSeconds ?? 0, cancellationToken)); }
+            catch (InvalidOperationException error) { return Results.Conflict(new { error = error.Message }); }
+            catch (Exception error) when (error is ArgumentException or OverflowException)
+            { return Results.BadRequest(new { error = error.Message }); }
+        });
         app.MapGet("/api/lab/course-preview", (string destinationId, int? flightSeconds, double? maneuverBudget,
             string? mode, string? arrivalKind, int? preferredFlightSeconds, double? reservePercent, bool? lockFlightTime,
             LabSession session, CancellationToken cancellationToken) =>

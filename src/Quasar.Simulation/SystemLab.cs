@@ -31,7 +31,9 @@ public sealed record ShipStatus(string Status, double SpeedKmPerSecond, string? 
     string? ArrivalKind = null);
 public sealed record LabSnapshot(
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long ElapsedTicks, LabObject[] Objects, ShipStatus Ship, LabEvent[] Events,
-    TrajectoryDisplay? Trajectory = null, string? ReferenceEpoch = null);
+    TrajectoryDisplay? Trajectory = null, string? ReferenceEpoch = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] SailStatus? SolarSail = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool CanLaunchSailcraft = false);
 public sealed record TrajectoryDisplayPoint(string AtTicks, Position3 PositionKm, Velocity3 VelocityKmPerSecond);
 public sealed record TrajectoryDisplay(string DepartureTicks, string ArrivalTicks, double TravelSeconds,
     double RequiredDeltaVKmPerSecond, TransferFuelEstimate Fuel, TrajectoryDisplayPoint[] Points, FlybyDisplay? Flyby = null,
@@ -118,12 +120,14 @@ public sealed partial class SystemLab
         var distance = ship.DestinationId is null ? 0 : ship.State.PositionKm.DistanceTo(display?.Arrival is not null
             ? display.Points[^1].PositionKm : states[ship.DestinationId].PositionKm);
         return new(ElapsedTicks,
-            [.. bodies, new(ShipId, "Pathfinder", "spacecraft", ship.State.PositionKm, null, ship.State.VelocityKmPerSecond)],
+            [.. bodies, new(ShipId, "Pathfinder", "spacecraft", ship.State.PositionKm, null, ship.State.VelocityKmPerSecond),
+                .. SailObjects()],
             new(ship.Status, Vector3d.From(ship.State.VelocityKmPerSecond).Length, ship.DestinationId,
                 ship.ArrivalTicks, distance, ship.Propulsion, ship.BurnEndTicks,
-                display?.ArrivalKind ?? LastEvent.ArrivalKind), [.. events],
+                display?.ArrivalKind ?? events.LastOrDefault(entry => entry.ObjectId == ShipId)?.ArrivalKind), [.. events],
             display is null ? null : display with { Points = [.. display.Points], BurnSchedule = display.BurnSchedule?.ToArray() },
-            PrimaryId == SolarSystem.Sun ? SolarSystem.Epoch : null);
+            PrimaryId == SolarSystem.Sun ? SolarSystem.Epoch : null,
+            movement.ContainsSpacecraft(SailcraftId) ? movement.SailView(SailcraftId) : null, CanLaunchSailcraft);
     }
 
     public TrajectoryPlan PreviewTravel(string destinationId, int flightSeconds = 21600, double? maneuverBudget = null)
@@ -211,6 +215,8 @@ public sealed partial class SystemLab
 
     public LabEvent LastEvent => events[^1];
     public string LastEventKind => LastEvent.Kind;
+    public LabEvent? ArrivalAfter(long sequence) =>
+        events.Skip(checked((int)sequence)).FirstOrDefault(entry => entry.ArrivalLabel is not null);
 
     public OrbitalTargetState TargetStateAt(string kind, string targetId, long atTicks) => kind switch
     {
@@ -269,6 +275,11 @@ public sealed partial class SystemLab
         var consequences = movement.Advance(duration);
         foreach (var consequence in consequences)
         {
+            if (consequence.SpacecraftId == SailcraftId)
+            {
+                RecordSailEvent(consequence);
+                continue;
+            }
             if (consequence.Kind is "arrival" or "course-approach-complete" or "course-orbit-inserted") display = null;
             Record(consequence.Kind, consequence.Kind switch
             {
@@ -288,9 +299,9 @@ public sealed partial class SystemLab
     }
 
     private static string Ticks(long ticks) => ticks.ToString(System.Globalization.CultureInfo.InvariantCulture);
-    private void Record(string kind, string message)
+    private void Record(string kind, string message, string objectId = ShipId)
     {
         lastEventSequence = checked(lastEventSequence + 1);
-        events.Add(new(lastEventSequence, ElapsedTicks, kind, ShipId, message));
+        events.Add(new(lastEventSequence, ElapsedTicks, kind, objectId, message));
     }
 }

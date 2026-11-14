@@ -75,6 +75,8 @@ function Read-Json([string]$Path) {
 function ConvertTo-ComparableWorld($World) {
     # The Solar System release adds optional snapshot fields to older catalogues.
     $json = $World | ConvertTo-Json -Depth 30 -Compress | ConvertFrom-Json -AsHashtable
+    # Trial availability is derived from the catalogue and does not change saved state.
+    $null = $json.Remove('canLaunchSailcraft')
     # Orbital navigation adds presentation metadata to the existing trajectory.
     $null = $json.ship.Remove('arrivalKind')
     if ($json.trajectory) {

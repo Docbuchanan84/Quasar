@@ -11,6 +11,8 @@ public sealed record CoursePreview(string? PreviewId, string InstanceId, long Re
     string DestinationId, double SampledDistanceKm, string[] Warnings, TrajectoryDisplay Trajectory);
 public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePreview? LowestManeuverCost, string[] InfeasibleReasons,
     CoursePreview? Tuned = null);
+public sealed record SailFlightPreview(string InstanceId, long Revision, string? PreviewId,
+    SailFlightPath? Coast, SailFlightPath? Trim, SailFlyby[] CoastFlybys, SailFlyby[] TrimFlybys, string? CoastWarning);
 public sealed record SessionSnapshot(string InstanceId, long Revision, bool Running, string StopReason,
     int DurationSeconds, string Mode, LabSnapshot World, LabEvent? Interrupt, LabEvent? FlightNotice = null);
 
@@ -22,6 +24,7 @@ public sealed partial class LabSession(bool startWithWorld = true)
     internal LabSession(SystemLab fixture) : this(false) => world = fixture;
 
     private readonly Dictionary<string, (long Revision, TrajectoryPlan Plan)> previews = [];
+    private readonly Dictionary<string, (double Angle, int Duration)> sailPreviews = [];
     private string instanceId = Guid.NewGuid().ToString();
     private long revision;
     private bool running;
@@ -58,6 +61,23 @@ public sealed partial class LabSession(bool startWithWorld = true)
     public CelestialState ShipStateAt(long atTicks)
     {
         lock (gate) return RequireWorld().ShipStateAt(atTicks);
+    }
+
+    public SailFlightPreview PreviewSail(double? angleDegrees, int durationSeconds, CancellationToken cancellationToken = default)
+    {
+        lock (gate)
+        {
+            if (running) throw new InvalidOperationException("Stop time processing before previewing sail flight.");
+            var result = RequireWorld().PreviewSail(angleDegrees, durationSeconds, cancellationToken);
+            string? token = null;
+            if (angleDegrees is { } angle)
+            {
+                token = Guid.NewGuid().ToString();
+                if (sailPreviews.Count >= 32) sailPreviews.Remove(sailPreviews.Keys.First());
+                sailPreviews.Add(token, (angle, durationSeconds));
+            }
+            return new(instanceId, revision, token, result.Coast, result.Trim, result.CoastFlybys, result.TrimFlybys, result.CoastWarning);
+        }
     }
 
     public CoursePreview PreviewCourse(string destinationId, int flightSeconds, double? maneuverBudget = null)
@@ -149,6 +169,10 @@ public sealed partial class LabSession(bool startWithWorld = true)
                 throw new InvalidOperationException("State changed. Refresh and review before trying again.");
             if (!Guid.TryParse(command.ClientId, out _)) throw new ArgumentException("Invalid browser identity.");
             var activeWorld = RequireWorld();
+            if (command.ShipId is { } shipId && shipId != SystemLab.ShipId
+                && command.Operation is "travel" or "commit-course" or "cancel-travel" or "start-burn" or "cut-thrust"
+                    or "fit-exploration-torch" or "fit-designed-torch")
+                throw new ArgumentException("These controls apply to Pathfinder.");
             switch (command.Operation)
             {
                 case "configure":
@@ -224,10 +248,31 @@ public sealed partial class LabSession(bool startWithWorld = true)
                     MarkWorldChanged(significant: true);
                     stopReason = "Fusion torch fitted — ready to plot a course";
                     break;
+                case "launch-sailcraft":
+                    if (running) throw new InvalidOperationException("Stop time processing before starting the sail flight trial.");
+                    activeWorld.LaunchSailcraft();
+                    MarkWorldChanged(significant: true);
+                    stopReason = "Sundiver ready for sail orders";
+                    break;
+                case "start-sail-trim":
+                    if (running) throw new InvalidOperationException("Stop time processing before setting a sail trim.");
+                    if (command.PreviewId is null || !sailPreviews.TryGetValue(command.PreviewId, out var draft))
+                        throw new InvalidOperationException("Sail preview expired. Preview and review the trim again.");
+                    activeWorld.StartSailTrim(command.ShipId, draft.Angle, draft.Duration);
+                    MarkWorldChanged(significant: true);
+                    stopReason = "Sail trim set — ready to advance";
+                    break;
+                case "feather-sail":
+                    if (running) throw new InvalidOperationException("Stop time processing before feathering the sail.");
+                    activeWorld.FeatherSail(command.ShipId);
+                    MarkWorldChanged(significant: true);
+                    stopReason = "Sail feathered — coasting";
+                    break;
                 default: throw new ArgumentException("Unknown command.");
             }
             revision++;
             previews.Clear();
+            sailPreviews.Clear();
             return Read();
         }
     }
@@ -252,9 +297,9 @@ public sealed partial class LabSession(bool startWithWorld = true)
                     && activeWorld.Advance(TimeSpan.FromTicks(deadline - activeWorld.ElapsedTicks)))
                 {
                     var flightEvent = activeWorld.LastEvent;
-                    if (flightEvent.ArrivalLabel is not null)
+                    if (activeWorld.ArrivalAfter(previousEventSequence) is { } arrivalEvent)
                     {
-                        interrupt = flightEvent;
+                        interrupt = arrivalEvent;
                         break;
                     }
                     flightNotice = flightEvent;
@@ -282,6 +327,7 @@ public sealed partial class LabSession(bool startWithWorld = true)
             }
             revision++;
             previews.Clear();
+            sailPreviews.Clear();
             return arrivalNotice;
         }
     }

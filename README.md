@@ -44,7 +44,7 @@ C# owns the simulation clock and movement. Automatic courses refine Lambert
 transfer guesses into finite burns connected by analytical coasts, with automatic
 gravity transitions during burns and coasting. The reusable
 simulation also supports hierarchical celestial queries and moving targets.
-The browser exposes one ship. Use **Engine burn** on Pathfinder to command a
+Use **Engine burn** on Pathfinder to command a
 prograde or retrograde burn while paused and freely coasting. Course burn
 boundaries, timed cutoff, and propellant exhaustion appear as flight notices.
 The lab is shared across browsers. The host restores SQLite checkpoints
@@ -57,6 +57,10 @@ Open **Torch Designer** from the top navigation or Pathfinder’s Propulsion
 panel to compare fusion drives in a test burn or fit a validated design to the
 campaign ship. **Debug refuel** fills the installed tank while paused and
 coasting. See the [Torch Designer guide](docs/TORCH_DESIGNER.md).
+
+Use **Launch Sundiver sail trial** in a paused Solar System campaign to add a
+solar sailcraft and compare sail trim with a ballistic Earth gravity assist.
+See the [Sundiver flight guide](docs/SOLAR_SAIL.md).
 
 ## Run and verify
 
