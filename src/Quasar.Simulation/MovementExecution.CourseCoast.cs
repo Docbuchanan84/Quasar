@@ -4,10 +4,15 @@ public sealed partial class MovementExecution
 {
     internal TrajectorySegment[] TraceCourseCoast(CelestialState initial, string primary, long start, long end,
         CancellationToken cancellationToken, bool validateSurface = true)
+        => TraceCourseCoast(new TwoBodyTrajectory(OrbitalNavigation.ToLocal(catalogue, primary, start, initial),
+            start, PrimaryMu(primary)), primary, start, end, cancellationToken, validateSurface);
+
+    private TrajectorySegment[] TraceCourseCoast(TwoBodyTrajectory coast, string primary, long start, long end,
+        CancellationToken cancellationToken, bool validateSurface, string? stopAtPrimary = null)
     {
         var segments = new List<TrajectorySegment>();
-        var coast = new TwoBodyTrajectory(OrbitalNavigation.ToLocal(catalogue, primary, start, initial), start, PrimaryMu(primary));
         var cursor = start;
+        var segmentStart = start;
         while (cursor < end)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -16,12 +21,15 @@ public sealed partial class MovementExecution
             var patch = FindCoastPatch(coast, primary, cursor, through, cancellationToken, buildPatch: true);
             if (patch is not null)
             {
-                if (patch.AtTicks > coast.EpochTicks) segments.Add(new(catalogue, primary, coast, patch.AtTicks));
-                (cursor, primary, coast) = (patch.AtTicks, patch.Primary, patch.Coast);
+                if (patch.AtTicks > segmentStart) segments.Add(new(catalogue, primary, coast, patch.AtTicks, segmentStart));
+                (cursor, segmentStart, primary, coast) = (patch.AtTicks, patch.AtTicks, patch.Primary, patch.Coast);
+                if (primary == stopAtPrimary && FindCoastPatch(coast, primary, cursor, Math.Min(end, cursor + SearchWindow),
+                        cancellationToken, buildPatch: true) is { } next)
+                    end = next.AtTicks;
             }
             else cursor = through;
         }
-        if (coast.EpochTicks < end) segments.Add(new(catalogue, primary, coast, end));
+        if (segmentStart < end) segments.Add(new(catalogue, primary, coast, end, segmentStart));
         if (segments.Count == 0) throw new ArgumentException("Course needs a positive coast duration.");
         foreach (var segment in segments.Where(_ => validateSurface))
             if (!CoastSurfaceIsClear(segment, cancellationToken))

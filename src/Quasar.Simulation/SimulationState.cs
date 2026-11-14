@@ -7,7 +7,7 @@ namespace Quasar.Simulation;
 public sealed record SimulationState(int FormatVersion, long ElapsedTicks,
     ImmutableArray<CelestialBodyState> Bodies, ImmutableArray<SpacecraftState> Spacecraft)
 {
-    public const int CurrentFormatVersion = 8;
+    public const int CurrentFormatVersion = 9;
 
     public static bool SupportsFormatVersion(int version) => version is >= 1 and <= CurrentFormatVersion;
 
@@ -27,6 +27,8 @@ public sealed record SimulationState(int FormatVersion, long ElapsedTicks,
             throw new InvalidDataException("Courses with gravity transitions require simulation state version 7.");
         if (FormatVersion < 8 && !Spacecraft.IsDefault && Spacecraft.Any(ship => ship is { Sail: not null } or { ActiveSail: not null }))
             throw new InvalidDataException("Solar sails require simulation state version 8.");
+        if (FormatVersion < 9 && !Spacecraft.IsDefault && Spacecraft.Any(ship => ship?.SailCourse is not null))
+            throw new InvalidDataException("Sail courses require simulation state version 9.");
     }
 }
 
@@ -52,7 +54,9 @@ public sealed record SpacecraftState(string Id, string PrimaryBodyId, CoastState
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     SolarSail? Sail = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    ActiveSailState? ActiveSail = null);
+    ActiveSailState? ActiveSail = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    SailCourseState? SailCourse = null);
 public sealed record ActiveSailState(long StartTicks, int DurationSeconds, double AngleDegrees, KinematicState InitialRelativeState);
 public sealed record FiniteCourseState(string PrimaryBodyId, string TargetId, string ArrivalKind,
     long DepartureTicks, long ArrivalTicks, KinematicState InitialState, KinematicState TargetLocalState,

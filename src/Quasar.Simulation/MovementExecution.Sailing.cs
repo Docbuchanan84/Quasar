@@ -4,7 +4,9 @@ namespace Quasar.Simulation;
 
 public sealed record SailStatus(string Status, string PrimaryBodyId, double SpeedKmPerSecond, double SolarDistanceAu,
     double MassKg, double AreaSquareMeters, double FaceOnAccelerationMPerSecond2, double? AngleDegrees,
-    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long? TrimEndTicks);
+    [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long? TrimEndTicks,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? DestinationId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull), JsonNumberHandling(JsonNumberHandling.WriteAsString)] long? ArrivalTicks = null);
 public sealed record SailFlyby(string BodyId, string BodyName, double ClosestAltitudeKm, double? SolarSpeedChangeKmPerSecond);
 public sealed record SailFlightPath(TrajectoryDisplayPoint[] Points);
 public sealed record SailPreview(SailFlightPath? Coast, SailFlightPath? Trim, SailFlyby[] CoastFlybys,
@@ -29,10 +31,10 @@ public sealed partial class MovementExecution
         var state = StateAt(id, ElapsedTicks);
         var relative = OrbitalNavigation.ToLocal(catalogue, SolarSystem.Sun, ElapsedTicks, state);
         var distance = Vector3d.From(relative.PositionKm).Length;
-        return new(ship.Sailing is null ? "Coasting" : "Sailing", ship.Primary,
+        return new(ship.SailCourse is not null ? "Underway" : ship.Sailing is null ? "Coasting" : "Sailing", ship.Primary,
             Vector3d.From(state.VelocityKmPerSecond).Length, distance / SolarSail.AstronomicalUnitKm,
             sail.TotalMassKg, sail.AreaSquareMeters, sail.FaceOnAcceleration(distance),
-            ship.Sailing?.Order.AngleDegrees, ship.Sailing?.EndTicks);
+            ship.Sailing?.Order.AngleDegrees, ship.Sailing?.EndTicks, ship.SailCourse?.State.TargetId, ship.SailCourse?.ArrivalTicks);
     }
 
     internal SailPreview PreviewSail(string id, double? angleDegrees, int durationSeconds, CancellationToken cancellationToken)

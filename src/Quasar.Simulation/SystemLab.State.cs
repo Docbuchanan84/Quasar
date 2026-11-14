@@ -28,7 +28,7 @@ public sealed partial class SystemLab
         var rocketHistory = ValidateHistoryIdentities(state, movement);
         ValidatePathfinderHistory(state, movement, rocketHistory);
         if (movement.ContainsSpacecraft(SailcraftId))
-            ValidateSailHistory(state.Simulation.ElapsedTicks, ships.Single(ship => ship.Id == SailcraftId),
+            ValidateSailHistory(state.Simulation, ships.Single(ship => ship.Id == SailcraftId), movement,
                 state.History.Where(entry => entry.ObjectId == SailcraftId));
         var restored = new SystemLab(movement) { lastEventSequence = state.LastEventSequence };
         restored.events.AddRange(state.History.Select(entry =>
@@ -142,31 +142,52 @@ public sealed partial class SystemLab
             throw new InvalidDataException("Free coast disagrees with System Lab history.");
     }
 
-    private static void ValidateSailHistory(long elapsedTicks, SpacecraftState ship, IEnumerable<LabHistoryEntry> history)
+    private static void ValidateSailHistory(SimulationState state, SpacecraftState ship, MovementExecution movement, IEnumerable<LabHistoryEntry> history)
     {
+        var elapsedTicks = state.ElapsedTicks;
         LabHistoryEntry? last = null;
         var sailing = false;
+        LabHistoryEntry? order = null;
+        var consumed = new List<long>();
         foreach (var entry in history)
         {
             switch (entry.Kind)
             {
                 case "sail-launched" when last is null:
-                case "primary-change" when last is not null && !sailing:
+                case "primary-change" when last is not null && !sailing && order is null:
                     break;
-                case "sail-trim" when last is not null && !sailing:
+                case "sail-trim" when last is not null && !sailing && order is null:
                     sailing = true;
                     break;
                 case "sail-complete" when sailing && entry.AtTicks > last!.AtTicks:
                 case "sail-feathered" when sailing:
                     sailing = false;
                     break;
+                case "sail-course-order" when state.FormatVersion >= 9 && last is not null && !sailing && order is null:
+                    order = entry;
+                    consumed.Clear();
+                    break;
+                case "sail-course-leg" when order is not null && entry.AtTicks > last!.AtTicks:
+                    consumed.Add(entry.AtTicks);
+                    break;
+                case "sail-flyby" when order is not null && entry.AtTicks > last!.AtTicks:
+                case "sail-course-cancel" when order is not null:
+                    order = null;
+                    break;
                 default:
                     throw new InvalidDataException("Invalid sailcraft event order.");
             }
             last = entry;
         }
+        if (movement.CommittedSailCourse(SailcraftId) is { } course)
+        {
+            if (order?.AtTicks != course.State.DepartureTicks || !consumed.SequenceEqual(
+                course.Boundaries.Where(boundary => boundary.At <= elapsedTicks).Select(boundary => boundary.At)))
+                throw new InvalidDataException("Sail course disagrees with System Lab history.");
+            return;
+        }
         var epoch = ship.ActiveSail?.StartTicks ?? ship.FreeCoast?.EpochTicks;
-        if (last is null || last.AtTicks != epoch || epoch > elapsedTicks || sailing != (ship.ActiveSail is not null))
+        if (order is not null || last is null || last.AtTicks != epoch || epoch > elapsedTicks || sailing != (ship.ActiveSail is not null))
             throw new InvalidDataException("Sailcraft motion disagrees with System Lab history.");
     }
 

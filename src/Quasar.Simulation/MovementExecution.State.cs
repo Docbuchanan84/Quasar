@@ -62,7 +62,7 @@ public sealed partial class MovementExecution
         ship.Plan is { Finite: null } plan ? ExportPlan(plan, ship.NextBoundary) : null,
         ship.Rendezvous is { } rendezvous ? new(ExportDestination(rendezvous.Destination), rendezvous.ArrivalTicks) : null,
         PropulsionAt(ship, ElapsedTicks), ship.Burn?.State, ship.Plan?.Finite?.State,
-        ship.Propulsion as SolarSail, ship.Sailing?.Order);
+        ship.Propulsion as SolarSail, ship.Sailing?.Order, ship.SailCourse?.State);
 
     private static CoastState ExportCoast(TwoBodyTrajectory coast) =>
         new(coast.EpochTicks, KinematicState.From(coast.InitialState));
@@ -91,6 +91,8 @@ public sealed partial class MovementExecution
                 "A solar sail requires sunlight and cannot share the rocket's propulsion or motion state.");
         }
         var ship = new Spacecraft(state.PrimaryBodyId, null, component);
+        Require(state.SailCourse is null || state is { Sail: not null, FreeCoast: null, ActiveSail: null },
+            "A sail course requires a sail and must be the sole motion state.");
         Require(state.ActiveSail is null || state is { Sail: not null, FreeCoast: null },
             "Active sail trim requires a solar sail and must be the sole motion state.");
         if (state.FiniteCourse is { } finite)
@@ -143,6 +145,14 @@ public sealed partial class MovementExecution
                 Require(trim.StartTicks <= ElapsedTicks && trim.InitialRelativeState is not null, "Invalid sail trim epoch or initial state.");
                 ship.Sailing = BuildSailPath(ship.Primary, sailComponent, trim);
                 Require(ElapsedTicks < ship.Sailing.EndTicks, "Active sail trim disagrees with the clock.");
+                break;
+            case { SailCourse: { } sailOrder, Sail: { } sailGear }:
+                var rebuilt = BuildSailCourse(sailGear, sailOrder, CancellationToken.None);
+                Require(rebuilt is not null && rebuilt.State.Maneuvers.SequenceEqual(sailOrder.Maneuvers)
+                    && sailOrder.DepartureTicks <= ElapsedTicks && ElapsedTicks < rebuilt.ArrivalTicks
+                    && rebuilt.PrimaryAt(ElapsedTicks) == state.PrimaryBodyId, "Sail course disagrees with clock or gravity primary.");
+                ship.SailCourse = rebuilt;
+                ship.NextBoundary = rebuilt.Boundaries.Count(boundary => boundary.At <= ElapsedTicks);
                 break;
             default:
                 throw new InvalidDataException("A spacecraft must have exactly one motion state.");

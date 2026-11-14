@@ -7,6 +7,11 @@ public sealed record SolarSail(double HullMassKg, double SailMassKg, double Area
     private const double ReflectedPressureAtOneAu = 9.08e-6;
     public double TotalMassKg => HullMassKg + SailMassKg;
 
+    NavigationOptions IPropulsionComponent.Navigation => CourseNavigation;
+    private static readonly NavigationOptions CourseNavigation = new(Array.AsReadOnly(new[] { "flyby" }), "maneuver-time", false);
+    Func<CancellationToken, DestinationRoutes> IPropulsionComponent.CaptureDestination(DestinationPlanningContext context) =>
+        context.Lab.CaptureSailDestination(context.Order);
+
     void IPropulsionComponent.Validate()
     {
         if (!double.IsFinite(TotalMassKg) || HullMassKg <= 0 || SailMassKg <= 0

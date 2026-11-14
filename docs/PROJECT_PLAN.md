@@ -15,6 +15,7 @@ automatic course planning, interactive maps, and persistent campaigns. The
 | Spacecraft movement | Lambert transfers, analytical coasting, impulses, and headless event execution |
 | Navigation | Collapsible system object tree, gesture-safe selection, pan/orbit/zoom, Reset View, and Focus Selected in both maps |
 | Course plotting | All modeled destinations, automatic gravity transitions, finite burns, approach/orbit arrival, linked time/reserve controls and locks, shared map preview, and revision-bound commit |
+| Destination orders | Shared route comparison and confirmation, with engine-specific rocket approaches or sail flybys |
 | Propulsion 1/4 | Single engine and tank, starting exploration torch, read-only Pathfinder performance, and compatible v3 checkpoints |
 | Propulsion 2/4 | Finite burns, fuel depletion notices, and active-burn v4 checkpoints |
 | Engineering prototype | [Fusion Torch Designer](TORCH_DESIGNER.md), comparative test burns, and compatible Pathfinder campaign refits |

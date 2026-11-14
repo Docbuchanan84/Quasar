@@ -27,6 +27,7 @@ public sealed partial class MovementExecution
         var start = ElapsedTicks;
         var primary = ship.Primary;
         var plan = ship.Plan;
+        var sailCourse = ship.SailCourse;
         var sail = ship.Sailing;
         var burn = ship.Burn;
         var rendezvous = ship.Rendezvous;
@@ -41,7 +42,14 @@ public sealed partial class MovementExecution
             var points = new List<TrajectoryDisplayPoint>();
             var transitions = new List<CourseGravityTransition>();
             AddPoint(start, initial);
-            if (plan is not null)
+            if (sailCourse is not null)
+            {
+                end = Math.Min(end, sailCourse.ArrivalTicks);
+                AddLegs(start, end, sailCourse.Legs.Select(leg => leg.Start), sailCourse.StateAt);
+                foreach (var leg in sailCourse.Legs.Where(leg => leg.Start > start && leg.Start <= end))
+                    if (sailCourse.PrimaryAt(leg.Start - 1) != leg.Primary) AddTransition(leg.Start, leg.Primary);
+            }
+            else if (plan is not null)
             {
                 end = Math.Min(end, plan.ArrivalTicks);
                 var boundaries = plan.Finite?.Boundaries.Select(entry => entry.Ticks)

@@ -84,6 +84,13 @@ public sealed partial class MovementExecution
         if (!spacecraft.TryGetValue(id, out var ship))
             throw new ArgumentException("Choose a modeled spacecraft.", nameof(id));
         RequireFuture(atTicks);
+        if (ship.SailCourse is { } sailCourse)
+        {
+            var prediction = atTicks <= sailCourse.ArrivalTicks
+                ? (sailCourse.PrimaryAt(atTicks), sailCourse.StateAt(atTicks))
+                : PredictCoast(sailCourse.ArrivalCoast, sailCourse.State.TargetId, atTicks, sailCourse.ArrivalTicks);
+            return new("spacecraft", id, prediction.Item1, atTicks, prediction.Item2);
+        }
         if (ship.Sailing is { } sailing && atTicks > sailing.EndTicks)
         {
             var (primary, state) = PredictCoast(sailing.EndCoast, ship.Primary, atTicks, sailing.EndTicks);

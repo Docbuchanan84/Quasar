@@ -80,6 +80,8 @@ public sealed partial class MovementExecution
         FiniteCourse.WithPropellant(propulsion, quantityKg);
 
     internal SpacecraftPropulsion? PropulsionOf(string id) => PropulsionAt(spacecraft[id], ElapsedTicks);
+    internal IPropulsionComponent? PlanningComponentOf(string id) =>
+        PropulsionOf(id) ?? spacecraft[id].Propulsion;
 
     private static SpacecraftPropulsion? PropulsionAt(Spacecraft ship, long atTicks) => ship.Burn is { } burn
         ? WithPropellant((SpacecraftPropulsion)ship.Propulsion!, burn.Path.RemainingPropellantKg(atTicks))

@@ -1,11 +1,12 @@
 import {
   formatTime, isCourseDestination,
-  type AutomaticCoursePreview, type CoursePreview, type LabObject,
+  type ArrivalKind, type AutomaticCoursePreview, type CoursePreview, type LabObject,
 } from './lab'
 import type { PlotInputs } from './useCoursePreview'
 import CourseTuningControls from './CourseTuningControls'
 
 function formatDuration(seconds: number) {
+  seconds = Math.max(1, Math.round(seconds))
   const days = Math.floor(seconds / 86400)
   const hours = Math.floor(seconds / 3600) % 24
   const minutes = Math.floor(seconds / 60) % 60
@@ -21,6 +22,7 @@ export default function CoursePanel({
   objects,
   preview,
   routes,
+  selectedLabel,
   onSelectRoute,
   error,
   loading,
@@ -35,7 +37,8 @@ export default function CoursePanel({
   objects: LabObject[]
   preview: CoursePreview | null
   routes: AutomaticCoursePreview | null
-  onSelectRoute: (previewId: string) => void
+  selectedLabel?: string
+  onSelectRoute: (previewId: string, label: string) => void
   error?: string
   loading: boolean
   disabled: boolean
@@ -48,6 +51,11 @@ export default function CoursePanel({
   const trajectory = preview?.trajectory
   const distinctTuned = routes?.tuned && routes.tuned.previewId !== routes.fastest?.previewId
     && routes.tuned.previewId !== routes.lowestManeuverCost?.previewId ? routes.tuned : null
+  const origin = objects.find((object) => object.id === inputs.shipId)
+  const navigation = origin?.navigation
+  const arrivalKinds = navigation?.arrivalKinds ?? ['approach', 'orbit'] as const
+  const sailTime = (route: CoursePreview) => route.trajectory.sailSchedule?.reduce((sum, trim) => sum + trim.durationSeconds, 0)
+  const arrivalLabels: Record<ArrivalKind, string> = { approach: 'Match speed near destination', orbit: 'Enter orbit', flyby: 'Fly past' }
   const number = (value: number) =>
     value.toLocaleString(undefined, { maximumFractionDigits: 3 })
   return (
@@ -59,8 +67,7 @@ export default function CoursePanel({
         current departure state
       </p>
       <p className="muted">
-        Select any destination on either map, in the object list, or below. The computer plans gravity transitions. Previewing
-        and cancelling a preview issue no orders.
+        Choose a destination and compare the courses the ship can fly.
       </p>
       <label>
         Destination
@@ -85,9 +92,8 @@ export default function CoursePanel({
       <label>
         Arrival condition
         <select value={inputs.arrivalKind} disabled={disabled}
-          onChange={(e) => onChange({ ...inputs, arrivalKind: e.target.value === 'orbit' ? 'orbit' : 'approach' })}>
-          <option value="approach">Velocity-matched approach</option>
-          <option value="orbit">Orbital insertion</option>
+          onChange={(e) => onChange({ ...inputs, arrivalKind: e.target.value as ArrivalKind })}>
+          {arrivalKinds.map((kind) => <option key={kind} value={kind}>{arrivalLabels[kind]}</option>)}
         </select>
       </label>
       {running && (
@@ -96,9 +102,12 @@ export default function CoursePanel({
         </p>
       )}
       {loading && <p role="status">Calculating course…</p>}
-      {inputs.destinationId && (
+      {inputs.destinationId && navigation?.advancedConstraints && (
+        <details>
+        <summary>Advanced constraints</summary>
         <CourseTuningControls inputs={inputs} trajectory={trajectory} loading={loading}
           disabled={disabled || running} onChange={onChange} />
+        </details>
       )}
       {error && <p role="alert">{error}</p>}
       {routes && !routes.fastest && (
@@ -111,25 +120,28 @@ export default function CoursePanel({
       )}
       {routes?.fastest && (
         <>
-          <p className="muted">Best routes found for the flight times searched.</p>
-          {routes.lowestManeuverCost || routes.tuned ? (
+          <p className="muted">Best routes found. {navigation?.efficiencyMetric === 'maneuver-time'
+            ? 'Efficiency favors less time maneuvering under sail.' : 'Efficiency favors less propellant.'}
+            {' '}Direct routes favor fewer assists and a shorter path.</p>
             <div className="course-options" role="group" aria-label="Route options">
               {([
                 ...(distinctTuned ? [['Adjusted route', distinctTuned] as const] : []),
                 ['Fastest', routes.fastest],
-                ...(routes.lowestManeuverCost ? [['Lowest maneuver cost', routes.lowestManeuverCost] as const] : []),
+                ...(routes.lowestManeuverCost ? [['Most efficient', routes.lowestManeuverCost] as const] : []),
+                ...(routes.mostDirect ? [['Most direct', routes.mostDirect] as const] : []),
               ] as const).map(([label, route]) => (
-                <button key={route.previewId} aria-pressed={route === preview}
-                  disabled={disabled} onClick={() => onSelectRoute(route.previewId)}>
+                <button key={label} aria-pressed={label === (selectedLabel ?? (preview === distinctTuned ? 'Adjusted route' : 'Fastest'))}
+                  disabled={disabled} onClick={() => onSelectRoute(route.previewId, label)}>
                   <strong>{label}</strong>
-                  <span>{formatDuration(route.trajectory.travelSeconds)} · {number(route.trajectory.requiredDeltaVKmPerSecond)} km/s</span>
-                  <span>ETA {formatTime(route.trajectory.arrivalTicks)} · {route.trajectory.flyby
-                    ? 'via ' + route.trajectory.flyby.bodyName : 'Direct'}</span>
+                  <span>{formatDuration(route.trajectory.travelSeconds)} · {sailTime(route) !== undefined
+                    ? (sailTime(route) ? formatDuration(sailTime(route)!) + ' under sail' : 'coast throughout')
+                    : route.trajectory.fuel.propellantMassKg !== null ? number(route.trajectory.fuel.propellantMassKg) + ' kg propellant' : 'Propellant unavailable'}</span>
+                  <span>ETA {formatTime(route.trajectory.arrivalTicks)}{route.trajectory.assistBodies?.length
+                    ? ' · via ' + route.trajectory.assistBodies.join(', ') : ''}</span>
                   {route.trajectory.criticalBrakingReserve && <span className="course-reserve">Critically low propellant reserve</span>}
                 </button>
               ))}
             </div>
-          ) : <h3>Fastest and lowest maneuver cost</h3>}
         </>
       )}
       {trajectory && preview && (
@@ -155,13 +167,13 @@ export default function CoursePanel({
               <dd>{formatDuration(trajectory.travelSeconds)}</dd>
             </div>
             <div>
-              <dt>{trajectory.arrival?.kind === 'orbit' ? 'Orbit insertion ETA' : 'Approach ETA'}</dt>
+              <dt>{trajectory.arrivalKind === 'flyby' ? 'Flyby ETA' : trajectory.arrival?.kind === 'orbit' ? 'Orbit insertion ETA' : 'Approach ETA'}</dt>
               <dd>{formatTime(trajectory.arrivalTicks)}</dd>
             </div>
-            <div>
+            {trajectory.arrivalKind !== 'flyby' && <div>
               <dt>Required delta-v</dt>
               <dd>{number(trajectory.requiredDeltaVKmPerSecond)} km/s</dd>
-            </div>
+            </div>}
             <div>
               <dt>Fuel estimate</dt>
               <dd>
@@ -171,6 +183,18 @@ export default function CoursePanel({
               </dd>
             </div>
           </dl>
+          {trajectory.arrivalKind === 'flyby' && trajectory.flyby && (
+            <p>Pass {trajectory.flyby.bodyName} at {number(trajectory.flyby.closestApproachKm -
+              (objects.find((object) => object.id === preview.destinationId)?.radiusKm ?? 0))} km altitude
+                {' · '}{number(trajectory.flybyRelativeSpeedKmPerSecond ?? 0)} km/s relative speed.</p>
+          )}
+          <details>
+          <summary>Maneuvers and navigation</summary>
+          {trajectory.sailSchedule && (trajectory.sailSchedule.length > 0
+            ? <ul>{trajectory.sailSchedule.map((trim) => <li key={trim.startTicks}>
+              Sail trim {trim.angleDegrees}° · {formatTime(trim.startTicks)} · {formatDuration(trim.durationSeconds)}
+            </li>)}</ul>
+            : <p>Coast to the flyby with the sail feathered.</p>)}
           {trajectory.arrival && (
             <>
               <p>{trajectory.arrival.kind === 'orbit' ? 'Bound orbit' : 'Velocity-matched approach'}
@@ -198,7 +222,7 @@ export default function CoursePanel({
           {trajectory.fuel.unavailableReason && (
             <p className="muted">{trajectory.fuel.unavailableReason}</p>
           )}
-          {trajectory.flyby ? (
+          {trajectory.flyby && trajectory.arrivalKind !== 'flyby' ? (
             <p>Gravity assist at {trajectory.flyby.bodyName} · {formatTime(trajectory.flyby.atTicks)}
               {' · '}closest approach {number(trajectory.flyby.closestApproachKm)} km from center</p>
           ) : trajectory.gravityTransitions?.length ? (
@@ -210,12 +234,13 @@ export default function CoursePanel({
                 </li>
               ))}</ul>
             </>
-          ) : <p>Single gravity frame</p>}
+          ) : null}
           <ul className="course-warnings" aria-label="Feasibility warnings">
             {preview.warnings.map((w) => (
               <li key={w}>{w}</li>
             ))}
           </ul>
+          </details>
         </>
       )}
       <div className="order-buttons">

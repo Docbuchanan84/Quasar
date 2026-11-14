@@ -4,6 +4,8 @@ namespace Quasar.Simulation;
 internal interface IPropulsionComponent
 {
     void Validate();
+    NavigationOptions Navigation { get; }
+    Func<CancellationToken, DestinationRoutes> CaptureDestination(DestinationPlanningContext context);
 }
 
 public sealed record ChemicalEngine(double DryMassKg, double LengthM, double DiameterM,
@@ -17,6 +19,10 @@ public sealed record PropulsionPerformance(double DryMassKg, double WetMassKg, d
 public sealed record SpacecraftPropulsion(double BaseDryMassKg, ChemicalEngine Engine, PropellantTank Tank) : IPropulsionComponent
 {
     void IPropulsionComponent.Validate() => CalculatePerformance();
+    NavigationOptions IPropulsionComponent.Navigation => CourseNavigation;
+    private static readonly NavigationOptions CourseNavigation = new(Array.AsReadOnly(new[] { "approach", "orbit" }), "propellant", true);
+    Func<CancellationToken, DestinationRoutes> IPropulsionComponent.CaptureDestination(DestinationPlanningContext context) =>
+        context.Lab.CaptureRocketDestination(context.Order);
 
     public PropulsionPerformance CalculatePerformance()
     {

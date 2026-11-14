@@ -3,7 +3,11 @@ using System.Text.Json.Serialization;
 namespace Quasar.Simulation;
 
 public sealed record LabObject(string Id, string Name, string Kind, Position3 Position, string? ParentId,
-    Velocity3? VelocityKmPerSecond = null, KeplerianOrbit? Orbit = null, double RadiusKm = 0);
+    Velocity3? VelocityKmPerSecond = null, KeplerianOrbit? Orbit = null, double RadiusKm = 0)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public NavigationOptions? Navigation { get; init; }
+}
 public sealed record LabEvent(long Sequence,
     [property: JsonNumberHandling(JsonNumberHandling.WriteAsString)] long AtTicks, string Kind, string ObjectId, string Message)
 {
@@ -13,6 +17,7 @@ public sealed record LabEvent(long Sequence,
         "course-approach-complete" => "Velocity-matched approach complete",
         "course-orbit-inserted" => "Orbital insertion complete",
         "arrival" => "Legacy body-center arrival",
+        "sail-flyby" => "Flyby complete",
         _ => null
     };
 
@@ -44,6 +49,12 @@ public sealed record TrajectoryDisplay(string DepartureTicks, string ArrivalTick
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool CriticalBrakingReserve => BrakingMarginPercent is < 1;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public CourseSailLeg[]? SailSchedule { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? FlybyRelativeSpeedKmPerSecond { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? AssistBodies { get; init; }
 }
 public sealed record CourseBurnDisplay(string Phase, string StartTicks, double DurationSeconds, double PropellantKg);
 public sealed record CourseGravityTransition(string BodyId, string BodyName, string AtTicks);
@@ -120,7 +131,8 @@ public sealed partial class SystemLab
         var distance = ship.DestinationId is null ? 0 : ship.State.PositionKm.DistanceTo(display?.Arrival is not null
             ? display.Points[^1].PositionKm : states[ship.DestinationId].PositionKm);
         return new(ElapsedTicks,
-            [.. bodies, new(ShipId, "Pathfinder", "spacecraft", ship.State.PositionKm, null, ship.State.VelocityKmPerSecond),
+            [.. bodies, new LabObject(ShipId, "Pathfinder", "spacecraft", ship.State.PositionKm, null, ship.State.VelocityKmPerSecond)
+                { Navigation = movement.NavigationOf(ShipId) },
                 .. SailObjects()],
             new(ship.Status, Vector3d.From(ship.State.VelocityKmPerSecond).Length, ship.DestinationId,
                 ship.ArrivalTicks, distance, ship.Propulsion, ship.BurnEndTicks,
@@ -165,16 +177,20 @@ public sealed partial class SystemLab
         CommitTravel(plan);
     }
 
-    public void CommitTravel(TrajectoryPlan plan)
+    public void CommitTravel(TrajectoryPlan plan) => CommitTravel(ShipId, plan);
+
+    private void CommitTravel(string shipId, TrajectoryPlan plan)
     {
         var destinationId = plan.TargetBodyId;
         if (destinationId is null || !celestialPositions.Bodies.ContainsKey(destinationId))
             throw new ArgumentException("Choose a celestial destination in this system.");
-        var presentation = Present(plan);
-        movement.Commit(ShipId, plan); display = presentation;
+        var presentation = shipId == ShipId ? Present(plan) : null;
+        movement.Commit(shipId, plan);
+        if (shipId == ShipId) display = presentation;
         var name = celestialPositions.Bodies[destinationId].Name;
-        Record("order", plan.Finite is null ? $"Pathfinder transfer committed to {name}; departure impulse applied."
-            : $"Pathfinder began the planned departure burn toward {name}.");
+        var shipName = shipId == ShipId ? "Pathfinder" : shipId;
+        Record("order", plan.Finite is null ? $"{shipName} transfer committed to {name}; departure impulse applied."
+            : $"{shipName} began the planned departure burn toward {name}.", shipId);
     }
 
     public void CancelTravel()

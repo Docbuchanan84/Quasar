@@ -1,6 +1,7 @@
 namespace Quasar.Simulation;
 
-public sealed record CourseChoices(TrajectoryPlan Fastest, TrajectoryPlan LowestManeuverCost, TrajectoryPlan? Tuned = null);
+public sealed record CourseChoices(TrajectoryPlan Fastest, TrajectoryPlan LowestManeuverCost, TrajectoryPlan? Tuned = null,
+    TrajectoryPlan? Direct = null);
 
 internal static class CourseSearch
 {
@@ -82,7 +83,8 @@ internal static class CourseSearch
             ranked.OrderBy(plan => plan.RequiredDeltaVKmPerSecond).ThenBy(plan => plan.ArrivalTicks).First(),
             preferredSeconds is { } requested ? candidates.Where(pair => pair.Value is not null)
                 .OrderBy(pair => Math.Abs((long)pair.Key - requested)).ThenBy(pair => pair.Value!.RequiredDeltaVKmPerSecond)
-                .First().Value : null);
+                .First().Value : null,
+            ranked.MinBy(plan => (plan.Flyby is null ? 0 : 1, SampledDistance(plan))));
 
         TrajectoryPlan? Evaluate(int duration)
         {
@@ -96,5 +98,16 @@ internal static class CourseSearch
             }
             return plan;
         }
+    }
+
+    private static double SampledDistance(TrajectoryPlan plan)
+    {
+        // Rank the route geometry without reintegrating every candidate's powered arcs.
+        var points = plan.Segments.SelectMany(segment => Enumerable.Range(0, 9).Select(i =>
+        {
+            var ticks = segment.StartTicks + (segment.EndTicks - segment.StartTicks) * i / 8;
+            return segment.StateAt(ticks).PositionKm;
+        })).Prepend(plan.InitialState.PositionKm).Append(plan.StateAt(plan.ArrivalTicks).PositionKm).ToArray();
+        return points.Zip(points.Skip(1), (a, b) => a.DistanceTo(b)).Sum();
     }
 }

@@ -1,15 +1,22 @@
 # Course plotting and map integration
 
-Select Pathfinder and open **Plot Course** while simulation time is stopped.
-Choose any modeled body or station from either map, the object list, or the destination
-picker. Choose **Velocity-matched approach** or **Orbital insertion**. Quasar
-searches from the current departure state and shows the executable
-**Fastest** route and the **Lowest maneuver cost** route it finds. The fastest
-route is selected initially. If both criteria pick the same trajectory, the
-panel shows a single option. Select a route to see it on the map, then use
+Select a spacecraft and open **Plot Course** while simulation time is stopped.
+Choose a destination from either map, the object list, or the destination
+picker, then choose how to arrive from the options its planner supports. Quasar
+searches from the departure state and compares **Fastest**, **Most efficient**,
+and **Most direct** among executable routes found. More than one priority can
+lead to the same course. Select a route to see it on the map, then use
 **Issue Order** to commit it or **Cancel preview** to close the panel.
 
-The course panel shows the arrival condition and error, burn start times and
+Efficiency means less propellant for rockets and less maneuvering time under
+sail in this prototype. Directness favors fewer intermediate assists, then
+shorter distance. View estimated arrival and propulsion use in the comparison.
+Open **Maneuvers and navigation** to inspect the details. Installed propulsion
+supplies the planner and supported arrival options through one course contract.
+
+## Rocket courses
+
+The rocket panel shows the arrival condition and error, burn start times and
 durations, expected propellant spent, and the propellant reserve after braking.
 Reserve is shown in kilograms and as a percentage of departure propellant.
 Below 1%, the option and confirmation panel warn about the small margin for
@@ -45,7 +52,7 @@ does not prove the destination is physically unreachable.
 
 ## Linked controls
 
-**Tune course** links travel time and propellant reserve. Moving travel time
+**Advanced constraints** links rocket travel time and propellant reserve. Moving travel time
 asks for the nearest executable duration found. Moving reserve asks Quasar to
 retain at least that percentage of the current departure propellant and choose
 a route. The other control follows the resulting trajectory. Locking reserve
@@ -59,6 +66,11 @@ tolerances, equipment and fuel checks still apply. The controls describe a
 departure burn, coast and braking burn within the current flight model.
 
 ## Exact confirmation and stale state
+
+`GET /api/lab/course-preview?mode=auto&shipId=...&destinationId=...`
+uses the ship's installed planner. It also returns `mostDirect`, and uses
+`arrivalKind=flyby` for a sail flyby. Send the returned `shipId` with
+`commit-course` and its `previewId`.
 
 `GET /api/lab/course-preview?mode=auto&destinationId=...` returns a
 `fastest` preview and an optional distinct `lowestManeuverCost` preview. Pass

@@ -1,5 +1,16 @@
 # Development log
 
+## 2026-11-14 — Destination orders across propulsion types
+
+- **Plot Course** lets the player select a destination and compare the fastest,
+  most efficient, and most direct verified routes using the ship's installed
+  propulsion planner. Manual sail controls and rocket constraints remain
+  available for detailed control.
+- Sail orders can schedule separate trims and coasts, follow patched-conic
+  gravity through encounters, and pause at the confirmed destination flyby.
+  Checkpoint v9 restores an active sail course. The current sail search covers
+  flybys within two years and has a bounded set of steering candidates.
+
 ## 2026-11-13 — Live spacecraft flight forecasts
 
 - The selected spacecraft shows its predicted path on both maps while

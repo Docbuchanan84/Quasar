@@ -49,6 +49,45 @@ public sealed partial class SystemLab
     public SailPreview PreviewSail(double? angleDegrees, int durationSeconds, CancellationToken cancellationToken = default) =>
         movement.PreviewSail(RequireSailcraft(), angleDegrees, durationSeconds, cancellationToken);
 
+    internal Func<CancellationToken, DestinationRoutes> CaptureSailDestination(DestinationOrder order)
+    {
+        if (order.ArrivalKind != "flyby")
+            return _ => new(null, null, null, null, ["This planner can chart a flyby. Select Fly past."]);
+        if (order is { ManeuverBudget: not null } or { ReservePercent: not null } or { PreferredFlightSeconds: not null } or { LockFlightTime: true })
+            throw new ArgumentException("Sail flyby planning uses the route priorities shown in the planner.");
+        var search = movement.CaptureSailCourseSearch(order.ShipId, order.DestinationId);
+        return token => DestinationRoutes.Rank(search(token).Select(course => new NavigationCandidate(PresentSail(course),
+            course.DeployedSeconds, () =>
+        {
+            movement.CommitSailCourse(order.ShipId, course);
+            Record("sail-course-order", $"Sundiver began its course for a flyby of {celestialPositions.Bodies[order.DestinationId].Name}.", order.ShipId);
+        })), ["The sail search found no safe flyby from this departure within two years."]);
+    }
+
+    public void CancelCourse(string shipId)
+    {
+        if (shipId == ShipId) { CancelTravel(); return; }
+        RequireSelectedSailcraft(shipId);
+        movement.Cancel(shipId);
+        Record("sail-course-cancel", "Sundiver cancelled its flyby course and resumed coasting.", shipId);
+    }
+
+    private TrajectoryDisplay PresentSail(SailCourse course)
+    {
+        var start = course.State.DepartureTicks;
+        var body = celestialPositions.Bodies[course.State.TargetId];
+        return new(SailCourse.Ticks(start), SailCourse.Ticks(course.ArrivalTicks),
+            (course.ArrivalTicks - start) / (double)TimeSpan.TicksPerSecond, 0, new(0, null), course.DisplayPoints(),
+            new(body.Id, body.Name, SailCourse.Ticks(course.ArrivalTicks), course.Flyby.ClosestApproachKm), "flyby")
+        {
+            SailSchedule = course.State.Maneuvers.Select(maneuver =>
+                new CourseSailLeg(SailCourse.Ticks(start + (long)maneuver.OffsetSeconds * TimeSpan.TicksPerSecond),
+                    maneuver.DurationSeconds, maneuver.AngleDegrees)).ToArray(),
+            FlybyRelativeSpeedKmPerSecond = course.RelativeSpeedKmPerSecond,
+            AssistBodies = course.AssistBodies.Select(id => celestialPositions.Bodies[id].Name).ToArray()
+        };
+    }
+
     public void StartSailTrim(string? shipId, double angleDegrees, int durationSeconds)
     {
         RequireSelectedSailcraft(shipId);
@@ -75,14 +114,19 @@ public sealed partial class SystemLab
     {
         if (!movement.ContainsSpacecraft(SailcraftId)) yield break;
         var state = movement.StateAt(SailcraftId, ElapsedTicks);
-        yield return new(SailcraftId, SailcraftName, "spacecraft", state.PositionKm, null, state.VelocityKmPerSecond);
+        yield return new LabObject(SailcraftId, SailcraftName, "spacecraft", state.PositionKm, null, state.VelocityKmPerSecond)
+        { Navigation = movement.NavigationOf(SailcraftId) };
     }
 
     private void RecordSailEvent(MovementEvent consequence)
     {
         var primary = celestialPositions.Bodies[movement.PrimaryOf(SailcraftId)];
-        Record(consequence.Kind, consequence.Kind == "sail-complete"
-            ? "Sundiver completed the trim, feathered its sail and resumed a ballistic coast."
-            : $"Sundiver changed gravity primary to {primary.Name} while coasting.", SailcraftId);
+        Record(consequence.Kind, consequence.Kind switch
+        {
+            "sail-complete" => "Sundiver completed the trim, feathered its sail and resumed a ballistic coast.",
+            "sail-flyby" => $"Sundiver completed its flyby of {primary.Name} and is continuing on momentum.",
+            "sail-course-leg" => $"Sundiver began the next leg of its flyby course under {primary.Name} gravity.",
+            _ => $"Sundiver changed gravity primary to {primary.Name} while coasting."
+        }, SailcraftId);
     }
 }
