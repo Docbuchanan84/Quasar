@@ -9,6 +9,7 @@ import CoursePanel from './CoursePanel'
 import SailPanel from './SailPanel'
 import SystemObjectTree from './SystemObjectTree'
 import { useCoursePreview, type PlotInputs } from './useCoursePreview'
+import { useFlightPath } from './useFlightPath'
 import type { CourseLayer } from './lab'
 
 const SystemMap = lazy(() => import('./SystemMap'))
@@ -29,6 +30,7 @@ function App() {
   const [selectedId, setSelectedId] = useState('ship-pathfinder')
   const [view, setView] = useState<'2d' | '3d'>('2d')
   const [references, setReferences] = useState(true)
+  const [showFlightPath, setShowFlightPath] = useState(true)
   const [burnDirection, setBurnDirection] = useState('prograde')
   const [burnSeconds, setBurnSeconds] = useState('30')
   const [plotting, setPlotting] = useState<PlotInputs | null>(null)
@@ -59,6 +61,8 @@ function App() {
   const sailPreview = sailDraft && snapshot && sailDraft.instanceId === snapshot.instanceId
     && sailDraft.revision === snapshot.revision && !snapshot.running && selectedId === sailcraftId
     ? sailDraft : null
+  const selectedShip = selected?.kind === 'spacecraft' ? selected : undefined
+  const flightPath = useFlightPath(snapshot, selectedShip, showFlightPath && online && !sailPreview)
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
   const fastest = course.routes?.fastest ?? null
   const lowestCost = course.routes?.lowestManeuverCost ?? null
@@ -67,7 +71,7 @@ function App() {
     ?? tuned ?? fastest
   const courses = useMemo<CourseLayer[]>(
     () => [
-      ...(committedTrajectory
+      ...(committedTrajectory && !(selectedShip?.id === 'ship-pathfinder' && flightPath.layer)
         ? [{ kind: 'committed' as const, trajectory: committedTrajectory }]
         : []),
       ...(preview
@@ -75,8 +79,9 @@ function App() {
         : []),
       ...(sailPreview?.coast ? [{ kind: 'sail-coast' as const, trajectory: sailPreview.coast }] : []),
       ...(sailPreview?.trim ? [{ kind: 'sail-trim' as const, trajectory: sailPreview.trim }] : []),
+      ...(flightPath.layer ? [flightPath.layer] : []),
     ],
-    [committedTrajectory, preview, sailPreview],
+    [committedTrajectory, flightPath.layer, preview, sailPreview, selectedShip?.id],
   )
   const selectObject = (id: string) => {
     setSelectedId(id)
@@ -240,6 +245,13 @@ function App() {
               />{' '}
               Reference guides
             </label>
+            <label>
+              <input type="checkbox" checked={showFlightPath} onChange={(event) => {
+                setShowFlightPath(event.target.checked)
+                if (event.target.checked) flightPath.refresh()
+              }} />{' '}
+              Flight path
+            </label>
             <span>
               {view === '2d'
                 ? 'XY projection · labels show Z'
@@ -250,6 +262,15 @@ function App() {
             <span>━━ Committed</span> · <span>┄┄ Preview</span> · □ Departure ·
             ◇ Course endpoint / future destination
           </p>
+          {showFlightPath && selectedShip && !sailPreview && (
+            <p className="map-note" data-testid="flight-path-status">
+              {flightPath.endTicks ? (
+                <><span style={{ color: '#69e2f4' }}>━━ {selectedShip.name} flight forecast</span>
+                  {' · Through '}{formatTime(flightPath.endTicks)}{' · ○ Gravity handoff'}</>
+              ) : flightPath.unavailable ? 'Flight forecast unavailable'
+                : flightPath.loading ? 'Updating flight forecast…' : null}
+            </p>
+          )}
           <p className="map-note">
             Symbols enlarged for readability · {world.referenceEpoch ? `Orbital epoch ${world.referenceEpoch}` : 'Legacy reference guides'}
           </p>

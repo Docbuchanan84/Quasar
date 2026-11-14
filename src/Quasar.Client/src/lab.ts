@@ -81,6 +81,17 @@ export type SailPreview = {
   trimFlybys: SailFlyby[]
   coastWarning: string | null
 }
+export type FlightForecast = {
+  instanceId: string
+  shipId: string
+  pathVersion: string
+  path: {
+    startTicks: string
+    endTicks: string
+    points: Trajectory['points']
+    gravityTransitions: { bodyId: string; bodyName: string; atTicks: string }[]
+  }
+}
 
 export type Snapshot = {
   instanceId: string
@@ -91,6 +102,7 @@ export type Snapshot = {
   mode: 'once' | 'continuous'
   interrupt?: LabEvent | null
   flightNotice?: LabEvent | null
+  flightPathVersions?: Record<string, string>
   world: {
     trajectory: Trajectory | null
     elapsedTicks: string
@@ -142,11 +154,12 @@ export type AutomaticCoursePreview = {
 }
 
 export type CourseLayer = {
-  kind: 'preview' | 'committed' | 'sail-coast' | 'sail-trim'
+  kind: 'preview' | 'committed' | 'sail-coast' | 'sail-trim' | 'forecast'
   trajectory: Pick<Trajectory, 'points' | 'flyby'>
+  transitionTicks?: ReadonlySet<string>
 }
 export const courseColor = (kind: CourseLayer['kind']) => ({
-  preview: '#efc46b', committed: '#87e4bd', 'sail-coast': '#9abafa', 'sail-trim': '#f2aadd',
+  preview: '#efc46b', committed: '#87e4bd', 'sail-coast': '#9abafa', 'sail-trim': '#f2aadd', forecast: '#69e2f4',
 })[kind]
 export function formatTime(ticks: number | string) {
   const seconds = BigInt(ticks) / 10_000_000n

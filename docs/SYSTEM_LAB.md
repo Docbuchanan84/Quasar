@@ -40,6 +40,12 @@ propellant unchanged.
 The optional [Sundiver sail trial](SOLAR_SAIL.md) adds a second spacecraft
 with timed solar sail trim, a coast comparison, and a prepared Earth flyby.
 
+Select any spacecraft to see its cyan **Flight path** in either map. The
+line starts at the ship's current position and follows its flight orders
+and gravity, including predicted gravity handoffs. It looks up to 180
+simulated days ahead, ends at a committed arrival, and uses a shorter window
+for short local orbits. The map's **Flight path** checkbox controls visibility.
+
 ## Clock and execution
 
 Elapsed time uses nonnegative checked .NET ticks of 100 ns. The UI shows elapsed
@@ -91,6 +97,7 @@ The browser can be closed while the Quasar host is running.
 | `GET /api/lab/celestial/{bodyId}/state?atTicks=…` | Read celestial state at a signed Int64 timestamp |
 | `GET /api/lab/target-state?kind=…&targetId=…&atTicks=…` | Read inertial target position and velocity and the reference body. Orbit presets use `planet-earth` at 400 km or `moon-moon` at 100 km. Station and spacecraft kinds use object IDs. |
 | `GET /api/lab/spacecraft/state?atTicks=…` | Read Pathfinder's current or predicted future state |
+| `GET /api/lab/spacecraft/{shipId}/flight-path` | Sample the spacecraft's current burn, trim, committed course, rendezvous or coast without advancing time |
 | `POST /api/lab/commands` | Apply a revision-checked command |
 
 The two spacecraft state queries accept automatic coast predictions through

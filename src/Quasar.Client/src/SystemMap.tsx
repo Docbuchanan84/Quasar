@@ -124,7 +124,15 @@ export default function SystemMap(props: MapProps) {
               lines.moveTo(p.x, p.y)
             else lines.lineTo(p.x, p.y)
           }
-          lines.stroke({ color, width: course.kind === 'preview' ? 2.5 : 1.5 })
+          lines.stroke({ color, width: course.kind === 'forecast' || course.kind === 'preview' ? 2.5 : 1.5 })
+          if (course.kind === 'forecast') {
+            for (const sample of points) {
+              if (!course.transitionTicks?.has(sample.atTicks)) continue
+              const p = screen(sample.positionKm.x, sample.positionKm.y)
+              lines.circle(p.x, p.y, 6).stroke({ color, width: 2 })
+            }
+            continue
+          }
           const encounter = points.find((sample) => sample.atTicks === course.trajectory.flyby?.atTicks)
           if (encounter) {
             const p = screen(encounter.positionKm.x, encounter.positionKm.y)

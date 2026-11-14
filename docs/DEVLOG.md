@@ -1,5 +1,13 @@
 # Development log
 
+## 2026-11-13 — Live spacecraft flight forecasts
+
+- The selected spacecraft shows its predicted path on both maps while
+  paused or advancing time. The forecast uses the ship's current motion
+  and marks predicted changes of gravity primary.
+- Flight tests cover a solar-sail trim and Earth flyby, a rocket burn
+  followed by coast, and the remaining leg of a committed course.
+
 ## 2026-11-13 — Sundiver solar sail trial
 
 - Added an opt-in sailcraft alongside Pathfinder. Its installed component

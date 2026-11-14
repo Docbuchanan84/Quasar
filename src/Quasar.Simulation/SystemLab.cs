@@ -250,6 +250,11 @@ public sealed partial class SystemLab
 
     public CelestialState ShipStateAt(long atTicks) => movement.StateAt(ShipId, atTicks);
 
+    public (string Version, Func<CancellationToken, FlightForecast> Forecast) CaptureFlightForecast(string shipId) =>
+        (movement.FlightPathVersion(shipId), movement.CaptureFlightForecast(shipId));
+
+    public Dictionary<string, string> FlightPathVersions() => movement.FlightPathVersions();
+
     public static TrajectoryDisplay Present(TrajectoryPlan plan) => new(Ticks(plan.DepartureTicks), Ticks(plan.ArrivalTicks),
         plan.TravelSeconds, plan.RequiredDeltaVKmPerSecond, plan.Fuel,
         plan.Sample().Select(p => new TrajectoryDisplayPoint(Ticks(p.AtTicks), p.State.PositionKm, p.State.VelocityKmPerSecond)).ToArray(),

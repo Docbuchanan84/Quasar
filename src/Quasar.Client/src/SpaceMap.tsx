@@ -286,13 +286,28 @@ export default function SpaceMap(props: MapProps) {
                     scene,
                   )
                 : MeshBuilder.CreateLines(
-                    'committed-trajectory',
+                    `${course.kind}-trajectory`,
                     { points },
                     scene,
                   )
             line.color = Color3.FromHexString(courseColor(course.kind))
             line.isPickable = false
             routes.push(line)
+            if (course.kind === 'forecast') {
+              for (const [index, sample] of course.trajectory.points.entries()) {
+                if (!course.transitionTicks?.has(sample.atTicks)) continue
+                const radius = .14
+                const mark = MeshBuilder.CreateLines('forecast-gravity-handoff', {
+                  points: [new Vector3(-radius, 0, 0), new Vector3(0, radius, 0), new Vector3(radius, 0, 0),
+                    new Vector3(0, -radius, 0), new Vector3(-radius, 0, 0)],
+                }, scene)
+                mark.position.copyFrom(points[index])
+                mark.color = line.color
+                mark.isPickable = false
+                routes.push(mark)
+              }
+              continue
+            }
             for (const [phase, position] of [
               ['departure', points[0]],
               ['arrival', points.at(-1)!],
