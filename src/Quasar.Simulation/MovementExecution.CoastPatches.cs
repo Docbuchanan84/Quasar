@@ -28,7 +28,11 @@ public sealed partial class MovementExecution
         return false;
     }
 
-    internal bool PoweredPathIsClear(PoweredTrajectory path, string primary, CancellationToken cancellationToken)
+    internal bool PoweredPathIsClear(PoweredTrajectory path, string primary, CancellationToken cancellationToken) =>
+        PathIsClear(path.HasClearPath, primary, cancellationToken);
+
+    private bool PathIsClear(Func<Func<long, Vector3d, Vector3d, double, double, bool>, bool> inspectPath,
+        string primary, CancellationToken cancellationToken)
     {
         var minimumRadius = Math.Max(1, catalogue.Bodies[primary].RadiusKm);
         var parentSphere = catalogue.GetEnvironment(primary).SphereOfInfluenceRadiusKm;
@@ -44,7 +48,7 @@ public sealed partial class MovementExecution
                 return (body.Id, Sphere: sphere, Inner: periapsis - sphere, Outer: apoapsis + sphere,
                     Acceleration: environment.RelativeGravitationalParameterKm3PerSecond2!.Value / periapsis / periapsis);
             }).ToArray();
-        return path.HasClearPath(Inspect);
+        return inspectPath(Inspect);
 
         bool Inspect(long ticks, Vector3d position, Vector3d velocity, double step, double deviation)
         {
@@ -80,6 +84,11 @@ public sealed partial class MovementExecution
         if (!spacecraft.TryGetValue(id, out var ship))
             throw new ArgumentException("Choose a modeled spacecraft.", nameof(id));
         RequireFuture(atTicks);
+        if (ship.Sailing is { } sailing && atTicks > sailing.EndTicks)
+        {
+            var (primary, state) = PredictCoast(sailing.EndCoast, ship.Primary, atTicks, sailing.EndTicks);
+            return new("spacecraft", id, primary, atTicks, state);
+        }
         if (ship.Coast is { } coast && ship.AutomaticPrimary)
         {
             var (primary, state) = PredictCoast(coast, ship.Primary, atTicks);

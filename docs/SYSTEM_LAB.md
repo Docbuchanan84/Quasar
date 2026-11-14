@@ -1,6 +1,6 @@
 # System Lab
 
-The System Lab is Quasar's playable single-system, single-ship sandbox. For
+The System Lab is Quasar's playable single-system sandbox. For
 operating instructions, see the [README](../README.md) and
 [course plotting guide](COURSE_PLOTTING.md).
 
@@ -36,6 +36,9 @@ Automatic courses spend propellant while burning. A manual
 [engine burn](SOLAR_SYSTEM.md#pathfinder-propulsion) requires a free coast.
 Legacy impulsive test orders report `arrivalKind: "body-center"` and leave
 propellant unchanged.
+
+The optional [Sundiver sail trial](SOLAR_SAIL.md) adds a second spacecraft
+with timed solar sail trim, a coast comparison, and a prepared Earth flyby.
 
 ## Clock and execution
 
@@ -83,6 +86,7 @@ The browser can be closed while the Quasar host is running.
 | `GET /api/lab` | Instance/revision, run controls, arrival interrupt and latest flight notice, objects and velocities, ship status, events, and any committed trajectory |
 | `GET /api/lab/course-preview?mode=auto&destinationId=…&arrivalKind=…` | Search a stopped-world departure for executable courses to an approach or orbit and return revision-bound previews or infeasibility reasons |
 | `GET /api/lab/course-preview?destinationId=…&flightSeconds=…` | Solve a single fixed-duration course for existing callers |
+| `GET /api/lab/sail-preview?angleDegrees=…&durationSeconds=…` | Compare a timed sail trim followed by coast with a ballistic coast and obtain a confirmation token. Omit both parameters for a coast preview. |
 | `GET /api/lab/trajectory-preview?destinationId=…&flightSeconds=…` | Compatibility query for an advisory trajectory without a confirmation ID |
 | `GET /api/lab/celestial/{bodyId}/state?atTicks=…` | Read celestial state at a signed Int64 timestamp |
 | `GET /api/lab/target-state?kind=…&targetId=…&atTicks=…` | Read inertial target position and velocity and the reference body. Orbit presets use `planet-earth` at 400 km or `moon-moon` at 100 km. Station and spacecraft kinds use object IDs. |
@@ -113,6 +117,10 @@ in campaign history. See the [torch fixture](SOLAR_SYSTEM.md#pathfinder-propulsi
 paused and freely coasting. It keeps the ship’s equipment. The
 [Torch Designer](TORCH_DESIGNER.md) adds a separate campaign refit that keeps
 the tank and its current reaction mass.
+
+While paused, `launch-sailcraft` adds Sundiver once per Solar System campaign.
+`start-sail-trim` takes its `shipId` and the reviewed `previewId`.
+`feather-sail` takes its `shipId` and ends an active trim at the current tick.
 
 The host retains up to 32 solved preview plans. A successful command or clock
 tick invalidates them. Automatic searches use a captured departure outside the

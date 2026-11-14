@@ -11,10 +11,11 @@ public sealed record MovementView(string SpacecraftId, long AtTicks, CelestialSt
 /// </summary>
 public sealed partial class MovementExecution(CelestialPositionService catalogue)
 {
-    private sealed class Spacecraft(string primary, TwoBodyTrajectory? coast, SpacecraftPropulsion? propulsion)
+    private sealed class Spacecraft(string primary, TwoBodyTrajectory? coast, IPropulsionComponent? propulsion)
     {
-        public SpacecraftPropulsion? Propulsion = propulsion;
+        public IPropulsionComponent? Propulsion = propulsion;
         public ActiveBurn? Burn;
+        public SailTrajectory? Sailing;
         public string Primary = primary;
         public TwoBodyTrajectory? Coast = coast;
         public bool AutomaticPrimary;
@@ -29,12 +30,15 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
     public long ElapsedTicks { get; private set; }
 
     public void AddSpacecraft(string id, CelestialState state, string primaryBodyId, SpacecraftPropulsion? propulsion = null,
-        bool automaticPrimary = false)
+        bool automaticPrimary = false) => AddShip(id, state, primaryBodyId, propulsion, automaticPrimary);
+
+    private void AddShip(string id, CelestialState state, string primaryBodyId, IPropulsionComponent? propulsion,
+        bool automaticPrimary)
     {
         if (string.IsNullOrWhiteSpace(id) || spacecraft.ContainsKey(id)) throw new ArgumentException("Spacecraft identity must be unique and nonempty.");
         state.RequireFinite();
         var coast = NewCoast(state, primaryBodyId);
-        propulsion?.CalculatePerformance();
+        propulsion?.Validate();
         spacecraft.Add(id, new(primaryBodyId, coast, propulsion) { AutomaticPrimary = automaticPrimary });
     }
 
@@ -42,6 +46,12 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
     {
         RequireFuture(atTicks);
         var ship = spacecraft[id];
+        if (ship.Sailing is { } sailing)
+        {
+            if (atTicks > sailing.EndTicks)
+                return PredictCoast(sailing.EndCoast, ship.Primary, atTicks, sailing.EndTicks).State;
+            return OrbitalNavigation.ToSystem(catalogue, ship.Primary, atTicks, sailing.StateAt(atTicks));
+        }
         if (ship.Burn is { } burn)
         {
             if (atTicks > burn.Path.EndTicks)
@@ -67,8 +77,16 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
     public MovementView View(string id)
     {
         var ship = spacecraft[id]; var plan = ship.Plan;
+        var status = ship switch
+        {
+            { Sailing: not null } => "Sailing",
+            { Burn: not null } => "Burning",
+            { Plan: not null } => "Underway",
+            { Rendezvous: not null } => "Arrived",
+            _ => "Coasting"
+        };
         return new(id, ElapsedTicks, StateAt(id, ElapsedTicks),
-            ship.Burn is not null ? "Burning" : plan is not null ? "Underway" : ship.Rendezvous is not null ? "Arrived" : "Coasting",
+            status,
             plan?.TargetBodyId, plan?.ArrivalTicks, plan?.RequiredDeltaVKmPerSecond, plan?.Fuel, PropulsionAt(ship, ElapsedTicks)?.CalculatePerformance(),
             ship.Burn?.Path.EndTicks);
     }
@@ -79,6 +97,7 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
     {
         ArgumentNullException.ThrowIfNull(plan);
         var ship = spacecraft[id];
+        if (ship.Propulsion is SolarSail) throw new InvalidOperationException("Use sail orders for this spacecraft.");
         if (ship.Burn is not null) throw new InvalidOperationException("Cut thrust before committing a course.");
         if (!ReferenceEquals(plan.Catalogue, catalogue))
             throw new InvalidOperationException("The celestial catalogue changed. Preview again before committing.");
@@ -146,6 +165,12 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
             boundaries.Dequeue();
             var ship = spacecraft[entry.Id];
             if (entry.Generation != ship.Generation) continue;
+            if (ship.Sailing is { } sailing)
+            {
+                EndSailing(ship, sailing.EndCoast);
+                events.Add(new(at, entry.Id, "sail-complete"));
+                continue;
+            }
             if (ship.Burn is { } burn)
             {
                 EndBurn(ship, at, burn.EndCoast);
@@ -196,7 +221,7 @@ public sealed partial class MovementExecution(CelestialPositionService catalogue
 
     private static long? BoundaryTicks(Spacecraft ship) => ship.Plan?.Finite is { } finite
         ? finite.Boundaries[ship.NextBoundary].Ticks
-        : ship.Burn?.Path.EndTicks ?? ship.Plan?.Segments[ship.NextBoundary].EndTicks;
+        : ship.Sailing?.EndTicks ?? ship.Burn?.Path.EndTicks ?? ship.Plan?.Segments[ship.NextBoundary].EndTicks;
 
     private void Schedule(string id, Spacecraft ship)
     {

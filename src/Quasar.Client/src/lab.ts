@@ -53,6 +53,35 @@ type LabEvent = {
   arrivalLabel?: string
 }
 
+export const sailcraftId = 'ship-sundiver'
+export type SailStatus = {
+  status: 'Coasting' | 'Sailing'
+  primaryBodyId: string
+  speedKmPerSecond: number
+  solarDistanceAu: number
+  massKg: number
+  areaSquareMeters: number
+  faceOnAccelerationMPerSecond2: number
+  angleDegrees: number | null
+  trimEndTicks: string | null
+}
+export type SailFlyby = {
+  bodyId: string
+  bodyName: string
+  closestAltitudeKm: number
+  solarSpeedChangeKmPerSecond: number | null
+}
+export type SailPreview = {
+  instanceId: string
+  revision: number
+  previewId: string | null
+  coast: Pick<Trajectory, 'points'> | null
+  trim: Pick<Trajectory, 'points'> | null
+  coastFlybys: SailFlyby[]
+  trimFlybys: SailFlyby[]
+  coastWarning: string | null
+}
+
 export type Snapshot = {
   instanceId: string
   revision: number
@@ -84,6 +113,8 @@ export type Snapshot = {
       } | null
     }
     events: LabEvent[]
+    solarSail?: SailStatus | null
+    canLaunchSailcraft?: boolean
   }
 }
 export type MapProps = {
@@ -111,11 +142,12 @@ export type AutomaticCoursePreview = {
 }
 
 export type CourseLayer = {
-  kind: 'preview' | 'committed'
-  trajectory: Trajectory
+  kind: 'preview' | 'committed' | 'sail-coast' | 'sail-trim'
+  trajectory: Pick<Trajectory, 'points' | 'flyby'>
 }
-export const courseColor = (kind: CourseLayer['kind']) =>
-  kind === 'preview' ? '#efc46b' : '#87e4bd'
+export const courseColor = (kind: CourseLayer['kind']) => ({
+  preview: '#efc46b', committed: '#87e4bd', 'sail-coast': '#9abafa', 'sail-trim': '#f2aadd',
+})[kind]
 export function formatTime(ticks: number | string) {
   const seconds = BigInt(ticks) / 10_000_000n
   return `D${(seconds / 86400n)

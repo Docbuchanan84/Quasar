@@ -136,7 +136,7 @@ export function useLabSession(
     extra: Record<string, unknown> = {},
   ) {
     const state = latest.current
-    if (!online || !state || busy.current) return
+    if (!online || !state || busy.current) return false
     beginMutation()
     setNotice('')
     try {
@@ -155,10 +155,12 @@ export function useLabSession(
       const result = await response.json()
       if (!response.ok) setNotice(result.error ?? 'Command rejected.')
       else accept(result)
+      return response.ok
     } catch {
       setNotice(
         'Command outcome uncertain. Check the refreshed state before trying again.',
       )
+      return false
     } finally {
       await finishMutation()
     }

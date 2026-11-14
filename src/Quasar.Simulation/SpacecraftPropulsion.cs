@@ -1,5 +1,11 @@
 namespace Quasar.Simulation;
 
+// The component slot also accepts drives that have no engine or propellant tank.
+internal interface IPropulsionComponent
+{
+    void Validate();
+}
+
 public sealed record ChemicalEngine(double DryMassKg, double LengthM, double DiameterM,
     double ThrustN, double ExhaustVelocityMPerSecond, string PropellantId);
 
@@ -8,8 +14,10 @@ public sealed record PropellantTank(double DryMassKg, double CapacityKg, double 
 public sealed record PropulsionPerformance(double DryMassKg, double WetMassKg, double AvailablePropellantKg,
     double RatedMassFlowKgPerSecond, double InitialAccelerationMPerSecond2, double TheoreticalDeltaVMPerSecond);
 
-public sealed record SpacecraftPropulsion(double BaseDryMassKg, ChemicalEngine Engine, PropellantTank Tank)
+public sealed record SpacecraftPropulsion(double BaseDryMassKg, ChemicalEngine Engine, PropellantTank Tank) : IPropulsionComponent
 {
+    void IPropulsionComponent.Validate() => CalculatePerformance();
+
     public PropulsionPerformance CalculatePerformance()
     {
         if (Engine is null || Tank is null

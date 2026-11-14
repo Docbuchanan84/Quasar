@@ -61,7 +61,8 @@ public sealed partial class MovementExecution
         ship.Coast is { } coast ? ExportCoast(coast) with { AutomaticPrimary = ship.AutomaticPrimary } : null,
         ship.Plan is { Finite: null } plan ? ExportPlan(plan, ship.NextBoundary) : null,
         ship.Rendezvous is { } rendezvous ? new(ExportDestination(rendezvous.Destination), rendezvous.ArrivalTicks) : null,
-        PropulsionAt(ship, ElapsedTicks), ship.Burn?.State, ship.Plan?.Finite?.State);
+        PropulsionAt(ship, ElapsedTicks), ship.Burn?.State, ship.Plan?.Finite?.State,
+        ship.Propulsion as SolarSail, ship.Sailing?.Order);
 
     private static CoastState ExportCoast(TwoBodyTrajectory coast) =>
         new(coast.EpochTicks, KinematicState.From(coast.InitialState));
@@ -81,8 +82,17 @@ public sealed partial class MovementExecution
     {
         Require(state is not null && !string.IsNullOrWhiteSpace(state.Id), "Missing spacecraft identity.");
         PrimaryMu(state.PrimaryBodyId);
-        state.Propulsion?.CalculatePerformance();
-        var ship = new Spacecraft(state.PrimaryBodyId, null, state.Propulsion);
+        var component = (IPropulsionComponent?)state.Propulsion ?? state.Sail;
+        component?.Validate();
+        if (state.Sail is not null)
+        {
+            Require(state is { Propulsion: null, ActiveBurn: null, Trajectory: null, Rendezvous: null, FiniteCourse: null }
+                && catalogue.Bodies.TryGetValue(SolarSystem.Sun, out var sun) && sun.Kind == CelestialBodyKind.Star,
+                "A solar sail requires sunlight and cannot share the rocket's propulsion or motion state.");
+        }
+        var ship = new Spacecraft(state.PrimaryBodyId, null, component);
+        Require(state.ActiveSail is null || state is { Sail: not null, FreeCoast: null },
+            "Active sail trim requires a solar sail and must be the sole motion state.");
         if (state.FiniteCourse is { } finite)
         {
             Require(state is { FreeCoast: null, Trajectory: null, Rendezvous: null, ActiveBurn: null, Propulsion: not null },
@@ -102,6 +112,7 @@ public sealed partial class MovementExecution
         {
             case { FreeCoast: { } coast, Trajectory: null, Rendezvous: null, ActiveBurn: null }:
                 Require(coast.EpochTicks <= ElapsedTicks, "Free coast starts after the world clock.");
+                Require(state.Sail is null || coast.AutomaticPrimary, "A coasting sailcraft requires automatic gravity transitions.");
                 ship.Coast = RestoreCoast(coast, state.PrimaryBodyId);
                 ship.AutomaticPrimary = coast.AutomaticPrimary;
                 break;
@@ -121,11 +132,17 @@ public sealed partial class MovementExecution
             case { FreeCoast: null, Trajectory: null, Rendezvous: null, ActiveBurn: { } burn, Propulsion: { } propulsion }:
                 Require(burn.StartTicks <= ElapsedTicks && burn.InitialRelativeState is not null && burn.UnitDirection is not null,
                     "Incomplete active burn or ignition epoch after the clock.");
-                ship.Propulsion = WithPropellant(propulsion, burn.IgnitionPropellantKg);
-                ship.Burn = BuildBurn(ship.Primary, ship.Propulsion, burn);
+                var ignitionPropulsion = WithPropellant(propulsion, burn.IgnitionPropellantKg);
+                ship.Propulsion = ignitionPropulsion;
+                ship.Burn = BuildBurn(ship.Primary, ignitionPropulsion, burn);
                 Require(ElapsedTicks < ship.Burn.Path.EndTicks
                     && ship.Burn.Path.RemainingPropellantKg(ElapsedTicks) == propulsion.Tank.QuantityKg,
                     "Active burn disagrees with clock or propellant quantity.");
+                break;
+            case { ActiveSail: { } trim, Sail: { } sailComponent }:
+                Require(trim.StartTicks <= ElapsedTicks && trim.InitialRelativeState is not null, "Invalid sail trim epoch or initial state.");
+                ship.Sailing = BuildSailPath(ship.Primary, sailComponent, trim);
+                Require(ElapsedTicks < ship.Sailing.EndTicks, "Active sail trim disagrees with the clock.");
                 break;
             default:
                 throw new InvalidDataException("A spacecraft must have exactly one motion state.");

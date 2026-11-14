@@ -11,7 +11,8 @@ public sealed partial class MovementExecution
         ArgumentNullException.ThrowIfNull(propulsion);
         propulsion.CalculatePerformance();
         var ship = spacecraft[id];
-        if (ship.Coast is null) throw new InvalidOperationException("Cancel the course or cut thrust before refitting.");
+        if (ship.Coast is null || ship.Propulsion is SolarSail)
+            throw new InvalidOperationException("Engine refits require a freely coasting spacecraft with an engine mount.");
         var coast = NewCoast(StateAt(id, ElapsedTicks), ship.Primary);
         ship.Coast = coast;
         ship.Propulsion = propulsion;
@@ -22,7 +23,7 @@ public sealed partial class MovementExecution
     {
         if (!spacecraft.TryGetValue(id, out var ship)) throw new ArgumentException("Choose a spacecraft.", nameof(id));
         if (ship.Coast is null) throw new InvalidOperationException("Refuelling requires a freely coasting ship.");
-        var propulsion = ship.Propulsion ?? throw new InvalidOperationException("This ship has no modeled propellant tank.");
+        var propulsion = ship.Propulsion as SpacecraftPropulsion ?? throw new InvalidOperationException("This ship has no modeled propellant tank.");
         if (propulsion.Tank.QuantityKg == propulsion.Tank.CapacityKg) return false;
         RefitCoastingSpacecraft(id, WithPropellant(propulsion, propulsion.Tank.CapacityKg));
         return true;
@@ -39,7 +40,7 @@ public sealed partial class MovementExecution
         var ship = spacecraft[id];
         if (ship.Coast is not { } coast)
             throw new InvalidOperationException("The ship must be coasting freely before ignition.");
-        var propulsion = ship.Propulsion ?? throw new InvalidOperationException("Propulsion is not modeled for this ship.");
+        var propulsion = ship.Propulsion as SpacecraftPropulsion ?? throw new InvalidOperationException("This ship has no rocket engine.");
         var initial = coast.StateAt(ElapsedTicks);
         var velocity = Vector3d.From(initial.VelocityKmPerSecond);
         if (!double.IsFinite(velocity.Length) || velocity.Length <= 0)
@@ -81,8 +82,9 @@ public sealed partial class MovementExecution
     internal SpacecraftPropulsion? PropulsionOf(string id) => PropulsionAt(spacecraft[id], ElapsedTicks);
 
     private static SpacecraftPropulsion? PropulsionAt(Spacecraft ship, long atTicks) => ship.Burn is { } burn
-        ? WithPropellant(ship.Propulsion!, burn.Path.RemainingPropellantKg(atTicks))
-        : ship.Plan?.Finite is { } finite ? WithPropellant(finite.State.Propulsion, finite.PropellantAt(atTicks)) : ship.Propulsion;
+        ? WithPropellant((SpacecraftPropulsion)ship.Propulsion!, burn.Path.RemainingPropellantKg(atTicks))
+        : ship.Plan?.Finite is { } finite ? WithPropellant(finite.State.Propulsion, finite.PropellantAt(atTicks))
+        : ship.Propulsion as SpacecraftPropulsion;
 
     private static void EndBurn(Spacecraft ship, long atTicks, TwoBodyTrajectory coast)
     {

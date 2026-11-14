@@ -1,11 +1,12 @@
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
-import { formatTime, isCourseDestination, type Snapshot } from './lab'
+import { formatTime, isCourseDestination, sailcraftId, type Snapshot, type SailPreview } from './lab'
 import CampaignPanel from './CampaignPanel'
 import ArrivalNotifications from './ArrivalNotifications'
 import SiteNav from './SiteNav'
 import { useLabSession } from './useLabSession'
 import MapBoundary from './MapBoundary'
 import CoursePanel from './CoursePanel'
+import SailPanel from './SailPanel'
 import SystemObjectTree from './SystemObjectTree'
 import { useCoursePreview, type PlotInputs } from './useCoursePreview'
 import type { CourseLayer } from './lab'
@@ -31,6 +32,7 @@ function App() {
   const [burnDirection, setBurnDirection] = useState('prograde')
   const [burnSeconds, setBurnSeconds] = useState('30')
   const [plotting, setPlotting] = useState<PlotInputs | null>(null)
+  const [sailDraft, setSailDraft] = useState<SailPreview | null>(null)
   const onInstanceChange = useCallback((next: Snapshot | null) => {
     setPlotting(null)
     if (next) {
@@ -53,6 +55,9 @@ function App() {
   const disabled = !online || pending || !snapshot
   const course = useCoursePreview(snapshot, plotting, online)
   const committedTrajectory = world?.trajectory
+  const sailPreview = sailDraft && snapshot && sailDraft.instanceId === snapshot.instanceId
+    && sailDraft.revision === snapshot.revision && !snapshot.running && selectedId === sailcraftId
+    ? sailDraft : null
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
   const fastest = course.routes?.fastest ?? null
   const lowestCost = course.routes?.lowestManeuverCost ?? null
@@ -67,11 +72,14 @@ function App() {
       ...(preview
         ? [{ kind: 'preview' as const, trajectory: preview.trajectory }]
         : []),
+      ...(sailPreview?.coast ? [{ kind: 'sail-coast' as const, trajectory: sailPreview.coast }] : []),
+      ...(sailPreview?.trim ? [{ kind: 'sail-trim' as const, trajectory: sailPreview.trim }] : []),
     ],
-    [committedTrajectory, preview],
+    [committedTrajectory, preview, sailPreview],
   )
   const selectObject = (id: string) => {
     setSelectedId(id)
+    if (id === sailcraftId) setPlotting(null)
     if (
       plotting &&
       world?.objects.some((o) => o.id === id && isCourseDestination(o))
@@ -251,6 +259,13 @@ function App() {
           />
         </section>
         <aside className="inspector">
+          {world.canLaunchSailcraft && (
+            <section className="details-body">
+              <button disabled={disabled || snapshot.running} onClick={() => {
+                void command('launch-sailcraft').then((launched) => { if (launched) selectObject(sailcraftId) })
+              }}>Launch Sundiver sail trial</button>
+            </section>
+          )}
           {plotting && world && (
             <CoursePanel
               inputs={plotting}
@@ -296,7 +311,17 @@ function App() {
                     </div>
                   ))}
                 </dl>
-                {selected.kind === 'spacecraft' ? (
+                {selected.id === sailcraftId && world.solarSail ? (
+                  <SailPanel
+                    key={snapshot.instanceId}
+                    ship={world.solarSail}
+                    primary={world.objects.find((object) => object.id === world.solarSail?.primaryBodyId)?.name}
+                    disabled={disabled || snapshot.running}
+                    onCommand={command}
+                    preview={sailPreview}
+                    onPreview={setSailDraft}
+                  />
+                ) : selected.kind === 'spacecraft' ? (
                   <>
                     <div className="ship-state">
                       <strong>{world.ship.status === 'Arrived' ? 'Legacy body-center arrival' : world.ship.status}</strong>

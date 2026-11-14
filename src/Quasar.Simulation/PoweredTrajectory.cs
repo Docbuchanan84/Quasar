@@ -12,6 +12,7 @@ internal sealed class PoweredTrajectory
     private readonly double thrust;
     private readonly PropulsionPerformance performance;
     private readonly double poweredSeconds;
+    private readonly Func<Vector3d, Vector3d, double, Vector3d> acceleration;
 
     public PoweredTrajectory(CelestialState initial, Velocity3 unitDirection, double mu,
         SpacecraftPropulsion propulsion, long startTicks, int durationSeconds)
@@ -39,6 +40,7 @@ internal sealed class PoweredTrajectory
         this.initial = initial;
         this.mu = mu;
         thrust = propulsion.Engine.ThrustN;
+        acceleration = Acceleration;
         StartTicks = startTicks;
         var durationSeconds = durationTicks / (double)TimeSpan.TicksPerSecond;
         var fuelSeconds = performance.AvailablePropellantKg / performance.RatedMassFlowKgPerSecond;
@@ -105,16 +107,7 @@ internal sealed class PoweredTrajectory
             var next = Math.Abs(to - time) <= StepSeconds ? to : time + directionOfTime * StepSeconds;
             var step = next - time;
             if (inspect is not null && !inspect(time, r, v, step)) return (default, false);
-            var half = step / 2;
-            var a1 = Acceleration(r, time);
-            var v2 = v + a1 * half;
-            var a2 = Acceleration(r + v * half, time + half);
-            var v3 = v + a2 * half;
-            var a3 = Acceleration(r + v2 * half, time + half);
-            var v4 = v + a3 * step;
-            var a4 = Acceleration(r + v3 * step, time + step);
-            r += (v + v2 * 2 + v3 * 2 + v4) * (step / 6);
-            v += (a1 + a2 * 2 + a3 * 2 + a4) * (step / 6);
+            RungeKutta.Step(ref r, ref v, time, step, acceleration);
             time = next;
         }
 
@@ -130,7 +123,7 @@ internal sealed class PoweredTrajectory
         return Math.Min(poweredSeconds, (atTicks - StartTicks) / (double)TimeSpan.TicksPerSecond);
     }
 
-    private Vector3d Acceleration(Vector3d position, double seconds)
+    private Vector3d Acceleration(Vector3d position, Vector3d _, double seconds)
     {
         var radius = position.Length;
         if (!double.IsFinite(radius) || radius <= 0)
