@@ -46,7 +46,8 @@ internal sealed class CourseBurn(CelestialPositionService catalogue, SpacecraftP
         var system = initial;
         var parts = new List<Part>();
         var performance = propulsion.CalculatePerformance();
-        if (duration <= 0 || duration > PoweredTrajectory.MaximumCourseDurationSeconds * TimeSpan.TicksPerSecond
+        var drive = propulsion.Drive;
+        if (duration <= 0 || duration > drive.MaximumBurnSeconds * TimeSpan.TicksPerSecond
             || duration / (double)TimeSpan.TicksPerSecond * performance.RatedMassFlowKgPerSecond >= propulsion.Tank.QuantityKg)
             throw new ArgumentException("Burn exceeds available propellant or the supported finite duration.");
         var directionSign = reverse ? -1 : 1;
@@ -111,7 +112,7 @@ internal sealed class CourseBurn(CelestialPositionService catalogue, SpacecraftP
                 var velocity = Vector3d.From(state.VelocityKmPerSecond);
                 var seconds = (through - from) / (double)TimeSpan.TicksPerSecond;
                 var maxAcceleration = mu / Math.Pow(position.Length / 2, 2)
-                    + propulsion.Engine.ThrustN / performance.DryMassKg / 1000;
+                    + drive.ThrustN / performance.DryMassKg / 1000;
                 var radiusBoundHolds = velocity.Length * Math.Abs(seconds) + maxAcceleration * seconds * seconds / 2 < position.Length / 2;
                 if (boundary is { Exit: false })
                 {

@@ -22,6 +22,15 @@ calculates consequences, and teaches the underlying concepts.**
 This is a broad interaction principle, not a decision that every domain shares
 identical equations, components, manufacturing processes or simulation fidelity.
 
+## Shared component models
+
+Use one authoritative spacecraft motion and navigation model with diverse
+installed propulsion components. Their forces, resources, and operating
+limits determine the maneuvers the planner can offer through the same
+destination-order interface. Apply the same principle to other families of
+equipment as they are developed, including sensors. See
+[the approved decision](DECISIONS.md#approved--shared-component-models-2026-11-14).
+
 ## Player interaction contract — approved
 
 - **Structured inputs:** dropdowns, sliders, number/unit fields, text fields,

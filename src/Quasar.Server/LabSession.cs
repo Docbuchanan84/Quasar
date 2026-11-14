@@ -230,8 +230,7 @@ public sealed partial class LabSession(bool startWithWorld = true)
             if (!Guid.TryParse(command.ClientId, out _)) throw new ArgumentException("Invalid browser identity.");
             var activeWorld = RequireWorld();
             if (command.ShipId is { } shipId && shipId != SystemLab.ShipId
-                && command.Operation is "travel" or "start-burn" or "cut-thrust"
-                    or "fit-exploration-torch" or "fit-designed-torch")
+                && command.Operation is "travel" or "fit-exploration-torch" or "fit-designed-torch")
                 throw new ArgumentException("These controls apply to Pathfinder.");
             switch (command.Operation)
             {
@@ -281,13 +280,13 @@ public sealed partial class LabSession(bool startWithWorld = true)
                     break;
                 case "start-burn":
                     if (running) throw new InvalidOperationException("Stop time processing before ignition.");
-                    activeWorld.StartBurn(command.BurnDirection ?? "", command.BurnSeconds ?? 0);
+                    activeWorld.StartBurn(command.BurnDirection ?? "", command.BurnSeconds ?? 0, command.ShipId ?? SystemLab.ShipId);
                     MarkWorldChanged(significant: true);
                     stopReason = "Engine ignited — ready to advance";
                     break;
                 case "cut-thrust":
                     if (running) throw new InvalidOperationException("Stop time processing before cutting thrust.");
-                    activeWorld.CutThrust();
+                    activeWorld.CutThrust(command.ShipId ?? SystemLab.ShipId);
                     MarkWorldChanged(significant: true);
                     stopReason = "Thrust cut — coasting";
                     break;
@@ -314,6 +313,12 @@ public sealed partial class LabSession(bool startWithWorld = true)
                     activeWorld.LaunchSailcraft();
                     MarkWorldChanged(significant: true);
                     stopReason = "Sundiver ready for sail orders";
+                    break;
+                case "launch-surveyor":
+                    if (running) throw new InvalidOperationException("Stop time processing before launching Surveyor.");
+                    activeWorld.LaunchSurveyor();
+                    MarkWorldChanged(significant: true);
+                    stopReason = "Surveyor ready for destination orders";
                     break;
                 case "start-sail-trim":
                     if (running) throw new InvalidOperationException("Stop time processing before setting a sail trim.");
@@ -351,7 +356,7 @@ public sealed partial class LabSession(bool startWithWorld = true)
                 var activeWorld = RequireWorld();
                 var before = activeWorld.ElapsedTicks;
                 var previousEventSequence = activeWorld.LastEvent.Sequence;
-                var destination = activeWorld.CourseDestinationName;
+                var destinations = activeWorld.PoweredCourseDestinations();
                 var deadline = checked(before + durationSeconds * TimeSpan.TicksPerSecond);
                 // Movement still resolves each boundary at its own tick. Spend the rest of this interval after a notice.
                 while (activeWorld.ElapsedTicks < deadline
@@ -374,10 +379,12 @@ public sealed partial class LabSession(bool startWithWorld = true)
                     stopReason = interrupt?.ArrivalLabel ?? "Advance complete";
                     if (interrupt is { } arrival)
                     {
-                        arrivalNotice = arrival.ObjectId != SystemLab.ShipId || destination is null ? arrival.Message
+                        var destination = destinations.GetValueOrDefault(arrival.ObjectId);
+                        var name = SystemLab.PoweredShipName(arrival.ObjectId);
+                        arrivalNotice = destination is null ? arrival.Message
                             : arrival.Kind == "course-orbit-inserted"
-                                ? $"Pathfinder entered orbit at {destination}."
-                                : $"Pathfinder arrived at {destination}.";
+                                ? $"{name} entered orbit at {destination}."
+                                : $"{name} arrived at {destination}.";
                     }
                 }
             }

@@ -36,6 +36,7 @@ export type LabObject = {
   velocityKmPerSecond: Position | null
   parentId: string | null
   radiusKm?: number
+  shipStatus?: ShipStatus
   navigation?: {
     arrivalKinds: ArrivalKind[]
     efficiencyMetric: string
@@ -65,6 +66,7 @@ type LabEvent = {
 }
 
 export const sailcraftId = 'ship-sundiver'
+export const surveyorId = 'ship-surveyor'
 export type SailStatus = {
   status: 'Coasting' | 'Sailing' | 'Underway'
   primaryBodyId: string
@@ -106,6 +108,25 @@ export type FlightForecast = {
   }
 }
 
+export type ShipStatus = {
+  status: string
+  speedKmPerSecond: number
+  destinationId: string | null
+  arrivalTicks: string | null
+  arrivalKind?: string | null
+  remainingDistanceKm: number
+  burnEndTicks?: string | null
+  propulsion?: {
+    dryMassKg: number
+    wetMassKg: number
+    availablePropellantKg: number
+    ratedMassFlowKgPerSecond: number
+    initialAccelerationMPerSecond2: number
+    theoreticalDeltaVMPerSecond: number
+  } | null
+  electricDrive?: { electricalPowerMw: number; efficiency: number; thrustN: number; exhaustVelocityMPerSecond: number }
+}
+
 export type Snapshot = {
   instanceId: string
   revision: number
@@ -121,25 +142,11 @@ export type Snapshot = {
     elapsedTicks: string
     referenceEpoch?: string | null
     objects: LabObject[]
-    ship: {
-      status: string
-      speedKmPerSecond: number
-      destinationId: string | null
-      arrivalTicks: string | null
-      remainingDistanceKm: number
-      burnEndTicks?: string | null
-      propulsion?: {
-        dryMassKg: number
-        wetMassKg: number
-        availablePropellantKg: number
-        ratedMassFlowKgPerSecond: number
-        initialAccelerationMPerSecond2: number
-        theoreticalDeltaVMPerSecond: number
-      } | null
-    }
+    ship: ShipStatus
     events: LabEvent[]
     solarSail?: SailStatus | null
     canLaunchSailcraft?: boolean
+    canLaunchSurveyor?: boolean
   }
 }
 export type MapProps = {

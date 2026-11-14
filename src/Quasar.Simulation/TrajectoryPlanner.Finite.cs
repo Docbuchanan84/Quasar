@@ -11,7 +11,9 @@ public sealed partial class TrajectoryPlanner
         var clearance = Math.Max(1, primary.RadiusKm);
         var mu = primary.GravitationalParameterKm3PerSecond2;
         var performance = propulsion.CalculatePerformance();
-        var exhaustSpeed = propulsion.Engine.ExhaustVelocityMPerSecond / 1000;
+        var drive = propulsion.Drive;
+        var exhaustSpeed = drive.ExhaustVelocityMPerSecond / 1000;
+        var maxBurnTicks = drive.MaximumBurnSeconds * TimeSpan.TicksPerSecond;
         var local = OrbitalNavigation.ToLocal(catalogue, primaryId, departureTicks, initial);
         var arrivalLocal = OrbitalNavigation.ToLocal(catalogue, primaryId, arrivalTicks, target);
         var initialVelocity = Vector3d.From(local.VelocityKmPerSecond);
@@ -34,11 +36,11 @@ public sealed partial class TrajectoryPlanner
 
                 var firstTicks = BurnTicks(performance.WetMassKg, departure.Length);
                 reason = "The installed engine cannot complete a required burn within the supported duration.";
-                if (firstTicks is < 1 or > PoweredTrajectory.MaximumCourseDurationSeconds * TimeSpan.TicksPerSecond) return null;
+                if (firstTicks < 1 || firstTicks > maxBurnTicks) return null;
                 var first = new PoweredTrajectory(local, (departure / departure.Length).Velocity, mu, propulsion, departureTicks, firstTicks);
                 var remaining = first.RemainingPropellantKg(first.EndTicks);
                 var lastTicks = BurnTicks(performance.DryMassKg + remaining, braking.Length);
-                if (lastTicks is < 1 or > PoweredTrajectory.MaximumCourseDurationSeconds * TimeSpan.TicksPerSecond) return null;
+                if (lastTicks < 1 || lastTicks > maxBurnTicks) return null;
                 var lastStart = checked(arrivalTicks - lastTicks);
                 reason = "The transfer leaves too little time or propellant for both burns and the coast.";
                 if (first.ExhaustsPropellant || lastStart <= first.EndTicks) return null;
@@ -101,7 +103,7 @@ public sealed partial class TrajectoryPlanner
         long BurnTicks(double wetMass, double deltaV)
         {
             var seconds = -wetMass * double.ExpM1(-deltaV / exhaustSpeed) / performance.RatedMassFlowKgPerSecond;
-            return seconds <= PoweredTrajectory.MaximumCourseDurationSeconds
+            return seconds <= drive.MaximumBurnSeconds
                 ? Math.Max(1, (long)Math.Round(seconds * TimeSpan.TicksPerSecond))
                 : long.MaxValue;
         }

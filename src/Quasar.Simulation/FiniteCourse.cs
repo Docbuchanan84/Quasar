@@ -49,7 +49,9 @@ internal sealed record FiniteCourse(FiniteCourseState State, CourseBurn Departur
     internal static SpacecraftPropulsion Throttled(SpacecraftPropulsion propulsion, double throttle)
     {
         if (!double.IsFinite(throttle) || throttle is <= 0 or > 1) throw new ArgumentException("Invalid finite burn throttle.");
-        return propulsion with { Engine = propulsion.Engine with { ThrustN = propulsion.Engine.ThrustN * throttle } };
+        return propulsion.ElectricDrive is { } electric
+            ? propulsion with { ElectricDrive = electric with { ElectricalPowerMw = electric.ElectricalPowerMw * throttle } }
+            : propulsion with { Engine = propulsion.Engine! with { ThrustN = propulsion.Drive.ThrustN * throttle } };
     }
 
     internal static FiniteCourse Build(CelestialPositionService catalogue, FiniteCourseState state,
@@ -123,7 +125,7 @@ internal sealed record FiniteCourse(FiniteCourseState State, CourseBurn Departur
     internal TrajectoryPlan ToPlan()
     {
         var catalogue = Coast.Catalogue;
-        var exhaustSpeed = State.Propulsion.Engine.ExhaustVelocityMPerSecond / 1000;
+        var exhaustSpeed = State.Propulsion.Drive.ExhaustVelocityMPerSecond / 1000;
         var mass = State.Propulsion.CalculatePerformance();
         var brakingWetMass = mass.DryMassKg + Braking.RemainingPropellantKg(Braking.StartTicks);
         var arrivalWetMass = mass.DryMassKg + RemainingPropellantKg;

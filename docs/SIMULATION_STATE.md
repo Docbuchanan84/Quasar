@@ -18,7 +18,9 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   `History` entries. `SimulationState` contains `FormatVersion`,
   `ElapsedTicks`, `Bodies`, and `Spacecraft`. The nested
   `Simulation.FormatVersion` versions the entire checkpoint. The current version
-  is `SimulationState.CurrentFormatVersion` (9). Version 9 adds confirmed
+  is `SimulationState.CurrentFormatVersion` (10). Version 10 adds optional
+  fission-electric equipment in the shared propellant-drive loadout.
+  Version 9 adds confirmed
   sail flyby courses, storing departure state, destination and trim schedule.
   Version 8 adds sail
   equipment, active sail trims, and independent history for the optional
@@ -28,7 +30,7 @@ SystemLab candidate = SystemLab.RestoreState(decoded);
   rocket-equation impulses on integer clock ticks without exceeding rated thrust.
   All patched paths and their boundaries are rebuilt and validated on load,
   including current primary, remaining fuel, and consumed history events.
-  Versions 1–8 remain readable with their original equipment and motion state.
+  Versions 1–9 remain readable with their original equipment and motion state.
   Version 6 adds finite courses.
   Version 5 records automatic
   primary selection on eligible free coasts. Older free coasts keep their

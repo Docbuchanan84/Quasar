@@ -203,7 +203,7 @@ export default function CoursePanel({
               <p>Arrival error {number(trajectory.arrival.positionErrorKm * 1000)} m · {number(trajectory.arrival.velocityErrorKmPerSecond * 1000)} m/s</p>
               <h3>Estimated burn schedule</h3>
               <ul>{trajectory.burnSchedule?.map((burn) => (
-                <li key={burn.phase}>{burn.phase} · {formatTime(burn.startTicks)} · {number(burn.durationSeconds)} s · {number(burn.propellantKg)} kg</li>
+                <li key={burn.phase}>{burn.phase} · {formatTime(burn.startTicks)} · {formatDuration(burn.durationSeconds)} · {number(burn.propellantKg)} kg</li>
               ))}</ul>
               {trajectory.brakingMarginKg != null && (
                 <p>Braking margin {number(trajectory.brakingMarginKg)} kg remaining after cutoff

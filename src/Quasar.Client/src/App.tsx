@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
-import { formatTime, isCourseDestination, sailcraftId, type Snapshot, type SailPreview } from './lab'
+import { formatTime, isCourseDestination, sailcraftId, surveyorId, type Snapshot, type SailPreview } from './lab'
 import CampaignPanel from './CampaignPanel'
 import ArrivalNotifications from './ArrivalNotifications'
 import SiteNav from './SiteNav'
@@ -129,6 +129,8 @@ function App() {
   )
 
   if (!world || !snapshot) return <main>{campaignControls}</main>
+  const powered = selected?.shipStatus ?? world.ship
+  const electric = powered.electricDrive
   const flightNotice = snapshot.interrupt ?? snapshot.flightNotice
   return (
     <main>
@@ -291,6 +293,13 @@ function App() {
               }}>Launch Sundiver sail trial</button>
             </section>
           )}
+          {world.canLaunchSurveyor && (
+            <section className="details-body">
+              <button disabled={disabled || snapshot.running} onClick={() => {
+                void command('launch-surveyor').then((launched) => { if (launched) selectObject(surveyorId) })
+              }}>Launch Surveyor</button>
+            </section>
+          )}
           {plotting && world && (
             <CoursePanel
               inputs={plotting}
@@ -374,31 +383,31 @@ function App() {
                 ) : selected.kind === 'spacecraft' ? (
                   <>
                     <div className="ship-state">
-                      <strong>{world.ship.status === 'Arrived' ? 'Legacy body-center arrival' : world.ship.status}</strong>
+                      <strong>{powered.status === 'Arrived' ? 'Legacy body-center arrival' : powered.status}</strong>
                       <p>
-                        Speed: {world.ship.speedKmPerSecond.toFixed(3)} km/s
+                        Speed: {powered.speedKmPerSecond.toFixed(3)} km/s
                       </p>
-                      {world.ship.destinationId && (
+                      {powered.destinationId && (
                         <>
                           <p>
                             Destination:{' '}
                             {
                               world.objects.find(
-                                (o) => o.id === world.ship.destinationId,
+                                (o) => o.id === powered.destinationId,
                               )?.name
                             }
                           </p>
                           <p>
                             Remaining:{' '}
-                            {world.ship.remainingDistanceKm.toLocaleString(
+                            {powered.remainingDistanceKm.toLocaleString(
                               undefined,
                               { maximumFractionDigits: 0 },
                             )}{' '}
                             km
                           </p>
-                          <p>{world.trajectory?.arrivalKind === 'body-center' ? 'Legacy body-center arrival'
-                            : world.trajectory?.arrivalKind === 'orbit' ? 'Planned orbital insertion' : 'Planned approach'}{' '}
-                            {formatTime(world.ship.arrivalTicks!)}</p>
+                          <p>{powered.arrivalKind === 'body-center' ? 'Legacy body-center arrival'
+                            : powered.arrivalKind === 'orbit' ? 'Planned orbital insertion' : 'Planned approach'}{' '}
+                            {formatTime(powered.arrivalTicks!)}</p>
                         </>
                       )}
                     </div>
@@ -410,17 +419,24 @@ function App() {
                         Plot Course
                       </button>
                     )}
-                    <h3>Propulsion</h3>
-                    <a className="torch-designer-link" href="/torch-designer/">Open Torch Designer</a>
-                    {world.ship.propulsion ? (
+                    <h3>{electric ? 'Fission-electric propulsion' : 'Propulsion'}</h3>
+                    {selected.id === 'ship-pathfinder' && (
+                      <a className="torch-designer-link" href="/torch-designer/">Open Torch Designer</a>
+                    )}
+                    {powered.propulsion ? (
                       <dl>
                         {[
-                          ['Dry mass', world.ship.propulsion.dryMassKg, 'kg'],
-                          ['Wet mass', world.ship.propulsion.wetMassKg, 'kg'],
-                          ['Available propellant', world.ship.propulsion.availablePropellantKg, 'kg'],
-                          ['Rated mass flow', world.ship.propulsion.ratedMassFlowKgPerSecond, 'kg/s'],
-                          ['Initial thrust acceleration', world.ship.propulsion.initialAccelerationMPerSecond2, 'm/s²'],
-                          ['Theoretical impulsive delta-v', world.ship.propulsion.theoreticalDeltaVMPerSecond / 1000, 'km/s'],
+                          ...(electric ? [
+                            ['Electrical power to thruster', electric.electricalPowerMw, 'MW'],
+                            ['Thrust at full power', electric.thrustN, 'N'],
+                            ['Exhaust speed', electric.exhaustVelocityMPerSecond / 1000, 'km/s'],
+                          ] as const : []),
+                          ['Dry mass', powered.propulsion.dryMassKg, 'kg'],
+                          ['Wet mass', powered.propulsion.wetMassKg, 'kg'],
+                          [electric ? 'Available argon' : 'Available propellant', powered.propulsion.availablePropellantKg, 'kg'],
+                          ['Rated mass flow', powered.propulsion.ratedMassFlowKgPerSecond, 'kg/s'],
+                          ['Initial thrust acceleration', powered.propulsion.initialAccelerationMPerSecond2, 'm/s²'],
+                          ['Theoretical impulsive delta-v', powered.propulsion.theoreticalDeltaVMPerSecond / 1000, 'km/s'],
                         ].map(([label, value, unit]) => (
                           <div key={label}>
                             <dt>{label}</dt>
@@ -429,28 +445,28 @@ function App() {
                         ))}
                       </dl>
                     ) : <p className="muted">Propulsion not modeled</p>}
-                    {world.ship.propulsion && (
+                    {powered.propulsion && (
                       <button
-                        disabled={disabled || snapshot.running || world.ship.status !== 'Coasting'}
+                        disabled={disabled || snapshot.running || powered.status !== 'Coasting'}
                         onClick={() => void command('debug-refuel', { shipId: selected.id })}
                       >
                         Debug refuel
                       </button>
                     )}
-                    <details><summary>Lab refit and refuel</summary>
-                    <button disabled={disabled || snapshot.running || world.ship.status !== 'Coasting'}
+                    {selected.id === 'ship-pathfinder' && <details><summary>Lab refit and refuel</summary>
+                    <button disabled={disabled || snapshot.running || powered.status !== 'Coasting'}
                       onClick={() => void command('fit-exploration-torch')}>
                       Fit exploration torch and refuel
                     </button>
                     <p className="muted">Test refit. 300 kN thrust, 1,000 km/s exhaust velocity, and 20,000 kg of reaction mass.</p>
-                    </details>
-                    {world.ship.propulsion && (
+                    </details>}
+                    {powered.propulsion && (
                       <>
                         <h3>Manual engine burn</h3>
-                        {world.ship.burnEndTicks ? (
+                        {powered.burnEndTicks ? (
                           <div className="order-buttons">
-                            <p>Scheduled cutoff at {formatTime(world.ship.burnEndTicks)}.</p>
-                            <button disabled={disabled || snapshot?.running} onClick={() => void command('cut-thrust')}>
+                            <p>Scheduled cutoff at {formatTime(powered.burnEndTicks)}.</p>
+                            <button disabled={disabled || snapshot?.running} onClick={() => void command('cut-thrust', { shipId: selected.id })}>
                               Cut thrust
                             </button>
                             <p className="muted">Stop pauses time. Cut thrust ends the burn while paused.</p>
@@ -458,7 +474,7 @@ function App() {
                         ) : (
                           <form className="order-buttons" onSubmit={(event) => {
                             event.preventDefault()
-                            void command('start-burn', { burnDirection, burnSeconds: Number(burnSeconds) })
+                            void command('start-burn', { shipId: selected.id, burnDirection, burnSeconds: Number(burnSeconds) })
                           }}>
                             <label>
                               Burn direction{' '}
@@ -473,7 +489,7 @@ function App() {
                                 value={burnSeconds} onChange={(event) => setBurnSeconds(event.target.value)} />
                             </label>
                             <button disabled={disabled || snapshot?.running || !!plotting
-                              || world.ship.status !== 'Coasting' || world.ship.propulsion.availablePropellantKg <= 0}>
+                              || powered.status !== 'Coasting' || powered.propulsion.availablePropellantKg <= 0}>
                               Ignite engine
                             </button>
                             <p className="muted">Direction is fixed at ignition. Thrust stops when time or propellant runs out.</p>

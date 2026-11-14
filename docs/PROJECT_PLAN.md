@@ -20,6 +20,7 @@ automatic course planning, interactive maps, and persistent campaigns. The
 | Propulsion 2/4 | Finite burns, fuel depletion notices, and active-burn v4 checkpoints |
 | Engineering prototype | [Fusion Torch Designer](TORCH_DESIGNER.md), comparative test burns, and compatible Pathfinder campaign refits |
 | Propulsion trial | [Sundiver solar sail](SOLAR_SAIL.md), timed trim and coast comparisons, ballistic Earth flyby, and v8 checkpoints |
+| Propulsion trial | [Surveyor fission-electric](SURVEYOR.md), shared course planning and multi-day finite burns, and v10 checkpoints |
 | Testing controls | Debug refill of the selected ship’s installed propellant tank |
 | Navigation 1/2 | Orbital target states, automatic coast primary changes, and checkpoint v5 |
 | Campaigns | SQLite checkpoints, autosave, startup restore, and player-facing New Game, Save Game, Named Save, and Load Game |

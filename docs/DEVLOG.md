@@ -1,5 +1,17 @@
 # Development log
 
+## 2026-11-14 — Surveyor fission-electric ship
+
+- Added an optional third ship. Surveyor derives thrust from electrical
+  power, conversion efficiency, and exhaust speed. It uses the shared
+  propellant, flight execution, destination orders, and forecast.
+- The powered solver handles multi-day burns with shorter integration
+  steps near gravity primaries. Existing engine paths retain their step
+  size. Checkpoint v10 preserves installed electric drives and in-progress
+  courses.
+- The fresh-campaign Mars route passed preview, execution, save and restore,
+  and verified position and velocity at arrival. See [Surveyor](SURVEYOR.md).
+
 ## 2026-11-14 — Destination orders across propulsion types
 
 - **Plot Course** lets the player select a destination and compare the fastest,

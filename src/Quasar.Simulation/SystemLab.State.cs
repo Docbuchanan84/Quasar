@@ -16,27 +16,35 @@ public sealed partial class SystemLab
             throw new InvalidDataException("Missing simulation or inconsistent System Lab history sequence.");
         var movement = MovementExecution.RestoreState(state.Simulation);
         var ships = state.Simulation.Spacecraft;
-        if (!movement.ContainsSpacecraft(ShipId) || ships.Any(ship =>
-                ship.Id == ShipId ? ship.Sail is not null
-                : ship.Id != SailcraftId || ship.Sail is null || movement.Catalogue.Bodies.ContainsKey(SailcraftId))
-            || movement.Catalogue.Bodies.ContainsKey(ShipId)
+        if (!movement.ContainsSpacecraft(ShipId) || ships.Any(ship => movement.Catalogue.Bodies.ContainsKey(ship.Id)
+                || !SupportsLabShip(ship))
             || !movement.Catalogue.Bodies.TryGetValue(
                 movement.Catalogue.Bodies.ContainsKey(SolarSystem.Sun) ? SolarSystem.Sun : LegacyPrimaryId, out var primary)
             || primary.GravitationalParameterKm3PerSecond2 <= 0)
             throw new InvalidDataException("The System Lab requires Pathfinder and a supported gravity primary.");
 
-        var rocketHistory = ValidateHistoryIdentities(state, movement);
-        ValidatePathfinderHistory(state, movement, rocketHistory);
-        if (movement.ContainsSpacecraft(SailcraftId))
-            ValidateSailHistory(state.Simulation, ships.Single(ship => ship.Id == SailcraftId), movement,
-                state.History.Where(entry => entry.ObjectId == SailcraftId));
+        ValidateHistoryIdentities(state, movement);
+        foreach (var ship in ships)
+        {
+            var history = state.History.Where(entry => entry.ObjectId == ship.Id).ToArray();
+            if (ship.Id == SailcraftId) ValidateSailHistory(state.Simulation, ship, movement, history);
+            else ValidatePoweredHistory(state, ship, movement, history);
+        }
         var restored = new SystemLab(movement) { lastEventSequence = state.LastEventSequence };
         restored.events.AddRange(state.History.Select(entry =>
             new LabEvent(entry.Sequence, entry.AtTicks, RestoredEventKind(entry), entry.ObjectId, entry.Message)));
         return restored;
     }
 
-    private static LabHistoryEntry[] ValidateHistoryIdentities(SystemLabState state, MovementExecution movement)
+    private static bool SupportsLabShip(SpacecraftState ship) => ship.Id switch
+    {
+        ShipId => ship.Sail is null && ship.Propulsion?.ElectricDrive is null,
+        SailcraftId => ship.Sail is not null,
+        SurveyorId => ship.Propulsion?.ElectricDrive is not null && ship is { Sail: null, Trajectory: null, Rendezvous: null },
+        _ => false
+    };
+
+    private static void ValidateHistoryIdentities(SystemLabState state, MovementExecution movement)
     {
         var previousTicks = long.MinValue;
         for (var i = 0; i < state.History.Length; i++)
@@ -51,11 +59,13 @@ public sealed partial class SystemLab
         }
         if (state.History[0].ObjectId != ShipId)
             throw new InvalidDataException("System Lab history must begin with Pathfinder.");
-        return [.. state.History.Where(entry => entry.ObjectId == ShipId)];
     }
 
-    private static void ValidatePathfinderHistory(SystemLabState state, MovementExecution movement, LabHistoryEntry[] history)
+    private static void ValidatePoweredHistory(SystemLabState state, SpacecraftState ship, MovementExecution movement, LabHistoryEntry[] history)
     {
+        var launchKind = ship.Id == ShipId ? "created" : "surveyor-launched";
+        if (history.Length == 0 || history[0].Kind != launchKind)
+            throw new InvalidDataException("Missing spacecraft setup history.");
         var previousTicks = long.MinValue;
         var orderIndex = -1;
         var burning = false;
@@ -64,7 +74,7 @@ public sealed partial class SystemLab
             var entry = history[i];
             switch (entry.Kind)
             {
-                case "created" when i == 0:
+                case "created" or "surveyor-launched" when i == 0:
                     break;
                 case "order" when i > 0 && !burning:
                     orderIndex = i;
@@ -103,7 +113,6 @@ public sealed partial class SystemLab
             previousTicks = entry.AtTicks;
         }
 
-        var ship = state.Simulation.Spacecraft.Single(ship => ship.Id == ShipId);
         var last = history[^1];
         if (burning != (ship.ActiveBurn is not null))
             throw new InvalidDataException("Active burn disagrees with System Lab history.");
@@ -114,7 +123,7 @@ public sealed partial class SystemLab
         }
         else if (ship.FiniteCourse is { } finite)
         {
-            var expected = movement.CommittedPlan(ShipId)!.Finite!.Boundaries
+            var expected = movement.CommittedPlan(ship.Id)!.Finite!.Boundaries
                 .Where(boundary => boundary.Ticks <= state.Simulation.ElapsedTicks).ToArray();
             var count = expected.Length;
             if (orderIndex < 0 || history[orderIndex].AtTicks != finite.DepartureTicks
@@ -191,7 +200,7 @@ public sealed partial class SystemLab
             throw new InvalidDataException("Sailcraft motion disagrees with System Lab history.");
     }
 
-    private static bool StartsFreeCoast(string kind) => kind is "created" or "cancel" or "burn-complete"
+    private static bool StartsFreeCoast(string kind) => kind is "created" or "surveyor-launched" or "cancel" or "burn-complete"
         or "burn-exhausted" or "burn-cutoff" or "primary-change" or "course-arrival" or "course-approach-complete" or "course-orbit-inserted" or "refit";
 
     // The first v6 builds saved both outcomes under one kind. Their generated messages distinguish them.
