@@ -115,6 +115,20 @@ public static class QuasarHost
             catch (Exception error) when (error is ArgumentException or OverflowException)
             { return Results.BadRequest(new { error = error.Message }); }
         });
+        app.MapGet("/api/lab/course-availability", (string shipId, string destinationId, string arrivalKind, string instanceId,
+            long revision, int? preferredFlightSeconds, double? reservePercent, bool? lockFlightTime,
+            LabSession session, CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                return Results.Ok(session.CheckDestination(new(shipId, destinationId, arrivalKind,
+                    PreferredFlightSeconds: preferredFlightSeconds, ReservePercent: reservePercent, LockFlightTime: lockFlightTime ?? false),
+                    instanceId, revision, cancellationToken));
+            }
+            catch (InvalidOperationException error) { return Results.Conflict(new { error = error.Message }); }
+            catch (Exception error) when (error is ArgumentException or OverflowException)
+            { return Results.BadRequest(new { error = error.Message }); }
+        });
         app.MapGet("/api/lab/trajectory-preview", (string destinationId, int? flightSeconds, LabSession session) =>
         {
             try { return Results.Ok(session.PreviewTravel(destinationId, flightSeconds ?? 21600)); }

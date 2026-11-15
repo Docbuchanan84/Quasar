@@ -1,8 +1,9 @@
 import {
-  formatTime, isCourseDestination,
+  formatTime,
   type ArrivalKind, type AutomaticCoursePreview, type CoursePreview, type LabObject,
 } from './lab'
 import type { PlotInputs } from './useCoursePreview'
+import type { useReachableDestinations } from './useReachableDestinations'
 import CourseTuningControls from './CourseTuningControls'
 
 function formatDuration(seconds: number) {
@@ -22,6 +23,7 @@ export default function CoursePanel({
   objects,
   preview,
   routes,
+  reachable,
   selectedLabel,
   onSelectRoute,
   error,
@@ -37,6 +39,7 @@ export default function CoursePanel({
   objects: LabObject[]
   preview: CoursePreview | null
   routes: AutomaticCoursePreview | null
+  reachable: ReturnType<typeof useReachableDestinations>
   selectedLabel?: string
   onSelectRoute: (previewId: string, label: string) => void
   error?: string
@@ -56,6 +59,9 @@ export default function CoursePanel({
   const distinctTuned = routes?.tuned && routes.tuned.previewId !== routes.fastest?.previewId
     && routes.tuned.previewId !== routes.lowestManeuverCost?.previewId ? routes.tuned : null
   const origin = objects.find((object) => object.id === inputs.shipId)
+  const destination = objects.find((object) => object.id === inputs.destinationId)
+  const options = objects.filter((object) => reachable.ids.has(object.id) || routes?.fastest?.destinationId === object.id)
+  const selectedDestination = options.some((object) => object.id === inputs.destinationId) ? inputs.destinationId : ''
   const navigation = origin?.navigation
   const arrivalKinds = navigation?.arrivalKinds ?? ['approach', 'orbit'] as const
   const sailTime = (route: CoursePreview) => route.trajectory.sailSchedule?.reduce((sum, trim) => sum + trim.durationSeconds, 0)
@@ -70,29 +76,6 @@ export default function CoursePanel({
         {objects.find((o) => o.id === inputs.shipId)?.name ?? inputs.shipId} ·
         current departure state
       </p>
-      <p className="muted">
-        Choose a destination and compare the courses the ship can fly.
-      </p>
-      <label>
-        Destination
-        <select
-          aria-label="Course destination"
-          value={inputs.destinationId}
-          disabled={disabled}
-          onChange={(e) =>
-            onChange({ ...inputs, destinationId: e.target.value })
-          }
-        >
-          <option value="">Choose destination…</option>
-          {objects
-            .filter(isCourseDestination)
-            .map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-        </select>
-      </label>
       <label>
         Arrival condition
         <select value={inputs.arrivalKind} disabled={disabled}
@@ -100,12 +83,35 @@ export default function CoursePanel({
           {arrivalKinds.map((kind) => <option key={kind} value={kind}>{arrivalLabels[kind]}</option>)}
         </select>
       </label>
+      <label>
+        Destination
+        <select
+          aria-label="Course destination"
+          value={selectedDestination}
+          disabled={disabled || running || !options.length}
+          onChange={(e) =>
+            onChange({ ...inputs, destinationId: e.target.value })
+          }
+        >
+          <option value="">Choose destination…</option>
+          {options.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+        </select>
+      </label>
       {running && (
         <p role="status">
           Stop time processing to recalculate and review a course.
         </p>
       )}
-      {loading && <p role="status">Calculating course…</p>}
+      {reachable.loading && <p role="status">Checking reachable destinations…</p>}
+      {reachable.incomplete && <p role="status">Some destinations could not be checked. Recalculate to try again.</p>}
+      {reachable.active && !reachable.loading && !reachable.incomplete && !options.length && (
+        <p role="status">No verified destinations for this arrival condition and these constraints.</p>
+      )}
+      {loading && <p role="status">Calculating course to {destination?.name ?? 'destination'}…</p>}
       {inputs.destinationId && navigation?.advancedConstraints && (
         <details>
         <summary>Advanced constraints</summary>
@@ -116,7 +122,7 @@ export default function CoursePanel({
       {error && <p role="alert">{error}</p>}
       {routes && !routes.fastest && (
         <div role="status">
-          <p>No executable course found in the bounded search.</p>
+          <p>No verified course to {destination?.name ?? 'the selected destination'} with these settings.</p>
           {!!routes.infeasibleReasons?.length && (
             <ul>{routes.infeasibleReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
           )}
@@ -257,7 +263,7 @@ export default function CoursePanel({
         <button
           onClick={onRecalculate}
           disabled={
-            disabled || running || !inputs.destinationId || loading
+            disabled || running || loading || (!inputs.destinationId && reachable.loading)
           }
         >
           Recalculate

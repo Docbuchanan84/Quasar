@@ -9,6 +9,7 @@ import CoursePanel from './CoursePanel'
 import SailPanel from './SailPanel'
 import SystemObjectTree from './SystemObjectTree'
 import { useCoursePreview, type PlotInputs } from './useCoursePreview'
+import { useReachableDestinations } from './useReachableDestinations'
 import { useFlightPath } from './useFlightPath'
 import type { CourseLayer } from './lab'
 
@@ -57,6 +58,7 @@ function App() {
     selected = world?.objects.find((o) => o.id === selectedId)
   const disabled = !online || pending || !snapshot
   const course = useCoursePreview(snapshot, plotting, online)
+  const reachable = useReachableDestinations(snapshot, plotting, online)
   const committedTrajectory = world?.trajectory
   const sailPreview = sailDraft && snapshot && sailDraft.instanceId === snapshot.instanceId
     && sailDraft.revision === snapshot.revision && !snapshot.running && selectedId === sailcraftId
@@ -306,6 +308,7 @@ function App() {
               objects={world.objects}
               preview={preview}
               routes={course.routes}
+              reachable={reachable}
               selectedLabel={selectedRoute?.id === preview?.previewId ? selectedRoute?.label : undefined}
               onSelectRoute={(id, label) => setSelectedRoute({ id, label })}
               error={course.error}
@@ -313,7 +316,10 @@ function App() {
               disabled={disabled}
               running={snapshot?.running ?? false}
               onChange={setPlotting}
-              onRecalculate={course.recalculate}
+              onRecalculate={() => {
+                course.recalculate()
+                reachable.recalculate()
+              }}
               onCancel={() => setPlotting(null)}
               onIssue={() => {
                 if (!preview) return

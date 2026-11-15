@@ -1,9 +1,10 @@
 # Course plotting and map integration
 
 Select a spacecraft and open **Plot Course** while simulation time is stopped.
-Choose a destination from either map, the object list, or the destination
-picker, then choose how to arrive from the options its planner supports. Quasar
-searches from the departure state and compares **Fastest**, **Most efficient**,
+Choose an arrival condition supported by the installed propulsion. The destination
+picker fills with places for which the planner has verified a route from the ship's
+current state under the selected constraints. Select a body on the map or in the
+object list to check it directly. Quasar compares **Fastest**, **Most efficient**,
 and **Most direct** among executable routes found. More than one priority can
 lead to the same course. Select a route to see it on the map, then use
 **Issue Order** to commit it or **Cancel preview** to close the panel.
@@ -80,6 +81,11 @@ departure burn, coast and braking burn within the current flight model.
 uses the ship's installed planner. It also returns `mostDirect`, and uses
 `arrivalKind=flyby` for a sail flyby. Send the returned `shipId` with
 `commit-course` and its `previewId`.
+
+`GET /api/lab/course-availability` runs the same search for one candidate
+destination. It takes the ship, destination, arrival condition and optional
+travel time and reserve constraints along with the current host instance and
+revision. It returns an availability verdict without creating order tokens.
 
 `GET /api/lab/course-preview?mode=auto&destinationId=...` returns a
 `fastest` preview and an optional distinct `lowestManeuverCost` preview. Pass

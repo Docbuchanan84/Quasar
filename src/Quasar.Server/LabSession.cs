@@ -11,6 +11,7 @@ public sealed record CoursePreview(string? PreviewId, string InstanceId, long Re
     string DestinationId, double SampledDistanceKm, string[] Warnings, TrajectoryDisplay Trajectory);
 public sealed record AutomaticCoursePreview(CoursePreview? Fastest, CoursePreview? LowestManeuverCost, string[] InfeasibleReasons,
     CoursePreview? Tuned = null, CoursePreview? MostDirect = null);
+public sealed record CourseAvailability(string InstanceId, long Revision, bool Reachable);
 public sealed record SailFlightPreview(string InstanceId, long Revision, string? PreviewId,
     SailFlightPath? Coast, SailFlightPath? Trim, SailFlyby[] CoastFlybys, SailFlyby[] TrimFlybys, string? CoastWarning);
 public sealed record SpacecraftFlightForecast(string InstanceId, string ShipId, string PathVersion, FlightForecast Path);
@@ -143,24 +144,14 @@ public sealed partial class LabSession(bool startWithWorld = true)
         }
     }
 
-    public AutomaticCoursePreview PreviewDestination(DestinationOrder order, CancellationToken cancellationToken)
-    {
-        string departureInstance;
-        long departureRevision;
-        Func<CancellationToken, DestinationRoutes> search;
-        lock (gate)
+    public CourseAvailability CheckDestination(DestinationOrder order, string expectedInstance, long expectedRevision,
+        CancellationToken cancellationToken) =>
+        SearchDestination(order, cancellationToken, choices => new CourseAvailability(instanceId, revision, choices.Fastest is not null),
+            (expectedInstance, expectedRevision));
+
+    public AutomaticCoursePreview PreviewDestination(DestinationOrder order, CancellationToken cancellationToken) =>
+        SearchDestination<AutomaticCoursePreview>(order, cancellationToken, choices =>
         {
-            if (running || switchingCampaign || shuttingDown) throw new InvalidOperationException("Pause before plotting a course.");
-            search = RequireWorld().CaptureDestinationOrder(order);
-            departureInstance = instanceId;
-            departureRevision = revision;
-        }
-        var choices = search(cancellationToken);
-        lock (gate)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (running || switchingCampaign || shuttingDown || departureInstance != instanceId || departureRevision != revision)
-                throw new InvalidOperationException("State changed during planning. Refresh state and recalculate.");
             if (choices.Fastest is null) return new(null, null, choices.Reasons);
             var presented = new Dictionary<NavigationCandidate, CoursePreview>();
             CoursePreview? Retain(NavigationCandidate? route)
@@ -174,6 +165,29 @@ public sealed partial class LabSession(bool startWithWorld = true)
                 return preview;
             }
             return new(Retain(choices.Fastest), Retain(choices.Efficient), [], Retain(choices.Tuned), Retain(choices.Direct));
+        });
+
+    private T SearchDestination<T>(DestinationOrder order, CancellationToken cancellationToken, Func<DestinationRoutes, T> complete,
+        (string Instance, long Revision)? expectedDeparture = null)
+    {
+        (string Instance, long Revision) departure;
+        Func<CancellationToken, DestinationRoutes> search;
+        lock (gate)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (running || switchingCampaign || shuttingDown) throw new InvalidOperationException("Pause before plotting a course.");
+            departure = (instanceId, revision);
+            if (expectedDeparture is { } expected && expected != departure)
+                throw new InvalidOperationException("State changed during planning. Refresh state and recalculate.");
+            search = RequireWorld().CaptureDestinationOrder(order);
+        }
+        var choices = search(cancellationToken);
+        lock (gate)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (running || switchingCampaign || shuttingDown || departure != (instanceId, revision))
+                throw new InvalidOperationException("State changed during planning. Refresh state and recalculate.");
+            return complete(choices);
         }
     }
 
