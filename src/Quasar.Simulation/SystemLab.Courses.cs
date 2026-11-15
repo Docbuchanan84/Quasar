@@ -79,6 +79,13 @@ public sealed partial class SystemLab
             }
             var probes = new[] { estimate, Math.Min(CourseSearch.MaximumSeconds, estimate * 2),
                 Math.Min(CourseSearch.MaximumSeconds, (int)Math.Min(CourseSearch.MaximumSeconds, estimate * 4L)) };
+            // A one-second-to-ten-year sweep leaves months between samples at planetary
+            // distances. When it finds nothing, sample more densely around a half orbit.
+            var windowProbes = !needsPatches && !lockFlightTime && primary == SolarSystem.Sun
+                ? Enumerable.Range(4, 61)
+                    .Select(step => (int)Math.Clamp(estimate * (long)step / 16, 1, CourseSearch.MaximumSeconds))
+                    .Distinct().ToArray()
+                : null;
             var patchedMode = needsPatches;
             TrajectoryPlan? Evaluate(int seconds)
             {
@@ -108,7 +115,7 @@ public sealed partial class SystemLab
                 return best;
             }
             var choices = CourseSearch.Find(Evaluate, cancellationToken, preferredFlightSeconds, lockFlightTime,
-                () => searchDeadline.IsCancellationRequested, patchedMode ? probes : null);
+                () => searchDeadline.IsCancellationRequested, patchedMode ? probes : null, windowProbes);
             if (choices is null && !patchedMode && !searchDeadline.IsCancellationRequested)
             {
                 patchedMode = true;
