@@ -11,6 +11,17 @@ export type PlotInputs = {
   lockReserve?: boolean
 }
 
+export function courseSearchParameters(inputs: Omit<PlotInputs, 'destinationId'>) {
+  const { shipId, arrivalKind, preferredFlightSeconds, reservePercent, lockFlightTime } = inputs
+  return new URLSearchParams({
+    shipId,
+    arrivalKind,
+    ...(preferredFlightSeconds === undefined ? {} : { preferredFlightSeconds: String(preferredFlightSeconds) }),
+    ...(reservePercent === undefined ? {} : { reservePercent: String(reservePercent) }),
+    ...(lockFlightTime ? { lockFlightTime: 'true' } : {}),
+  })
+}
+
 // Preview requests are reads. Input/state changes hide old results immediately and abort late responses.
 export function useCoursePreview(
   snapshot: Snapshot | null,
@@ -32,11 +43,8 @@ export function useCoursePreview(
     [ready, instanceId, revision, inputs, attempt],
   )
   const destinationId = inputs?.destinationId,
-    shipId = inputs?.shipId,
-    arrivalKind = inputs?.arrivalKind
-  const preferredFlightSeconds = inputs?.preferredFlightSeconds
-  const reservePercent = inputs?.reservePercent
-  const lockFlightTime = inputs?.lockFlightTime
+    shipId = inputs?.shipId
+  const parameters = inputs ? courseSearchParameters(inputs).toString() : ''
   useEffect(() => {
     if (!key) return
     const controller = new AbortController()
@@ -44,15 +52,7 @@ export function useCoursePreview(
       void (async () => {
         try {
           const response = await fetch(
-            `/api/lab/course-preview?${new URLSearchParams({
-              destinationId: destinationId!,
-              shipId: shipId!,
-              mode: 'auto',
-              arrivalKind: arrivalKind!,
-              ...(preferredFlightSeconds === undefined ? {} : { preferredFlightSeconds: String(preferredFlightSeconds) }),
-              ...(reservePercent === undefined ? {} : { reservePercent: String(reservePercent) }),
-              ...(lockFlightTime ? { lockFlightTime: 'true' } : {}),
-            })}`,
+            `/api/lab/course-preview?${parameters}&mode=auto&destinationId=${encodeURIComponent(destinationId!)}`,
             {
               cache: 'no-store',
               signal: AbortSignal.any([
@@ -94,7 +94,7 @@ export function useCoursePreview(
       clearTimeout(timer)
       controller.abort()
     }
-  }, [key, destinationId, instanceId, revision, shipId, arrivalKind, preferredFlightSeconds, reservePercent, lockFlightTime])
+  }, [key, destinationId, instanceId, revision, shipId, parameters])
   const current = result?.key === key ? result : null
   return {
     routes: current?.routes ?? null,

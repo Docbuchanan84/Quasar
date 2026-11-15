@@ -123,6 +123,30 @@ public class CoursePreviewTests
         Assert.Contains("no modeled gravity", Assert.Single(options.InfeasibleReasons));
     }
 
+    [Fact]
+    public void DestinationCheckUsesThePreviewConstraintsAndRequiresTheCurrentDeparture()
+    {
+        var session = new LabSession(SystemLab.CreateChemicalFixture());
+        var before = session.Snapshot();
+        var order = new DestinationOrder(SystemLab.ShipId, SolarSystem.Earth, "approach");
+        var preview = session.PreviewDestination(order, CancellationToken.None);
+        Assert.NotNull(preview.Fastest);
+
+        Assert.True(Check(order).Reachable);
+        Assert.False(Check(order with { PreferredFlightSeconds = 1, LockFlightTime = true }).Reachable);
+        Assert.False(Check(order with { DestinationId = "station-staryard", ArrivalKind = "orbit" }).Reachable);
+        var after = session.Snapshot();
+        Assert.Equal(before.Revision, after.Revision);
+        Assert.Equal(before.World.Objects, after.World.Objects);
+        Assert.Equal(before.World.Events, after.World.Events);
+
+        Send(session, "commit-course", preview.Fastest.PreviewId);
+        Assert.Throws<InvalidOperationException>(() => Check(order));
+
+        CourseAvailability Check(DestinationOrder candidate) =>
+            session.CheckDestination(candidate, before.InstanceId, before.Revision, CancellationToken.None);
+    }
+
     [Theory]
     [InlineData("once")]
     [InlineData("continuous")]

@@ -92,7 +92,7 @@ public sealed partial class TrajectoryPlanner
                 var total = departure.Length + braking.Length;
                 if (!double.IsFinite(total) || total >= performance.TheoreticalDeltaVMPerSecond / 1000)
                 {
-                    reason = "Insufficient propellant for departure, gravity transitions, braking and the selected reserve.";
+                    reason = "Insufficient propellant for the estimated departure and braking burns on this candidate.";
                     return null;
                 }
                 var (firstTicks, firstThrottle) = BurnTicks(performance.WetMassKg, departure.Length);

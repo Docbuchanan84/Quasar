@@ -14,9 +14,6 @@ public sealed partial class MovementExecution
         var sail = RequireSail(ship);
         if (ship.Sailing is not null || ship.SailCourse is not null || ship.Coast is not { } coast)
             throw new InvalidOperationException("Feather the sail or cancel the current course before plotting.");
-        if (!catalogue.Bodies.TryGetValue(targetId, out var target) || targetId == ship.Primary
-            || target.Orbit is null || target.GravitationalParameterKm3PerSecond2 <= 0)
-            throw new ArgumentException("Choose another body with a modeled gravity sphere for a flyby.");
         var start = ElapsedTicks;
         var state = new SailCourseState(ship.Primary, start, KinematicState.From(coast.StateAt(start)), targetId, []);
         return token => SearchSailCourses(sail, state, token);

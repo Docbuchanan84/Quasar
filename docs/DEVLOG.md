@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-14 — Filter the destination picker by verified routes
+
+- **Plot Course** checks nearby destinations from the selected ship's current
+  state and constraints. Destinations appear as their routes pass verification. Changing the
+  arrival condition or constraints refreshes the list. Map and object selections
+  still allow a direct check of a specific destination.
+
 ## 2026-11-14 — Search future ignition windows
 
 - A powered ship can coast to a favorable planetary alignment when it cannot

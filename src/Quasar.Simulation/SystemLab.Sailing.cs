@@ -55,6 +55,10 @@ public sealed partial class SystemLab
             return _ => new(null, null, null, null, ["This planner can chart a flyby. Select Fly past."]);
         if (order is { ManeuverBudget: not null } or { ReservePercent: not null } or { PreferredFlightSeconds: not null } or { LockFlightTime: true })
             throw new ArgumentException("Sail flyby planning uses the route priorities shown in the planner.");
+        if (!celestialPositions.Bodies.TryGetValue(order.DestinationId, out var target))
+            throw new ArgumentException("Choose a destination in this system.");
+        if (target.Orbit is null || target.GravitationalParameterKm3PerSecond2 <= 0 || target.Id == movement.PrimaryOf(order.ShipId))
+            return _ => new(null, null, null, null, ["Choose another body with a modeled gravity sphere for a flyby."]);
         var search = movement.CaptureSailCourseSearch(order.ShipId, order.DestinationId);
         return token => DestinationRoutes.Rank(search(token).Select(course => new NavigationCandidate(PresentSail(course),
             course.DeployedSeconds, () =>
