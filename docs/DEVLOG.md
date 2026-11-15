@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-14 — Search future ignition windows
+
+- A powered ship can coast to a favorable planetary alignment when it cannot
+  complete an immediate solar transfer. The shared order previews the coast
+  and both finite burns as one course. Checkpoints preserve the coast,
+  ignition epoch, and remaining propellant.
+
 ## 2026-11-14 — More departure geometries for Surveyor and Sundiver
 
 - When the first solar-transfer sweep finds no powered route, the planner

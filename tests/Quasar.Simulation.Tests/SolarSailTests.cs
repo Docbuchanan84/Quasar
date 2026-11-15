@@ -89,7 +89,7 @@ public sealed class SolarSailTests
         routes.Fastest.Commit();
         AdvanceTo(lab, long.Parse(trim.StartTicks) + TimeSpan.FromDays(1).Ticks);
         var saved = lab.ExportState();
-        Assert.Equal(11, saved.Simulation.FormatVersion);
+        Assert.Equal(SimulationState.CurrentFormatVersion, saved.Simulation.FormatVersion);
         Assert.Throws<InvalidDataException>(() => SystemLab.RestoreState(saved with
         {
             Simulation = saved.Simulation with { FormatVersion = 10 }

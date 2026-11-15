@@ -116,6 +116,10 @@ public sealed partial class SystemLab
             }
             var choices = CourseSearch.Find(Evaluate, cancellationToken, preferredFlightSeconds, lockFlightTime,
                 () => searchDeadline.IsCancellationRequested, patchedMode ? probes : null, windowProbes);
+            if (choices is null && !lockFlightTime && primary == SolarSystem.Sun && arrivalPrimary == primary
+                && body.ParentId == primary && !searchDeadline.IsCancellationRequested)
+                choices = FindLaterSolarCourse(state, departure, destinationId, approachRadius, propulsion, maneuverBudget,
+                    estimate, preferredFlightSeconds, cancellationToken, searchToken);
             if (choices is null && !patchedMode && !searchDeadline.IsCancellationRequested)
             {
                 patchedMode = true;
