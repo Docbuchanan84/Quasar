@@ -71,6 +71,40 @@ public sealed class SolarSailTests
     }
 
     [Fact]
+    public void AfterTheStarterFlybySundiverCanPlotAndRestoreALongRangeReturn()
+    {
+        var lab = new SystemLab();
+        lab.LaunchSailcraft();
+        AdvanceTo(lab, TimeSpan.FromDays(30).Ticks);
+        var before = SimulationStateJson.Serialize(lab.ExportState());
+
+        var routes = lab.CaptureDestinationOrder(new(SystemLab.SailcraftId, SolarSystem.Earth, "flyby"))(CancellationToken.None);
+
+        Assert.Equal(before, SimulationStateJson.Serialize(lab.ExportState()));
+        Assert.True(routes.Fastest is not null, string.Join(" | ", routes.Reasons));
+        var course = routes.Fastest.Trajectory;
+        Assert.InRange(course.TravelSeconds, TimeSpan.FromDays(730).TotalSeconds, TimeSpan.FromDays(1825).TotalSeconds);
+        var trim = Assert.Single(course.SailSchedule!);
+        Assert.True(trim.DurationSeconds > TimeSpan.FromDays(5).TotalSeconds);
+        routes.Fastest.Commit();
+        AdvanceTo(lab, long.Parse(trim.StartTicks) + TimeSpan.FromDays(1).Ticks);
+        var saved = lab.ExportState();
+        Assert.Equal(11, saved.Simulation.FormatVersion);
+        Assert.Throws<InvalidDataException>(() => SystemLab.RestoreState(saved with
+        {
+            Simulation = saved.Simulation with { FormatVersion = 10 }
+        }));
+
+        var restored = RoundTrip(lab);
+        Assert.Equal(lab.Snapshot().Objects, restored.Snapshot().Objects);
+        var arrival = long.Parse(course.ArrivalTicks);
+        AdvanceTo(restored, arrival);
+        Assert.Contains(restored.Snapshot().Events, entry => entry is { Kind: "sail-flyby", ObjectId: SystemLab.SailcraftId }
+            && entry.AtTicks == arrival);
+        Assert.Equal(course.Points[^1].PositionKm, SailObject(restored).Position);
+    }
+
+    [Fact]
     public void RocketAndSailCanFinishOrdersAtTheSameTickAndRestoreTheirOwnHistories()
     {
         var lab = new SystemLab();

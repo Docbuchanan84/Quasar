@@ -1,10 +1,12 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 
 namespace Quasar.Simulation;
 
 public sealed record SailManeuver(int OffsetSeconds, int DurationSeconds, double AngleDegrees);
 public sealed record SailCourseState(string DeparturePrimary, long DepartureTicks, KinematicState InitialRelativeState,
-    string TargetId, ImmutableArray<SailManeuver> Maneuvers);
+    string TargetId, ImmutableArray<SailManeuver> Maneuvers,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool LongRange = false);
 public sealed record CourseSailLeg(string StartTicks, double DurationSeconds, double AngleDegrees);
 
 internal sealed record SailCourse(SailCourseState State, SolarSail Equipment, SailCourse.Leg[] Legs,
@@ -21,12 +23,15 @@ internal sealed record SailCourse(SailCourseState State, SolarSail Equipment, Sa
     internal (long At, string Kind)[] Boundaries { get; } = Legs.Skip(1).Select(leg => (leg.Start, "sail-course-leg"))
         .Append((ArrivalTicks, "sail-flyby")).ToArray();
     internal TrajectoryDisplayPoint[] DisplayPoints() => Legs.SelectMany((leg, legIndex) =>
-        Enumerable.Range(legIndex == 0 ? 0 : 1, legIndex == 0 ? 33 : 32).Select(i =>
+    {
+        var intervals = Math.Max(32, (int)Math.Ceiling((leg.End - leg.Start) / (15.0 * TimeSpan.TicksPerDay)));
+        return Enumerable.Range(legIndex == 0 ? 0 : 1, legIndex == 0 ? intervals + 1 : intervals).Select(i =>
         {
-            var at = leg.Start + (leg.End - leg.Start) * i / 32;
+            var at = leg.Start + (leg.End - leg.Start) * i / intervals;
             var state = leg.Sample(at);
             return new TrajectoryDisplayPoint(Ticks(at), state.PositionKm, state.VelocityKmPerSecond);
-        })).ToArray();
+        });
+    }).ToArray();
 
     internal static string Ticks(long value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }

@@ -2,8 +2,11 @@ namespace Quasar.Simulation;
 
 public sealed partial class MovementExecution
 {
-    private static readonly TimeSpan SailSearchHorizon = TimeSpan.FromDays(730);
-    private const int SailPlanningSeconds = 5 * 86400;
+    private const int DaySeconds = 86400;
+    private const int ShortTrimSeconds = 5 * DaySeconds;
+    private const int LongTrimSeconds = SailTrajectory.MaximumDurationSeconds;
+    private const int MaximumLongRangeTrims = 6;
+    private const int LongRangeSailDays = 1825;
 
     internal Func<CancellationToken, SailCourse[]> CaptureSailCourseSearch(string id, string targetId)
     {
@@ -28,7 +31,7 @@ public sealed partial class MovementExecution
         try
         {
             Try([]);
-            foreach (var duration in new[] { 21600, 43200, 86400, 129600, 172800, 259200, SailPlanningSeconds })
+            foreach (var duration in new[] { 21600, 43200, 86400, 129600, 172800, 259200, ShortTrimSeconds })
                 foreach (var angle in new[] { 35d, -35d, 0d, 65d, -65d })
                     Try([new(0, duration, angle)]);
             foreach (var first in new[] { 35d, -35d })
@@ -38,8 +41,28 @@ public sealed partial class MovementExecution
                 foreach (var angle in new[] { 35d, -35d })
                 {
                     Try([new(wait, 86400, angle)]);
-                    Try([new(0, 86400, angle), new(wait, SailPlanningSeconds, angle)]);
+                    Try([new(0, 86400, angle), new(wait, ShortTrimSeconds, angle)]);
                 }
+            if (courses.Count == 0)
+            {
+                departure = departure with { LongRange = true };
+                Try([]);
+                // Let sunlight build up a useful change in orbital velocity over weeks or
+                // months, and coast long enough to reach a later encounter window.
+                foreach (var waitDays in new[] { 0, 15, 30, 60, 90, 120, 180, 240, 300, 365, 455, 545, 730 })
+                    foreach (var trimDays in new[] { 7, 15, 30 })
+                        foreach (var angle in new[] { 35d, -35d, 0d, 55d, -55d })
+                            Try([new(waitDays * DaySeconds, trimDays * DaySeconds, angle)]);
+                foreach (var waitDays in new[] { 0, 30, 90, 180, 300, 455, 730 })
+                    foreach (var sections in new[] { 2, 3, 4, MaximumLongRangeTrims })
+                        foreach (var angle in new[] { -35d, 35d, 0d })
+                            Try([.. Enumerable.Range(0, sections).Select(section =>
+                                new SailManeuver(waitDays * DaySeconds + section * LongTrimSeconds, LongTrimSeconds, angle))]);
+                foreach (var waitDays in new[] { 30, 60, 90, 120, 180, 240, 365 })
+                    foreach (var first in new[] { 35d, -35d, 0d })
+                        foreach (var second in new[] { 35d, -35d, 0d })
+                            Try([new(0, LongTrimSeconds, first), new(waitDays * DaySeconds, LongTrimSeconds, second)]);
+            }
         }
         catch (OperationCanceledException) when (!token.IsCancellationRequested) { }
         token.ThrowIfCancellationRequested();
@@ -59,19 +82,21 @@ public sealed partial class MovementExecution
 
     private SailCourse? BuildSailCourse(SolarSail sail, SailCourseState state, CancellationToken token)
     {
-        if (state.Maneuvers.IsDefault || state.Maneuvers.Length > 2 || state.InitialRelativeState is null
+        var maximumTrims = state.LongRange ? MaximumLongRangeTrims : 2;
+        var maximumTrimSeconds = state.LongRange ? LongTrimSeconds : ShortTrimSeconds;
+        if (state.Maneuvers.IsDefault || state.Maneuvers.Length > maximumTrims || state.InitialRelativeState is null
             || !catalogue.Bodies.TryGetValue(state.TargetId, out var target) || target.Orbit is null
             || target.GravitationalParameterKm3PerSecond2 <= 0 || state.TargetId == state.DeparturePrimary)
             throw new ArgumentException("Invalid sail course.");
         var start = state.DepartureTicks;
-        var horizon = checked(start + SailSearchHorizon.Ticks);
+        var horizon = checked(start + (state.LongRange ? LongRangeSailDays : 730) * TimeSpan.TicksPerDay);
         var primary = state.DeparturePrimary;
         var cursor = start;
         var coast = new TwoBodyTrajectory(state.InitialRelativeState.ToRuntime(), start, PrimaryMu(primary));
         var legs = new List<SailCourse.Leg>();
         foreach (var maneuver in state.Maneuvers)
         {
-            if (maneuver is null || maneuver.DurationSeconds is < 1 or > SailPlanningSeconds || maneuver.OffsetSeconds < 0)
+            if (maneuver is null || maneuver.DurationSeconds < 1 || maneuver.DurationSeconds > maximumTrimSeconds || maneuver.OffsetSeconds < 0)
                 throw new ArgumentException("Invalid sail maneuver.");
             var trimStart = checked(start + (long)maneuver.OffsetSeconds * TimeSpan.TicksPerSecond);
             if (trimStart < cursor || trimStart > horizon - maneuver.DurationSeconds * TimeSpan.TicksPerSecond)

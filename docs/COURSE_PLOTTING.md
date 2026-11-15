@@ -46,6 +46,9 @@ The search can miss narrow windows and does not optimize gravity assists. See
 Each search has a four-second cancellation deadline and returns the best
 verified candidates found before that deadline. Already completed candidates
 survive timeout. Cross-primary searches probe geometry-based flight times first.
+For same-primary solar transfers, a missed initial sweep triggers a denser
+search around the nominal half-orbit travel time. This helps find windows
+where a slower drive can complete both burns with the available propellant.
 The immutable planner caches up to 256 solved/rejected patched candidates for
 slider recalculation; caches never enter checkpoints. A failed bounded search
 does not prove the destination is physically unreachable.

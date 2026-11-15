@@ -61,7 +61,7 @@ public sealed partial class SystemLab
         {
             movement.CommitSailCourse(order.ShipId, course);
             Record("sail-course-order", $"Sundiver began its course for a flyby of {celestialPositions.Bodies[order.DestinationId].Name}.", order.ShipId);
-        })), ["The sail search found no safe flyby from this departure within two years."]);
+        })), ["No safe sail flyby was found among the coasts and sail trims tested over the next five years."]);
     }
 
     public void CancelCourse(string shipId)

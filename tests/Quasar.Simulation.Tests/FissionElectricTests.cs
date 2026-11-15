@@ -20,6 +20,25 @@ public sealed class FissionElectricTests
     }
 
     [Fact]
+    public void SurveyorFindsTheVenusWindowAtALaterLaunchEpoch()
+    {
+        var lab = new SystemLab();
+        var launch = TimeSpan.FromDays(4395).Ticks;
+        while (lab.ElapsedTicks < launch)
+            lab.Advance(TimeSpan.FromTicks(launch - lab.ElapsedTicks));
+        lab.LaunchSurveyor();
+
+        var result = lab.CaptureDestinationOrder(new(SystemLab.SurveyorId, "planet-venus", "approach"))(CancellationToken.None);
+
+        Assert.True(result.Fastest is not null, string.Join(" | ", result.Reasons));
+        var trajectory = result.Fastest.Trajectory;
+        Assert.InRange(trajectory.TravelSeconds, TimeSpan.FromDays(220).TotalSeconds, TimeSpan.FromDays(245).TotalSeconds);
+        Assert.InRange(trajectory.Fuel.PropellantMassKg!.Value, 0, 6000);
+        Assert.InRange(trajectory.Arrival!.PositionErrorKm, 0, .01);
+        Assert.InRange(trajectory.Arrival.VelocityErrorKmPerSecond, 0, 1e-6);
+    }
+
+    [Fact]
     public void SurveyorCommitsRestoresAndFliesTheReviewedMarsCourse()
     {
         var lab = new SystemLab();

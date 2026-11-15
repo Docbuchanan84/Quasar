@@ -10,9 +10,11 @@ Compare the quickest verified flyby with the route that spends the least time
 under sail or follows the shortest route with fewest intermediate encounters.
 The confirmed course schedules trimming and feathered coasting automatically.
 The clock pauses at closest approach. Resume to continue the outgoing orbit.
-The sail search tests coast, single trims, and two trims separated by coasting
-within a two-year horizon. It accounts for intervening gravity handoffs.
-A missed search can mean there was no safe course among the candidates tested.
+The sail search starts with coasts and brief trims over the next two years.
+If those produce no route, it looks up to five years ahead and tries longer
+trims, including several consecutive 30-day trims. It accounts for intervening
+gravity handoffs. The search can miss encounter windows, and all returned
+courses must pass the same clearance and flyby validation.
 
 Open **Manual sail controls** to steer directly.
 

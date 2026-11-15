@@ -1,5 +1,15 @@
 # Development log
 
+## 2026-11-14 — More departure geometries for Surveyor and Sundiver
+
+- When the first solar-transfer sweep finds no powered route, the planner
+  samples more densely around the nominal half-orbit travel time. A later
+  Surveyor launch can now find a velocity-matched Venus approach the first
+  sweep skipped.
+- If short sail trims and coasts find no flyby, the shared destination order
+  tries longer trims and looks up to five years ahead. Checkpoint v11 preserves
+  the extended plan and keeps earlier sail courses on their original limits.
+
 ## 2026-11-14 — Surveyor fission-electric ship
 
 - Added an optional third ship. Surveyor derives thrust from electrical

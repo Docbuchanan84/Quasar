@@ -23,7 +23,8 @@ internal static class CourseSearch
     }
 
     internal static CourseChoices? Find(Func<int, TrajectoryPlan?> evaluate, CancellationToken cancellationToken,
-        int? preferredSeconds = null, bool lockFlightTime = false, Func<bool>? stop = null, int[]? probes = null)
+        int? preferredSeconds = null, bool lockFlightTime = false, Func<bool>? stop = null, int[]? probes = null,
+        int[]? fallbackProbes = null)
     {
         var candidates = new Dictionary<int, TrajectoryPlan?>();
         if (preferredSeconds is { } preferred && lockFlightTime)
@@ -39,6 +40,12 @@ internal static class CourseSearch
             Evaluate(Math.Min(MaximumSeconds, requestedTime + requestedTime / 5));
         }
         foreach (var duration in Durations) Evaluate(duration);
+        var refinementSamples = Durations;
+        if (fallbackProbes is { } extraSamples && candidates.Values.All(plan => plan is null))
+        {
+            foreach (var duration in extraSamples) Evaluate(duration);
+            refinementSamples = candidates.Keys.Order().ToArray();
+        }
         var feasible = candidates.Where(pair => pair.Value is not null).Select(pair => pair.Key).Order().ToArray();
         if (feasible.Length == 0) return null;
 
@@ -54,11 +61,11 @@ internal static class CourseSearch
             }
         }
 
-        var fastestIndex = Array.BinarySearch(Durations, feasible[0]);
+        var fastestIndex = Array.BinarySearch(refinementSamples, feasible[0]);
         if (fastestIndex > 0)
         {
-            var low = Durations[fastestIndex - 1];
-            var high = Durations[fastestIndex];
+            var low = refinementSamples[fastestIndex - 1];
+            var high = feasible[0];
             for (var attempt = 0; attempt < 8 && high - low > 1; attempt++)
             {
                 var middle = low + (high - low) / 2;
@@ -69,8 +76,8 @@ internal static class CourseSearch
 
         var cheapest = candidates.Where(pair => pair.Value is not null)
             .OrderBy(pair => pair.Value!.RequiredDeltaVKmPerSecond).ThenBy(pair => pair.Key).First().Key;
-        var lowerNeighbor = Durations.LastOrDefault(duration => duration < cheapest, cheapest);
-        var upperNeighbor = Durations.FirstOrDefault(duration => duration > cheapest, cheapest);
+        var lowerNeighbor = refinementSamples.LastOrDefault(duration => duration < cheapest, cheapest);
+        var upperNeighbor = refinementSamples.FirstOrDefault(duration => duration > cheapest, cheapest);
         for (var sample = 1; sample <= 4; sample++)
         {
             Evaluate(cheapest - (int)((long)(cheapest - lowerNeighbor) * sample / 5));
