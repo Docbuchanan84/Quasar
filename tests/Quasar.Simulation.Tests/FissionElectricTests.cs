@@ -39,6 +39,47 @@ public sealed class FissionElectricTests
     }
 
     [Fact]
+    public void SurveyorCanCoastUntilTheMarsWindowAndFinishAfterReload()
+    {
+        var lab = new SystemLab();
+        var start = TimeSpan.FromDays(4395).Ticks;
+        AdvanceTo(start);
+        lab.LaunchSurveyor();
+        var preview = lab.CaptureDestinationOrder(new(SystemLab.SurveyorId, "planet-mars", "approach"))(CancellationToken.None);
+        var candidate = preview.Efficient;
+        Assert.True(candidate is not null, string.Join(" | ", preview.Reasons));
+        var course = candidate.Trajectory;
+        var ignition = long.Parse(course.BurnSchedule![0].StartTicks);
+        Assert.Equal(start, long.Parse(course.DepartureTicks));
+        Assert.True(ignition > start + TimeSpan.TicksPerDay);
+        Assert.InRange(course.Fuel.PropellantMassKg!.Value, 0, 6000);
+        candidate.Commit();
+
+        AdvanceTo(ignition - TimeSpan.TicksPerDay);
+        var saved = lab.ExportState();
+        Assert.Throws<InvalidDataException>(() => SystemLab.RestoreState(saved with
+        {
+            Simulation = saved.Simulation with { FormatVersion = 11 }
+        }));
+        lab = Restore(lab);
+        var waiting = lab.Snapshot().Objects.Single(body => body.Id == SystemLab.SurveyorId);
+        Assert.Equal(6000, waiting.ShipStatus!.Propulsion!.AvailablePropellantKg);
+        var arrival = long.Parse(course.ArrivalTicks);
+        AdvanceTo(arrival);
+        var final = lab.Snapshot();
+        Assert.Contains(final.Events, entry => entry is { Kind: "course-approach-complete", ObjectId: SystemLab.SurveyorId }
+            && entry.AtTicks == arrival);
+        var arrived = final.Objects.Single(body => body.Id == SystemLab.SurveyorId);
+        Assert.InRange(arrived.Position.DistanceTo(course.Points[^1].PositionKm), 0, 1e-6);
+
+        void AdvanceTo(long ticks)
+        {
+            while (lab.ElapsedTicks < ticks)
+                lab.Advance(TimeSpan.FromTicks(ticks - lab.ElapsedTicks));
+        }
+    }
+
+    [Fact]
     public void SurveyorCommitsRestoresAndFliesTheReviewedMarsCourse()
     {
         var lab = new SystemLab();

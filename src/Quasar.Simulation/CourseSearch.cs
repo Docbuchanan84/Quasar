@@ -107,7 +107,7 @@ internal static class CourseSearch
         }
     }
 
-    private static double SampledDistance(TrajectoryPlan plan)
+    internal static double SampledDistance(TrajectoryPlan plan)
     {
         // Rank the route geometry without reintegrating every candidate's powered arcs.
         var points = plan.Segments.SelectMany(segment => Enumerable.Range(0, 9).Select(i =>

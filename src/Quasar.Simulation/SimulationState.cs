@@ -7,7 +7,7 @@ namespace Quasar.Simulation;
 public sealed record SimulationState(int FormatVersion, long ElapsedTicks,
     ImmutableArray<CelestialBodyState> Bodies, ImmutableArray<SpacecraftState> Spacecraft)
 {
-    public const int CurrentFormatVersion = 11;
+    public const int CurrentFormatVersion = 12;
 
     public static bool SupportsFormatVersion(int version) => version is >= 1 and <= CurrentFormatVersion;
 
@@ -34,6 +34,8 @@ public sealed record SimulationState(int FormatVersion, long ElapsedTicks,
             throw new InvalidDataException("Fission-electric equipment requires simulation state version 10.");
         if (FormatVersion < 11 && !Spacecraft.IsDefault && Spacecraft.Any(ship => ship?.SailCourse?.LongRange == true))
             throw new InvalidDataException("Long-range sail courses require simulation state version 11.");
+        if (FormatVersion < 12 && !Spacecraft.IsDefault && Spacecraft.Any(ship => ship?.FiniteCourse is { CoastBeforeBurnTicks: not 0 }))
+            throw new InvalidDataException("A coast before the departure burn requires simulation state version 12.");
     }
 }
 
@@ -68,7 +70,8 @@ public sealed record FiniteCourseState(string PrimaryBodyId, string TargetId, st
     SpacecraftPropulsion Propulsion, CartesianState DepartureDirection, long DepartureDurationTicks,
     CartesianState BrakingDirection, long BrakingDurationTicks,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ArrivalPrimaryBodyId = null,
-    double DepartureThrottle = 1, double BrakingThrottle = 1);
+    double DepartureThrottle = 1, double BrakingThrottle = 1,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] long CoastBeforeBurnTicks = 0);
 public sealed record ActiveBurnState(long StartTicks, int DurationSeconds, KinematicState InitialRelativeState,
     CartesianState UnitDirection, double IgnitionPropellantKg);
 public sealed record CoastState(long EpochTicks, KinematicState InitialRelativeState,

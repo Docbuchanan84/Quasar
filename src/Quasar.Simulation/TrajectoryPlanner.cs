@@ -77,7 +77,7 @@ public sealed class TrajectoryPlan
     public FlybyEncounter? Flyby { get; }
     internal FiniteCourse? Finite { get; }
     public bool UsesFiniteBurns => Finite is not null;
-    public long DepartureTicks => Finite?.Departure.StartTicks ?? Segments[0].StartTicks;
+    public long DepartureTicks => Finite?.State.DepartureTicks ?? Segments[0].StartTicks;
     public long ArrivalTicks => Finite?.Braking.EndTicks ?? Segments[^1].EndTicks;
     public double TravelSeconds => (double)(((decimal)ArrivalTicks - DepartureTicks) / TimeSpan.TicksPerSecond);
     public double RequiredDeltaVKmPerSecond { get; }
@@ -103,7 +103,10 @@ public sealed class TrajectoryPlan
         // Always include patch epochs even when uniform samples miss them.
         var ticks = new SortedSet<long>(Segments.Select(s => s.StartTicks)) { ArrivalTicks };
         if (Finite is { } finite)
+        {
+            ticks.Add(finite.Departure.StartTicks);
             foreach (var boundary in finite.Boundaries) ticks.Add(boundary.Ticks);
+        }
         for (var i = 0; i < pointCount; i++)
             ticks.Add(DepartureTicks + (long)(((decimal)ArrivalTicks - DepartureTicks) * i / (pointCount - 1)));
         return ticks.Select(t => new TrajectoryPoint(t, StateAt(t))).ToArray();

@@ -49,6 +49,10 @@ export default function CoursePanel({
   onIssue: () => void
 }) {
   const trajectory = preview?.trajectory
+  const firstBurn = trajectory?.burnSchedule?.[0]
+  const coastBeforeBurn = trajectory && firstBurn
+    ? Number(BigInt(firstBurn.startTicks) - BigInt(trajectory.departureTicks)) / 10_000_000
+    : 0
   const distinctTuned = routes?.tuned && routes.tuned.previewId !== routes.fastest?.previewId
     && routes.tuned.previewId !== routes.lowestManeuverCost?.previewId ? routes.tuned : null
   const origin = objects.find((object) => object.id === inputs.shipId)
@@ -155,9 +159,15 @@ export default function CoursePanel({
               </dd>
             </div>
             <div>
-              <dt>Departure</dt>
+              <dt>{coastBeforeBurn > 0 ? 'Course starts' : 'Departure'}</dt>
               <dd>{formatTime(trajectory.departureTicks)}</dd>
             </div>
+            {coastBeforeBurn > 0 && (
+              <div>
+                <dt>Coast before first burn</dt>
+                <dd>{formatDuration(coastBeforeBurn)}</dd>
+              </div>
+            )}
             <div>
               <dt>Sampled path distance ≈</dt>
               <dd>{number(preview.sampledDistanceKm)} km</dd>

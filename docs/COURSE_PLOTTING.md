@@ -49,6 +49,12 @@ survive timeout. Cross-primary searches probe geometry-based flight times first.
 For same-primary solar transfers, a missed initial sweep triggers a denser
 search around the nominal half-orbit travel time. This helps find windows
 where a slower drive can complete both burns with the available propellant.
+If an immediate heliocentric approach to a Sun-orbiting destination still
+fails, the planner can search up to three years of later ignition dates. It
+uses impulsive estimates to shortlist dates, then verifies the actual coast,
+finite burns, surface clearance, propellant, and arrival state. The preview
+shows the initial coast separately. The requested travel time includes that
+coast. Locking travel time retains the existing immediate-ignition search.
 The immutable planner caches up to 256 solved/rejected patched candidates for
 slider recalculation; caches never enter checkpoints. A failed bounded search
 does not prove the destination is physically unreachable.

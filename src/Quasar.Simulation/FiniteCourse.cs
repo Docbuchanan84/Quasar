@@ -5,24 +5,29 @@ public sealed record CourseArrival(string Kind, string TargetId, string PrimaryB
 
 internal sealed record FiniteCourse(FiniteCourseState State, CourseBurn Departure, CourseBurn Braking,
     TrajectorySegment Coast, TwoBodyTrajectory ArrivalCoast, double BrakingPropellantKg, double RemainingPropellantKg,
-    CourseArrival Arrival, TrajectorySegment[] Coasts)
+    CourseArrival Arrival, TrajectorySegment[] Coasts, TrajectorySegment[] DepartureCoasts)
 {
     internal const double PositionToleranceKm = 0.01;
     internal const double VelocityToleranceKmPerSecond = 1e-6;
     private (long Ticks, string Kind)[]? boundaries;
 
-    internal double PropellantAt(long ticks) => ticks <= Departure.EndTicks
+    internal double PropellantAt(long ticks) => ticks < Departure.StartTicks ? State.Propulsion.Tank.QuantityKg
+        : ticks <= Departure.EndTicks
         ? Departure.RemainingPropellantKg(ticks)
         : Braking.RemainingPropellantKg(Math.Min(Braking.EndTicks, Math.Max(ticks, Braking.StartTicks)));
 
-    internal CelestialState StateAt(long ticks) => ticks == Departure.StartTicks ? State.InitialState.ToRuntime()
+    internal CelestialState StateAt(long ticks) => ticks == State.DepartureTicks ? State.InitialState.ToRuntime()
+        : ticks < Departure.StartTicks ? DepartureCoastAt(ticks).StateAt(ticks)
         : ticks <= Departure.EndTicks
         ? Departure.StateAt(ticks)
         : ticks < Braking.StartTicks ? CoastAt(ticks).StateAt(ticks)
         : Braking.StateAt(ticks);
 
-    internal string PrimaryAt(long ticks) => ticks < Departure.EndTicks ? Departure.PrimaryAt(ticks)
+    internal string PrimaryAt(long ticks) => ticks < Departure.StartTicks ? DepartureCoastAt(ticks).PrimaryBodyId
+        : ticks < Departure.EndTicks ? Departure.PrimaryAt(ticks)
         : ticks < Braking.StartTicks ? CoastAt(ticks).PrimaryBodyId : Braking.PrimaryAt(ticks);
+
+    private TrajectorySegment DepartureCoastAt(long ticks) => DepartureCoasts.Last(coast => coast.StartTicks <= ticks);
 
     private TrajectorySegment CoastAt(long ticks)
     {
@@ -32,8 +37,9 @@ internal sealed record FiniteCourse(FiniteCourseState State, CourseBurn Departur
     }
 
     internal long[] GravityTransitionTicks => Departure.Parts.Select(part => part.Path.StartTicks)
+        .Concat(DepartureCoasts.Select(coast => coast.StartTicks))
         .Concat(Coasts.Select(coast => coast.StartTicks)).Concat(Braking.Parts.Select(part => part.Path.StartTicks))
-        .Distinct().Where(ticks => ticks > Departure.StartTicks && PrimaryAt(ticks) != PrimaryAt(ticks - 1)).Order().ToArray();
+        .Distinct().Where(ticks => ticks > State.DepartureTicks && PrimaryAt(ticks) != PrimaryAt(ticks - 1)).Order().ToArray();
 
     internal (long Ticks, string Kind)[] Boundaries => boundaries ?? LazyInitializer.EnsureInitialized(ref boundaries, BuildBoundaries);
 
@@ -65,18 +71,27 @@ internal sealed record FiniteCourse(FiniteCourseState State, CourseBurn Departur
             || state.ArrivalKind is not ("approach" or "orbit") || !catalogue.Bodies.ContainsKey(state.TargetId)
             || state.ArrivalKind == "orbit" && state.TargetId != arrivalPrimary
             || state.ArrivalKind == "approach" && catalogue.Bodies[state.TargetId].ParentId != arrivalPrimary && state.TargetId != arrivalPrimary
+            || state.CoastBeforeBurnTicks < 0 || state.CoastBeforeBurnTicks >= (decimal)state.ArrivalTicks - state.DepartureTicks
             || (decimal)state.ArrivalTicks - state.DepartureTicks > TimeSpan.TicksPerSecond * (decimal)CourseSearch.MaximumSeconds)
             throw new ArgumentException("Incomplete or unsupported finite course.");
 
-        var primary = catalogue.Bodies[state.PrimaryBodyId];
+        var burnStart = checked(state.DepartureTicks + state.CoastBeforeBurnTicks);
+        var initial = state.InitialState.ToRuntime();
+        var departureCoasts = state.CoastBeforeBurnTicks == 0 ? [] : new MovementExecution(catalogue)
+            .TraceCourseCoast(initial, state.PrimaryBodyId, state.DepartureTicks, burnStart, cancellationToken);
+        var burnOrigin = departureCoasts.LastOrDefault();
+        var burnState = burnOrigin?.StateAt(burnStart) ?? initial;
+        var primary = catalogue.Bodies[burnOrigin?.PrimaryBodyId ?? state.PrimaryBodyId];
+        if (state.ArrivalPrimaryBodyId is null && primary.Id != state.PrimaryBodyId)
+            throw new ArgumentException("A single-primary course cannot depart its gravity region before ignition.");
         var mu = primary.GravitationalParameterKm3PerSecond2;
         var clearance = Math.Max(1, primary.RadiusKm);
-        var local = OrbitalNavigation.ToLocal(catalogue, primary.Id, state.DepartureTicks, state.InitialState.ToRuntime());
+        var local = OrbitalNavigation.ToLocal(catalogue, primary.Id, burnStart, burnState);
         var departure = state.ArrivalPrimaryBodyId is not null
-            ? CourseBurn.Build(catalogue, state.InitialState.ToRuntime(), primary.Id, state.DepartureTicks,
+            ? CourseBurn.Build(catalogue, burnState, primary.Id, burnStart,
                 state.DepartureDurationTicks, state.DepartureDirection.ToVelocity(), Throttled(state.Propulsion, state.DepartureThrottle), cancellationToken)
             : CourseBurn.Single(catalogue, state.Propulsion, primary.Id, new(local, state.DepartureDirection.ToVelocity(),
-                mu, state.Propulsion, state.DepartureTicks, state.DepartureDurationTicks));
+                mu, state.Propulsion, burnStart, state.DepartureDurationTicks));
         var brakingStart = checked(state.ArrivalTicks - state.BrakingDurationTicks);
         if (departure.ExhaustsPropellant || departure.EndTicks >= brakingStart)
             throw new ArgumentException("Departure burn leaves insufficient fuel or coast time for braking.");
@@ -119,7 +134,8 @@ internal sealed record FiniteCourse(FiniteCourseState State, CourseBurn Departur
         var reserve = braking.RemainingPropellantKg(braking.EndTicks);
         return new(state, departure, braking, coasts[0], end,
             brakingPropulsion.Tank.QuantityKg - reserve, reserve,
-            new(state.ArrivalKind, state.TargetId, arrivalPrimary, Vector3d.From(targetLocal.PositionKm).Length, positionError, velocityError), coasts);
+            new(state.ArrivalKind, state.TargetId, arrivalPrimary, Vector3d.From(targetLocal.PositionKm).Length, positionError, velocityError),
+            coasts, departureCoasts);
     }
 
     internal TrajectoryPlan ToPlan()
@@ -130,7 +146,7 @@ internal sealed record FiniteCourse(FiniteCourseState State, CourseBurn Departur
         var brakingWetMass = mass.DryMassKg + Braking.RemainingPropellantKg(Braking.StartTicks);
         var arrivalWetMass = mass.DryMassKg + RemainingPropellantKg;
         var target = OrbitalNavigation.ToSystem(catalogue, Arrival.PrimaryBodyId, State.ArrivalTicks, State.TargetLocalState.ToRuntime());
-        return new(catalogue, State.InitialState.ToRuntime(), new(null, target, State.ArrivalTicks), Coasts,
+        return new(catalogue, State.InitialState.ToRuntime(), new(null, target, State.ArrivalTicks), [.. DepartureCoasts, .. Coasts],
             [new(Departure.StartTicks, "departure", (Vector3d.From(State.DepartureDirection.ToVelocity())
                 * (exhaustSpeed * Math.Log(mass.WetMassKg / brakingWetMass))).Velocity),
              new(Braking.StartTicks, "braking", (Vector3d.From(State.BrakingDirection.ToVelocity())
