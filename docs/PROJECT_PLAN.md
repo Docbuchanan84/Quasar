@@ -36,6 +36,12 @@ New campaigns use the [Solar System fixture](SOLAR_SYSTEM.md), with analytical
 planet and satellite motion, two fictional stations, and a finite-course test
 ship. Existing Helios campaigns retain their original world when loaded.
 
+## Design reconciliation — 23 November 2026
+
+The owner-facing Game Design Record now has a dated section reconciling the repository's post-11-November additions. Treat the 11 November phone release as historical. The later Sundiver, Surveyor, flight-forecast, route-filtering and ignition-window features are present on `main` through `4c586f9a`; live private-host deployment and physical-phone completion were not verified by this documentation update.
+
+Strategic NPC inference is an [open exploration](NPC_AI_EXPLORATION.md), not an approved milestone. The owner discussed on-device iPhone LLMs, decision scoring and function-call translation, with conventional utility AI as a possible lower-cost baseline. A bounded benchmark may be useful before any selection; the inference location and its behavior when the phone disconnects from a continuing host must be resolved. The previously discussed research/industry ecosystems, manufacturability, component family histories and power/thermal integration likewise remain undetermined. This section schedules no implementation and changes no released behavior.
+
 ## Next validation
 
 Lock Screen arrival delivery has been confirmed by the owner. Validate the
