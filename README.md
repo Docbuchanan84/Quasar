@@ -101,6 +101,9 @@ checks. See [development setup](docs/DEVELOPMENT_SETUP.md) and the disposable
 - [Hosting](docs/HOSTING.md) covers private Tailscale publishing and rollback.
   [Mobile validation](docs/MOBILE_AND_REMOTE_ACCESS.md) records initial physical-phone
   2D acceptance and outstanding checks for the current release.
+- [Strategic NPC AI exploration](docs/NPC_AI_EXPLORATION.md) records the
+  23 November discussion of on-device small models, decision scoring,
+  function-calling and deterministic alternatives. No model has been selected.
 - [Decisions](docs/DECISIONS.md), [project plan](docs/PROJECT_PLAN.md), and
   [development log](docs/DEVLOG.md) separate approved choices, shipped features,
   and open work. The live Google Game Design Record is the shared design source.

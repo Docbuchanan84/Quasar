@@ -11,6 +11,8 @@
   `docs/DESIGNER_HANDOFF.md`: the playable designer, approved engineering
   direction, and current review questions.
 - `docs/AGENT_INTEGRATION.md`: source branches and merged release history.
+- `docs/NPC_AI_EXPLORATION.md`: dated, unapproved options for strategic NPC AI,
+  local inference and function-calling, with unresolved architecture.
 - Code, tests, pull requests, and CI: implemented behavior and its verification.
 - `docs/MOBILE_AND_REMOTE_ACCESS.md`: owner feedback, screenshot observations,
   device validation coverage, and remaining checks for the implemented prototype.
