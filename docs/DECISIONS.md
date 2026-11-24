@@ -1,5 +1,21 @@
 # Quasar decision record
 
+## 23 November 2026 — design/release reconciliation (no new approval)
+
+The current repository main branch was inspected at commit `4c586f9a` (15 November UTC). After the 11 November phone-release snapshot, PRs #47–#54 added 2D/3D scale bars, the Sundiver solar-sail trial, live flight forecasts, shared destination orders, Surveyor fission-electric propulsion, later ignition windows, expanded transfer searches and a verified-route destination picker. These are **implemented prototype features**, not additional owner approval of permanent physics, AI, industrial systems or mobile readiness. See [development log](DEVLOG.md), [Solar Sail](SOLAR_SAIL.md), [Surveyor](SURVEYOR.md) and [course plotting](COURSE_PLOTTING.md). The running private host was not independently checked during this reconciliation.
+
+## Explored — strategic NPC AI and local iPhone inference (2026-11-23)
+
+The owner asked about local iPhone models for strategy and NPC play, and how FunctionGemma-style function calling differs from a decision/scoring model. **Status: Unresolved, no implementation authorization.** Options considered: conventional utility or goal AI for high-frequency choices; a bounded decision model for some strategic selections; a compact LLM for occasional deliberation, personality or dialogue; and function calling to transform intentions into legal typed orders. These stages are optional, not a mandatory stack.
+
+Candidate technologies discussed include small Qwen and Gemma variants, Apple Foundation Models and FunctionGemma. Cloud-based decision APIs were considered conceptually; the owner expressed skepticism toward cloud dependence without approving a categorical ban or choosing a deployment boundary. No Quasar-specific iPhone model quality, performance, power or memory benchmarks exist.
+
+**Guardrail retained:** C# simulation and validation remain authoritative; learned outputs may only propose intentions or commands and must not mutate canonical state without rule checking. **Open:** which decisions merit inference, where it runs when the phone disconnects but host Continuous continues, model/provider choice, actor knowledge and memory, determinism/replay, latency/battery budget and test criteria. Reasons and a possible evaluation slice are in [NPC AI exploration](NPC_AI_EXPLORATION.md).
+
+## Explored — technology families, firms and industry (November 2026)
+
+Discussed capabilities-based research, overlapping propulsion niches rather than strictly linear replacement, enduring component families/series/variants, design firms and their histories, manufacturing processes, licensing, procurement, reliability, lifecycle and links to the broader economy. The appeal is differentiated strategy and design tradeoffs whose consequences extend past a single component screen. **No detailed tech tree, component schema, production economy, market/contract model, heat/power integration or company AI is approved by this entry.** Keep these topics in the open design backlog.
+
 ## Approved — shared component models (2026-11-14)
 
 Use one authoritative spacecraft motion and navigation model with a shared
